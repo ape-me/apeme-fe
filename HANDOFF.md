@@ -26,13 +26,20 @@ The app talks only to the backend. Never to Solana RPC or Postgres.
 GET /health
 GET /v1/ticker?memes=10&stonks=10  (alias /api/ticker)   → {updatedAt, tokens:[{id, kind:meme|stonk, label, logo, change24h, price}]}  memes first, by 24h volume
 GET /v1/stocks                                          → {stocks:[Stock], asOf}
-GET /v1/stocks/:mint/tokens?sort=volume|new|mcap&limit=50&cursor=   → {stock, tokens:[TokenCard], next}
+GET /v1/floor?stock=<mint>&limit=30&<filters>            → {stock, new:[card], graduating:[card], graduated:[card], asOf}   one call = whole floor screen; omit stock for all stocks
+GET /v1/tokens?column=new|graduating|graduated&stock=&sort=&limit=50&cursor=&<filters>   → {tokens:[card], next}   one column, paged
+GET /v1/stocks/:mint/tokens?column=&sort=&limit=50&cursor=&<filters>   → {stock, tokens:[TokenCard], next}
 GET /v1/tokens/:mint                                    → TokenHeader
 GET /v1/tokens/:mint/candles?tf=1m|5m|15m|1h|4h|1d&limit=300&before=   → {mint, tf, candles:[{t,o,h,l,c,v,n}]}  oldest→newest
 GET /v1/tokens/:mint/trades?limit=100&before=           → {mint, trades:[Trade]}  newest first
 WS  wss://…/ws/floor      every trade on every token
 WS  wss://…/ws/:mint      trades for one token
 ```
+- Columns: `new` = on the curve, created in the last 24h, newest first · `graduating` = on the curve, progress ≥ 60%, highest first · `graduated` = on the AMM, by 1h volume.
+- Sorts: `new mcap vol5m vol1h vol24h txns1h progress change1h change24h` (default per column as above).
+- Filters (all optional, combinable): `minMcap maxMcap minVol1h minVol24h minAge maxAge (minutes) minProgress maxProgress minTxns1h minBuys24h maxTax (bps) minHolders maxTop10 maxDev maxSnipers launchpad=stonkfun,pumpfun,dbc dexPaid=1 social=1 q=<search>`.
+- Card fields beyond the basics: `vol5mUsd buys5m sells5m vol1hUsd buys1h sells1h change1h athMcapUsd holders top10Pct devPct snipersPct website twitter telegram dexPaid dexPaidAt dexBoosts`. Holder fields are computed from our own trade tape (exact for tokens indexed since birth, null for older backfilled tokens). Thresholds pump.fun uses: top10 > 20% red, dev > 20% red / < 5% green, snipers > 10% red, holders < 10 red.
+- Floor socket also sends `{t:"token", event:"created"|"graduated", mint, symbol, name, quoteMint, launchpad, creator, createdAt, ts}` the second a pool is created or graduates; fetch `/v1/tokens/:mint` for the full card.
 - Exact shapes: `docs/api/contract.ts` (zod, the source of truth). Real responses captured today: `docs/api/*.json`. Generate the Swift `Codable` models from these; field names are camelCase and stable.
 - WebSocket frames are **JSON arrays** of `{t:"trade", mint, sig, ts, slot, side, wallet, base, quote, priceQuote, priceUsd}`. Send the text `ping` every 25s, server replies `pong`. Reconnect with backoff on close; on reconnect, refetch `/trades` to fill the gap.
 - Errors: `{error, requestId}` with 400 / 404 / 429 / 500. Rate limit 600 requests per minute per IP. Reads are edge-cached 2–5s, so polling faster than that is pointless; use the sockets for live.
