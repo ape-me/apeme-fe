@@ -1,0 +1,104 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><title>ApeMe So Far</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{--bg:#0b0e12;--bg2:#12161c;--line:#232a33;--ink:#eef2f5;--ink2:#a7b1bc;--ink3:#6b7682;--g:#5fe39a;--a:#f5b640;--b:#6db3ff;--r:#ff5c5c;--disp:"Bricolage Grotesque",Arial,sans-serif;--body:"IBM Plex Sans",Arial,sans-serif;--mono:"IBM Plex Mono",Menlo,monospace}
+*{box-sizing:border-box}body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5;margin:0}
+.page{max-width:760px;margin:0 auto;padding:48px 24px 80px}
+h1{font-family:var(--disp);font-size:44px;line-height:1;margin:0 0 8px;font-weight:800}
+.sub{color:var(--ink2);margin:0 0 28px}
+h2{font-family:var(--disp);font-size:22px;margin:40px 0 12px;font-weight:700}
+.map{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px;overflow-x:auto}
+.map svg{display:block;width:100%;min-width:660px;height:auto}
+.row{display:grid;grid-template-columns:36px 1fr;gap:14px;align-items:start;padding:13px 0;border-bottom:1px solid var(--line)}
+.dot{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-family:var(--mono);font-size:13px;font-weight:600;margin-top:2px}
+.done .dot{background:var(--g);color:#06110a}.run .dot{background:var(--a);color:#1a1200}.next .dot{background:var(--bg2);border:1px solid var(--ink3);color:var(--ink3)}
+.row b{display:block}.row span{color:var(--ink2);font-size:15px}
+.nums{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.nums div{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:14px}
+.nums b{display:block;font-family:var(--disp);font-size:28px;font-weight:800;line-height:1}.nums span{font-size:13px;color:var(--ink3)}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}th{text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);padding:6px 10px 6px 0;border-bottom:1px solid var(--line)}td{padding:7px 10px 7px 0;border-bottom:1px solid var(--line);color:var(--ink2);font-variant-numeric:tabular-nums;vertical-align:top}td.n{color:var(--ink);font-weight:600;white-space:nowrap}td.m{font-family:var(--mono);font-size:12px;color:var(--a);white-space:nowrap}
+.note{background:var(--bg2);border:1px solid var(--line);border-left:3px solid var(--a);border-radius:10px;padding:12px 16px;color:var(--ink2);font-size:15px;margin-top:14px}
+@media(max-width:600px){h1{font-size:34px}.nums{grid-template-columns:1fr 1fr}}
+</style>
+<div class="page">
+  <h1>Where we are</h1>
+  <p class="sub">Thursday 18 Sep, morning. Two services built, one running, one deployed. Seven days to submit.</p>
+
+  <div class="map"><svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg">
+    <defs><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#6b7682"/></marker></defs>
+    <g font-family="IBM Plex Sans, Arial" font-size="13" fill="#eef2f5" font-weight="600">
+      <rect x="10" y="40" width="120" height="66" rx="10" fill="#12161c" stroke="#f5b640"/><text x="70" y="68" text-anchor="middle">Solana</text><text x="70" y="88" text-anchor="middle" fill="#a7b1bc" font-weight="400">via Kaldera</text>
+
+      <rect x="180" y="20" width="230" height="110" rx="12" fill="none" stroke="#6b7682" stroke-dasharray="5 4"/>
+      <text x="295" y="14" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="#6b7682">VPS · yours alone in production</text>
+      <rect x="195" y="40" width="95" height="66" rx="10" fill="#12161c" stroke="#5fe39a"/><text x="242" y="68" text-anchor="middle">Indexer</text><text x="242" y="88" text-anchor="middle" fill="#a7b1bc" font-weight="400">Rust · live</text>
+      <rect x="300" y="40" width="95" height="66" rx="10" fill="#12161c" stroke="#5fe39a"/><text x="347" y="68" text-anchor="middle">Postgres</text><text x="347" y="88" text-anchor="middle" fill="#a7b1bc" font-weight="400">all the data</text>
+
+      <rect x="470" y="40" width="130" height="66" rx="10" fill="#12161c" stroke="#5fe39a"/><text x="535" y="68" text-anchor="middle">ape-be</text><text x="535" y="88" text-anchor="middle" fill="#a7b1bc" font-weight="400">Cloudflare · live</text>
+      <rect x="650" y="40" width="100" height="66" rx="10" fill="#12161c" stroke="#6b7682" stroke-dasharray="5 4"/><text x="700" y="68" text-anchor="middle" fill="#6b7682">iPhone</text><text x="700" y="88" text-anchor="middle" fill="#6b7682" font-weight="400">next</text>
+    </g>
+    <g fill="none" stroke="#6b7682" stroke-width="2">
+      <path d="M130 73 L195 73" marker-end="url(#m)"/>
+      <path d="M290 73 L300 73"/>
+      <path d="M395 60 C 430 60, 440 60, 470 60" marker-end="url(#m)"/>
+      <path d="M290 100 C 290 150, 470 150, 470 90" marker-end="url(#m)" stroke="#f5b640"/>
+      <path d="M600 73 L650 73" marker-end="url(#m)" stroke-dasharray="5 4"/>
+    </g>
+    <g font-family="IBM Plex Sans, Arial" font-size="12" fill="#a7b1bc">
+      <text x="432" y="52" text-anchor="middle">reads, private tunnel</text>
+      <text x="380" y="168" text-anchor="middle" fill="#f5b640">every trade, pushed within a second</text>
+      <text x="625" y="130" text-anchor="middle">REST + WebSocket</text>
+    </g>
+    <text x="380" y="225" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="#6b7682">green = running now · dashed = not built yet</text>
+  </svg></div>
+
+  <h2>In the database right now</h2>
+  <div class="nums">
+    <div><b>95</b><span>stocks with live USD price</span></div>
+    <div><b>17,026</b><span>stonk tokens</span></div>
+    <div><b>240,192</b><span>trades since Wednesday</span></div>
+    <div><b>43,324</b><span>1-minute candles</span></div>
+  </div>
+
+  <h2>Service 1 · ape-indexer <span style="color:var(--g);font-size:14px;font-family:var(--mono)">running</span></h2>
+  <div class="row done"><div class="dot">✓</div><div><b>Listens to six launchpad programs on Solana</b><span>StonkFun (Raydium LaunchLab + CPMM), pump.fun + PumpSwap, Meteora DBC + DAMM v2. Only trades against the 85 stock tokens, filtered at the source.</span></div></div>
+  <div class="row done"><div class="dot">✓</div><div><b>Turns every swap into a price, a trade row, a candle</b><span>Price straight from the pool reserves. Matches Raydium's own chart digit for digit.</span></div></div>
+  <div class="row done"><div class="dot">✓</div><div><b>Knows every token that ever existed</b><span>One-time backfill from Raydium, pump.fun and DexScreener. New ones are caught live.</span></div></div>
+  <div class="row done"><div class="dot">✓</div><div><b>Survives crashes</b><span>Restarts in 3s, replays from its saved slot, duplicates rejected. Watchdog restarts it if it falls behind. Tested with kill -9.</span></div></div>
+  <div class="row done"><div class="dot">✓</div><div><b>Pushes every trade to ape-be</b><span>Signed batches every 250ms. Replaced Redis this morning.</span></div></div>
+
+  <h2>Service 2 · ape-be <span style="color:var(--g);font-size:14px;font-family:var(--mono)">deployed</span></h2>
+  <p class="sub" style="margin-bottom:6px">Hono on Cloudflare Workers. The phone talks only to this.</p>
+  <div class="tw"><table>
+    <tr><th>Screen</th><th>Endpoint</th><th>Gives the phone</th></tr>
+    <tr><td class="n">Stocks list</td><td class="m">GET /v1/stocks</td><td>95 stocks, USD price, 24h change, how many memes each has</td></tr>
+    <tr><td class="n">Stock floor</td><td class="m">GET /v1/stocks/:mint/tokens</td><td>Its memes, sorted by volume, new or mcap. Pages of 50.</td></tr>
+    <tr><td class="n">Token page</td><td class="m">GET /v1/tokens/:mint</td><td>Name, image, phase, price, mcap, tax, creator, its stock</td></tr>
+    <tr><td class="n">Chart</td><td class="m">GET /v1/tokens/:mint/candles</td><td>1m, 5m, 15m, 1h, 4h, 1d candles</td></tr>
+    <tr><td class="n">Trade tape</td><td class="m">GET /v1/tokens/:mint/trades</td><td>Last trades, side, wallet, size, price</td></tr>
+    <tr><td class="n">Live updates</td><td class="m">WS /ws/floor · /ws/:mint</td><td>Every trade the moment it lands, per token or whole floor</td></tr>
+  </table></div>
+  <div class="note">The bare URL <span style="font-family:var(--mono);font-size:13px">apme-be.iamjoey.workers.dev</span> now lists these. Before, it had no route, so you saw "not found". Try <span style="font-family:var(--mono);font-size:13px">/health</span> or <span style="font-family:var(--mono);font-size:13px">/v1/stocks</span>.</div>
+
+  <h2>Checked this morning</h2>
+  <div class="row done"><div class="dot">✓</div><div><b>Every endpoint against real data</b><span>NVDAx floor: NIU on top, $69K mcap, $538K volume. Bad input gets a clean 400.</span></div></div>
+  <div class="row done"><div class="dot">✓</div><div><b>Live feed end to end</b><span>Chain → indexer → Worker → 100 phones at once. 45 seconds, zero drops, every socket saw the same trades.</span></div></div>
+  <div class="row done"><div class="dot">✓</div><div><b>Locked down</b><span>Worker reads Postgres through a private tunnel with a read-only user. No open ports on the VPS. Pushes are signed. 600 requests a minute per IP.</span></div></div>
+  <div class="row run"><div class="dot">…</div><div><b>One-hour soak against Raydium</b><span>Running now. Every minute, our candle close vs theirs for the 5 busiest tokens. 4 samples so far, all exact.</span></div></div>
+
+  <h2>Speed, honestly</h2>
+  <div class="tw"><table>
+    <tr><th>What</th><th>Now</th><th>Why</th></tr>
+    <tr><td class="n">Trade → phone</td><td>about 1s</td><td>Solana confirm is most of it. The chain's own clock runs 1 to 4s behind wall time.</td></tr>
+    <tr><td class="n">Cached read</td><td>50 to 100ms</td><td>Served from Cloudflare's edge, no DB hop.</td></tr>
+    <tr><td class="n">Uncached read</td><td>100 to 600ms, jittery</td><td>This VPS is shared and overloaded: load 6 to 11, swap in use. The tunnel hop wobbles with it.</td></tr>
+  </table></div>
+  <div class="note">On the production VPS, dedicated to indexer + Postgres only, the tunnel hop should sit near 30ms flat and uncached reads under 150ms. Nothing in the code changes for that move: new box, same install, point the tunnel at it.</div>
+
+  <h2>Next</h2>
+  <div class="row next"><div class="dot">1</div><div><b>Soak finishes → phase 0 closed</b><span>Around 04:10 UTC today.</span></div></div>
+  <div class="row next"><div class="dot">2</div><div><b>iOS app, three screens</b><span>Stocks list, stock floor, token page with live chart and tape. Saturday and Sunday.</span></div></div>
+  <div class="row next"><div class="dot">3</div><div><b>Privy wallet + one-tap ape via Jupiter</b><span>Monday.</span></div></div>
+  <div class="row next"><div class="dot">4</div><div><b>Meteora DBC bounty, TestFlight, video, submit</b><span>Tuesday to Friday 25 Sep, 4pm ET.</span></div></div>
+  <div class="note">From you: Apple Developer account by Sunday. apeme.fun added to the Cloudflare account. Production VPS whenever, no rush before the app exists.</div>
+</div>
+</body></html>

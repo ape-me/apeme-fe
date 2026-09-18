@@ -1,0 +1,189 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><title>ApeMe Phase 0 Spec</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#0b0e12;--bg2:#12161c;--bg3:#1a2028;--line:#232a33;--line2:#2e3742;--ink:#eef2f5;--ink2:#a7b1bc;--ink3:#6b7682;--g:#5fe39a;--a:#f5b640;--r:#ff5c5c;--b:#6db3ff;--p:#c99bff;--disp:"Bricolage Grotesque","Archivo",Arial,sans-serif;--body:"IBM Plex Sans",Arial,sans-serif;--mono:"IBM Plex Mono",Menlo,monospace}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;margin:0}
+.page{max-width:1040px;margin:0 auto;padding:48px 24px 96px}
+h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1{font-size:52px;line-height:.95;font-weight:800}
+h2{font-size:26px;line-height:1.1;font-weight:700;margin:64px 0 10px}
+p{margin:0 0 12px;max-width:66ch;color:var(--ink2)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:14px}
+.eyebrow b{color:var(--g);font-weight:600}
+.lede{font-size:20px;line-height:1.35;color:var(--ink);max-width:44ch;margin:16px 0 8px}
+.map{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:12px;overflow-x:auto;margin-top:16px}
+.map svg{display:block;min-width:820px;width:100%;height:auto}
+pre{background:#0e1218;border:1px solid var(--line);border-radius:12px;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.5;color:var(--ink);margin:10px 0 0}
+pre .c{color:var(--ink3)} pre .k{color:var(--b)} pre .s{color:var(--g)} pre .n{color:var(--a)}
+.tw{overflow-x:auto;margin-top:12px} table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);padding:8px 12px 8px 0;border-bottom:1px solid var(--line);font-weight:600}
+td{padding:8px 12px 8px 0;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)} td.n{font-weight:600;color:var(--ink);white-space:nowrap} td.c{font-family:var(--mono);font-size:12.5px} td.g{color:var(--g)} td.a{color:var(--a)}
+ol.b{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:6px;counter-reset:s}
+ol.b li{display:grid;grid-template-columns:28px 1fr auto;gap:12px;font-size:14.5px;color:var(--ink2);background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;align-items:baseline}
+ol.b li::before{counter-increment:s;content:counter(s);font-family:var(--disp);font-weight:800;font-size:17px;color:var(--g)}
+ol.b li b{color:var(--ink);font-weight:600} ol.b li .chk{font-family:var(--mono);font-size:11.5px;color:var(--a);white-space:nowrap}
+.seed{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.seed .s1{grid-column:1 / -1}
+.seed h3{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);font-weight:600;margin:0 0 4px}
+.kv{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.kv div{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kv b{display:block;font-family:var(--disp);font-size:22px;font-weight:800;color:var(--ink);line-height:1}
+.kv span{font-size:13px;color:var(--ink3)}
+.foot{margin-top:64px;padding-top:16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink3);font-family:var(--mono)}
+@media(max-width:820px){h1{font-size:38px}.seed,.kv{grid-template-columns:1fr}ol.b li{grid-template-columns:28px 1fr}}
+</style>
+<div class="page">
+  <div class="eyebrow">ApeMe · phase 0 · <b>spec v2 + status</b> · Rust on VPS · updated Thu 17 Sep 18:30 IST</div>
+  <h1>Phase 0: the indexer</h1>
+  <p class="lede">One Rust binary. Postgres. Six programs. Two events. Everything on screen comes from here.</p>
+  <div class="kv">
+    <div><b>Thu 17 → Sat 19</b><span>three days</span></div>
+    <div><b>2 events</b><span>pool_created · swap</span></div>
+    <div><b>7 tables</b><span>plus hot state in memory</span></div>
+  </div>
+
+  <h2>Status, Thursday 17 Sep</h2>
+  <div class="tw"><table>
+    <tr><th>Step</th><th>State</th><th>Proof</th></tr>
+    <tr><td class="n">1 Repo + schema</td><td class="g">done</td><td>github.com/ape-me/ape-indexer · migrate up, down, up clean</td></tr>
+    <tr><td class="n">2 Decoders</td><td class="g">done</td><td>79 live stock-paired txs, all six programs · LaunchLab price = Raydium to the last digit</td></tr>
+    <tr><td class="n">3 Stocks + USD</td><td class="g">done</td><td>94 stocks, 92 priced, refresh 30s · SPYx 768.21 live</td></tr>
+    <tr><td class="n">4 Backfill</td><td class="a">running</td><td>catalog done: 14,652 StonkFun · 83 pump.fun · 12 DBC. Candle history for newest 600 in progress, ~10 min left</td></tr>
+    <tr><td class="n">5 Live stream</td><td class="g">done</td><td>systemd service on this VPS · resumed from cursor after restart · 15,497 trades stored so far</td></tr>
+    <tr><td class="n">Enrichment</td><td class="g">done</td><td>name, image, supply, tax from the mint account · 0 unnamed, 85 awaiting image</td></tr>
+    <tr><td class="n">6 API + WebSocket</td><td>next</td><td>separate service, ape-be, Saturday. Reads Postgres + Redis</td></tr>
+    <tr><td class="n">7 Soak</td><td>next</td><td>one hour side by side with Raydium after ape-be</td></tr>
+  </table></div>
+  <p style="margin-top:12px">What the DB looks like right now: 14,747 tokens, 15,497 trades, 94 stocks, cursor at the current slot. Every number on the token page can already be answered by a query. The phone just needs ape-be to ask.</p>
+
+  <h2>The flow</h2>
+  <div class="map"><svg viewBox="0 0 1000 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="data flow">
+    <defs><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#6b7682"/></marker>
+    <marker id="mg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#5fe39a"/></marker>
+    <marker id="ma" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#f5b640"/></marker>
+    <marker id="mb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#6db3ff"/></marker></defs>
+    <g font-family="IBM Plex Sans, Arial" font-size="12.5">
+      <text x="20" y="30" font-family="IBM Plex Mono" font-size="11" fill="#6b7682" letter-spacing="1.5">SOURCES</text>
+      <rect x="20" y="44" width="190" height="70" rx="9" fill="#12161c" stroke="#f5b640"/><text x="32" y="66" fill="#eef2f5" font-weight="600">Nexus gRPC stream</text><text x="32" y="84" fill="#a7b1bc">6 programs, only txs that</text><text x="32" y="102" fill="#a7b1bc">touch a stock mint. Live.</text>
+      <rect x="20" y="130" width="190" height="70" rx="9" fill="#12161c" stroke="#2e3742"/><text x="32" y="152" fill="#eef2f5" font-weight="600">Backfill, once</text><text x="32" y="170" fill="#a7b1bc">Raydium list + klines, pump.fun</text><text x="32" y="188" fill="#a7b1bc">coins + candles, RPC history</text>
+      <rect x="20" y="216" width="190" height="54" rx="9" fill="#12161c" stroke="#5fe39a"/><text x="32" y="238" fill="#eef2f5" font-weight="600">StonkFun quote-tokens</text><text x="32" y="258" fill="#a7b1bc">470 stock mints, daily</text>
+      <rect x="20" y="286" width="190" height="54" rx="9" fill="#12161c" stroke="#5fe39a"/><text x="32" y="308" fill="#eef2f5" font-weight="600">DexScreener</text><text x="32" y="328" fill="#a7b1bc">stock USD price, every 30s</text>
+
+      <text x="270" y="30" font-family="IBM Plex Mono" font-size="11" fill="#6b7682" letter-spacing="1.5">VPS · ONE RUST BINARY</text>
+      <rect x="270" y="44" width="440" height="300" rx="12" fill="none" stroke="#2e3742" stroke-dasharray="4 4"/>
+      <rect x="286" y="62" width="180" height="120" rx="9" fill="#12161c" stroke="#f5b640"/><text x="298" y="84" fill="#eef2f5" font-weight="600">Decode</text><text x="298" y="104" fill="#a7b1bc">find event bytes in tx</text><text x="298" y="122" fill="#a7b1bc">read struct per IDL</text><text x="298" y="140" fill="#a7b1bc">→ pool_created | swap</text><text x="298" y="158" fill="#a7b1bc">price = quote ÷ base reserve</text><text x="298" y="176" fill="#6b7682" font-family="IBM Plex Mono" font-size="10.5">~µs per tx</text>
+      <rect x="286" y="200" width="180" height="128" rx="9" fill="#12161c" stroke="#5fe39a"/><text x="298" y="222" fill="#eef2f5" font-weight="600">Store</text><text x="298" y="242" fill="#a7b1bc">Postgres: 7 tables</text><text x="298" y="260" fill="#a7b1bc">trades keyed sig + ix</text><text x="298" y="278" fill="#a7b1bc">fold 1m candle</text><text x="298" y="296" fill="#a7b1bc">hot map in memory:</text><text x="298" y="314" fill="#a7b1bc">last price, 24h, candle</text>
+      <rect x="514" y="62" width="180" height="120" rx="9" fill="#12161c" stroke="#6db3ff"/><text x="526" y="84" fill="#eef2f5" font-weight="600">API · REST</text><text x="526" y="104" fill="#a7b1bc" font-family="IBM Plex Mono" font-size="11">/stocks</text><text x="526" y="122" fill="#a7b1bc" font-family="IBM Plex Mono" font-size="11">/stocks/:mint/tokens</text><text x="526" y="140" fill="#a7b1bc" font-family="IBM Plex Mono" font-size="11">/tokens/:mint</text><text x="526" y="158" fill="#a7b1bc" font-family="IBM Plex Mono" font-size="11">/tokens/:mint/candles</text><text x="526" y="176" fill="#a7b1bc" font-family="IBM Plex Mono" font-size="11">/tokens/:mint/trades</text>
+      <rect x="514" y="200" width="180" height="128" rx="9" fill="#12161c" stroke="#6db3ff"/><text x="526" y="222" fill="#eef2f5" font-weight="600">WebSocket</text><text x="526" y="242" fill="#a7b1bc">room per token:</text><text x="526" y="260" fill="#a7b1bc">every trade, from memory</text><text x="526" y="278" fill="#a7b1bc">floor room:</text><text x="526" y="296" fill="#a7b1bc">new tokens + stats diff 2s</text><text x="526" y="314" fill="#6b7682" font-family="IBM Plex Mono" font-size="10.5">never touches Postgres</text>
+
+      <text x="770" y="30" font-family="IBM Plex Mono" font-size="11" fill="#6b7682" letter-spacing="1.5">PHONE</text>
+      <rect x="770" y="120" width="200" height="130" rx="9" fill="#12161c" stroke="#6db3ff"/><text x="782" y="142" fill="#eef2f5" font-weight="600">iOS app</text><text x="782" y="162" fill="#a7b1bc">loads history over REST</text><text x="782" y="180" fill="#a7b1bc">moves last candle on</text><text x="782" y="198" fill="#a7b1bc">each WebSocket trade</text><text x="782" y="226" fill="#6b7682" font-family="IBM Plex Mono" font-size="10.5">chain → phone &lt; 500ms</text>
+      <rect x="770" y="44" width="200" height="54" rx="9" fill="#12161c" stroke="#2e3742"/><text x="782" y="66" fill="#eef2f5" font-weight="600">Cloudflare proxy, free</text><text x="782" y="86" fill="#a7b1bc">TLS, DNS, DDoS on apeme.fun</text>
+    </g>
+    <g fill="none" stroke-width="2">
+      <path d="M210 79 L286 100" stroke="#f5b640" marker-end="url(#ma)"/>
+      <path d="M210 165 L286 140" stroke="#6b7682" stroke-dasharray="5 4" marker-end="url(#m)"/>
+      <path d="M210 243 L286 250" stroke="#5fe39a" marker-end="url(#mg)"/>
+      <path d="M210 313 L286 290" stroke="#5fe39a" marker-end="url(#mg)"/>
+      <path d="M376 182 L376 200" stroke="#f5b640" marker-end="url(#ma)"/>
+      <path d="M466 240 L514 140" stroke="#6b7682" marker-end="url(#m)"/>
+      <path d="M466 264 L514 264" stroke="#6b7682" marker-end="url(#m)"/>
+      <path d="M694 122 L770 160" stroke="#6db3ff" marker-end="url(#mb)"/>
+      <path d="M694 264 L770 210" stroke="#6db3ff" marker-end="url(#mb)"/>
+    </g>
+    <g font-family="IBM Plex Mono, monospace" font-size="10.5" fill="#6b7682">
+      <text x="20" y="380">amber: live path · green: the dictionary (stocks, USD) · dashed: history, once · blue: what the phone talks to</text>
+    </g>
+  </svg></div>
+
+  <h2>What we decode</h2>
+  <p>Every program writes its event into the transaction as bytes. We read them into a struct. Two events cover everything.</p>
+  <div class="tw"><table>
+    <tr><th>Program</th><th>pool_created from</th><th>swap from</th><th>Price from</th></tr>
+    <tr><td class="n">Raydium LaunchLab</td><td>PoolCreateEvent + ix accounts</td><td>TradeEvent</td><td>virtual + real reserves in event</td></tr>
+    <tr><td class="n">Raydium CPMM</td><td>initialize ix accounts</td><td>swap ix + vault balance deltas</td><td>vault balances after</td></tr>
+    <tr><td class="n">pump.fun</td><td>CreateEvent</td><td>TradeEvent</td><td>virtual reserves in event</td></tr>
+    <tr><td class="n">PumpSwap</td><td>CreatePoolEvent</td><td>BuyEvent / SellEvent</td><td>pool reserves in event</td></tr>
+    <tr><td class="n">Meteora DBC</td><td>EvtInitializePool + accounts</td><td>EvtSwap / EvtSwap2</td><td>next sqrt price in event</td></tr>
+    <tr><td class="n">Meteora DAMM v2</td><td>EvtInitializePool</td><td>EvtSwap2</td><td>next sqrt price in event</td></tr>
+  </table></div>
+  <pre><span class="c">// the two shapes, everything else is ignored (fees, claims, vesting, LP)</span>
+pool_created { program, signature, slot, block_time, pool, base_mint, quote_mint, creator, kind: curve|amm }
+swap         { program, signature, ix_index, slot, block_time, pool, wallet, side: buy|sell,
+               base_raw, quote_raw, price_quote }</pre>
+
+  <h2>The tables</h2>
+  <div class="tw"><table>
+    <tr><th>Table</th><th>Key</th><th>Holds</th><th>Filled by</th></tr>
+    <tr><td class="n">stocks</td><td class="c">mint</td><td>symbol, name, issuer, category, decimals, logo, price_usd, updated_at</td><td>StonkFun list daily, DexScreener 30s</td></tr>
+    <tr><td class="n">tokens</td><td class="c">mint</td><td>symbol, name, image, quote_mint, launchpad, creator, decimals, supply, phase, curve_pool, amm_pool, tax_bps, created_at</td><td>pool_created, backfill</td></tr>
+    <tr><td class="n">pools</td><td class="c">pool</td><td>token_mint, program, kind, base_vault, quote_vault, created_at, migrated_to</td><td>pool_created, backfill</td></tr>
+    <tr><td class="n">trades</td><td class="c">signature + ix_index</td><td>pool, token_mint, wallet, side, base_raw, quote_raw, price_quote, slot, block_time</td><td>swap, backfill</td></tr>
+    <tr><td class="n">candles_1m</td><td class="c">token_mint + minute</td><td>o, h, l, c, vol_quote, n</td><td>folded from trades</td></tr>
+    <tr><td class="n">token_stats</td><td class="c">token_mint</td><td>price_quote, price_usd, mcap_usd, vol_24h_usd, buys_24h, sells_24h, change_24h, progress_pct, last_trade_at</td><td>every trade + every minute</td></tr>
+    <tr><td class="n">cursor</td><td class="c">program</td><td>last_slot, last_signature</td><td>every batch, resume from here</td></tr>
+  </table></div>
+  <p style="margin-top:12px">Raw amounts are NUMERIC. Prices are DOUBLE. Times are unix seconds. 5m, 1h, 4h, 1d candles roll from 1m on read.</p>
+
+  <h2>Seed data, real</h2>
+  <p>Taken from chain on 16 Sep. STONK500 is priced in SPYx on StonkFun. A wallet bought 910,393 tokens for 0.0302 SPYx.</p>
+  <div class="seed">
+    <div class="s1"><h3>stocks</h3><pre>{ mint: <span class="s">"XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W"</span>, symbol: <span class="s">"SPYx"</span>, name: <span class="s">"SP500 xStock"</span>, issuer: <span class="s">"xstocks"</span>, category: <span class="s">"etf"</span>, decimals: <span class="n">8</span>, price_usd: <span class="n">764.13</span>, updated_at: <span class="n">1789580460</span> }</pre></div>
+    <div><h3>tokens</h3><pre>{ mint: <span class="s">"DTeb…RqDt"</span>,
+  symbol: <span class="s">"STONK500"</span>, name: <span class="s">"The Stonk 500 Index"</span>,
+  quote_mint: <span class="s">"XsoC…DF2W"</span>,
+  launchpad: <span class="s">"stonkfun"</span>,
+  creator: <span class="s">"AkrT…1Xtr"</span>,
+  decimals: <span class="n">6</span>, supply: <span class="n">1000000000000000</span>,
+  phase: <span class="s">"curve"</span>,
+  curve_pool: <span class="s">"2EeW…1pL9"</span>, amm_pool: <span class="k">null</span>,
+  tax_bps: <span class="n">0</span>, created_at: <span class="n">1788970055</span> }</pre></div>
+    <div><h3>pools</h3><pre>{ pool: <span class="s">"2EeW…1pL9"</span>,
+  token_mint: <span class="s">"DTeb…RqDt"</span>,
+  program: <span class="s">"launchlab"</span>, kind: <span class="s">"curve"</span>,
+  base_vault: <span class="s">"…"</span>, quote_vault: <span class="s">"…"</span>,
+  created_at: <span class="n">1788970055</span>,
+  migrated_to: <span class="k">null</span> }</pre></div>
+    <div class="s1"><h3>trades · decoded from tx 5Tt3iiva…8eLM</h3><pre>{ signature: <span class="s">"5Tt3…8eLM"</span>, ix_index: <span class="n">2</span>, slot: <span class="n">447581776</span>, block_time: <span class="n">1789580435</span>, pool: <span class="s">"2EeW…1pL9"</span>, token_mint: <span class="s">"DTeb…RqDt"</span>,
+  wallet: <span class="s">"ARu4…5SZn"</span>, side: <span class="s">"buy"</span>, base_raw: <span class="n">910393694788</span>, quote_raw: <span class="n">3023412</span>, price_quote: <span class="n">3.2877e-8</span> }
+<span class="c">// price_quote = (virtual_quote 404021031 + real_quote_after 789838867) / 1e8  ÷  (virtual_base 1073025605903825 − real_base_after 709896742211708) / 1e6
+// Raydium's own chart for this minute closes at 3.2877031196623026e-08. Same digits.</span></pre></div>
+    <div><h3>candles_1m</h3><pre>{ token_mint: <span class="s">"DTeb…RqDt"</span>, minute: <span class="n">1789580400</span>,
+  o: <span class="n">3.2713e-8</span>, h: <span class="n">3.2877e-8</span>,
+  l: <span class="n">3.2877e-8</span>, c: <span class="n">3.2877e-8</span>,
+  vol_quote: <span class="n">0.03023412</span>, n: <span class="n">1</span> }</pre></div>
+    <div><h3>token_stats</h3><pre>{ token_mint: <span class="s">"DTeb…RqDt"</span>,
+  price_quote: <span class="n">3.2877e-8</span>,
+  price_usd: <span class="n">0.0000251</span>,
+  mcap_usd: <span class="n">25122.33</span>,   <span class="c">// Raydium: 25122.36</span>
+  vol_24h_usd: <span class="n">6142.43</span>,
+  buys_24h: <span class="n">2</span>, sells_24h: <span class="n">2</span>,
+  progress_pct: <span class="n">56.5</span>,
+  last_trade_at: <span class="n">1789580435</span> }</pre></div>
+  </div>
+
+  <h2>How a candle is built</h2>
+  <pre>09:41:00  buy   3.28e-8   → o 3.28  h 3.28  l 3.28  c 3.28  vol 0.03
+09:41:12  sell  3.27e-8   →         h 3.28  l 3.27  c 3.27  vol 0.09
+09:41:50  buy   3.32e-8   →         h 3.32  l 3.27  c 3.32  vol 0.12
+09:42:00  new minute     → new candle, o = 3.32
+<span class="c">// same fold runs in memory for the WebSocket and in Postgres for history. Phone does the same fold on its last candle.</span></pre>
+
+  <h2>Build steps</h2>
+  <ol class="b">
+    <li><span><b>Repo + schema.</b> Cargo workspace, Postgres on the VPS, migrations for 7 tables.</span><span class="chk">check: migrate up, migrate down</span></li>
+    <li><span><b>Decoders, offline.</b> Six programs, structs from the verified IDLs. Run on 20 saved real txs each.</span><span class="chk">check: price = Raydium / pump.fun for every tx</span></li>
+    <li><span><b>Stocks + USD.</b> Load 470 mints from StonkFun. DexScreener loop, 30 mints per call, 30s.</span><span class="chk">check: SPYx = 764.13 ± live</span></li>
+    <li><span><b>Backfill.</b> Every existing stonk token from Raydium, pump.fun, DBC. Klines where they exist, else RPC trade history.</span><span class="chk">check: STONK500 chart = Raydium's</span></li>
+    <li><span><b>Live stream.</b> Nexus gRPC, per-program subscriptions filtered by stock mints. Cursor resume.</span><span class="chk">check: kill, restart, no gap</span></li>
+    <li><span><b>API + WebSocket.</b> Five endpoints, two rooms, all reads from memory or by key.</span><span class="chk">check: p95 &lt; 20ms</span></li>
+    <li><span><b>Soak.</b> Run one hour next to Raydium's page.</span><span class="chk">check: prices match, zero missed trades</span></li>
+  </ol>
+  <p style="margin-top:14px">Steps 1 to 4 and 6 need no Nexus key. Step 5 starts the moment the endpoint and key arrive.</p>
+
+  <h2>Not in phase 0</h2>
+  <p>Fees, cashback, vesting, LP, creator claims, boosts. Stock tokens' own SOL and USDC pools. Holder counts. KOL anything. Robinhood Chain.</p>
+
+  <div class="foot">Rust · tokio · axum · sqlx · yellowstone-grpc · Postgres 16 · one VPS · Cloudflare proxy · 17 Sep 2026</div>
+</div>
+</body></html>

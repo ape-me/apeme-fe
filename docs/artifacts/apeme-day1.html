@@ -1,0 +1,96 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><title>ApeMe Day One</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{--bg:#0b0e12;--bg2:#12161c;--line:#232a33;--ink:#eef2f5;--ink2:#a7b1bc;--ink3:#6b7682;--g:#5fe39a;--a:#f5b640;--b:#6db3ff;--disp:"Bricolage Grotesque",Arial,sans-serif;--body:"IBM Plex Sans",Arial,sans-serif;--mono:"IBM Plex Mono",Menlo,monospace}
+*{box-sizing:border-box}body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5;margin:0}
+.page{max-width:760px;margin:0 auto;padding:48px 24px 80px}
+h1{font-family:var(--disp);font-size:44px;line-height:1;margin:0 0 8px;font-weight:800}
+.sub{color:var(--ink2);margin:0 0 32px}
+h2{font-family:var(--disp);font-size:22px;margin:40px 0 12px;font-weight:700}
+.row{display:grid;grid-template-columns:36px 1fr;gap:14px;align-items:start;padding:14px 0;border-bottom:1px solid var(--line)}
+.dot{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-family:var(--mono);font-size:13px;font-weight:600;margin-top:2px}
+.done .dot{background:var(--g);color:#06110a}.run .dot{background:var(--a);color:#1a1200}.next .dot{background:var(--bg2);border:1px solid var(--ink3);color:var(--ink3)}
+.row b{display:block;font-size:17px}.row span{color:var(--ink2);font-size:15px}
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.nums div{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:14px}
+.nums b{display:block;font-family:var(--disp);font-size:30px;font-weight:800;line-height:1}.nums span{font-size:13px;color:var(--ink3)}
+.map{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:12px;overflow-x:auto}
+.map svg{display:block;width:100%;min-width:600px;height:auto}
+@media(max-width:600px){h1{font-size:34px}.nums{grid-template-columns:1fr}}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}th{text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);padding:6px 10px 6px 0;border-bottom:1px solid var(--line)}td{padding:6px 10px 6px 0;border-bottom:1px solid var(--line);color:var(--ink2);font-variant-numeric:tabular-nums}td.n{color:var(--ink);font-weight:600}td.g{color:var(--g)}td.r{color:#ff5c5c}
+</style>
+<div class="page">
+  <h1>Day one</h1>
+  <p class="sub">Thursday 17 Sep. What the indexer does now, in one picture.</p>
+
+  <div class="map"><svg viewBox="0 0 700 150" xmlns="http://www.w3.org/2000/svg">
+    <defs><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#6b7682"/></marker></defs>
+    <g font-family="IBM Plex Sans, Arial" font-size="13" fill="#eef2f5" font-weight="600">
+      <rect x="10" y="40" width="130" height="70" rx="10" fill="#12161c" stroke="#f5b640"/><text x="75" y="70" text-anchor="middle">Solana</text><text x="75" y="90" text-anchor="middle" fill="#a7b1bc" font-weight="400">every stonk trade</text>
+      <rect x="200" y="40" width="130" height="70" rx="10" fill="#12161c" stroke="#5fe39a"/><text x="265" y="70" text-anchor="middle">Indexer</text><text x="265" y="90" text-anchor="middle" fill="#a7b1bc" font-weight="400">running now</text>
+      <rect x="390" y="40" width="130" height="70" rx="10" fill="#12161c" stroke="#5fe39a"/><text x="455" y="70" text-anchor="middle">Postgres</text><text x="455" y="90" text-anchor="middle" fill="#a7b1bc" font-weight="400">tokens, trades, candles</text>
+      <rect x="580" y="40" width="110" height="70" rx="10" fill="#12161c" stroke="#6b7682" stroke-dasharray="5 4"/><text x="635" y="70" text-anchor="middle" fill="#6b7682">API</text><text x="635" y="90" text-anchor="middle" fill="#6b7682" font-weight="400">Saturday</text>
+    </g>
+    <g fill="none" stroke="#6b7682" stroke-width="2"><path d="M140 75 L200 75" marker-end="url(#m)"/><path d="M330 75 L390 75" marker-end="url(#m)"/><path d="M520 75 L580 75" marker-end="url(#m)" stroke-dasharray="5 4"/></g>
+    <text x="350" y="135" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="#6b7682">green = live today · dashed = next</text>
+  </svg></div>
+
+  <h2>One indexer, one backfill</h2>
+  <div class="row done"><div class="dot">∞</div><div><b>The indexer</b><span>Runs forever. Every new token and every trade from now on, the second it happens.</span></div></div>
+  <div class="row done"><div class="dot">1×</div><div><b>The backfill</b><span>Ran once today. The 14,000 tokens that existed before today, and their old charts. Never runs again.</span></div></div>
+
+  <h2>What it holds right now</h2>
+  <div class="nums">
+    <div><b>14,747</b><span>stonk tokens, with name, image, supply, tax</span></div>
+    <div><b>15,000+</b><span>trades, growing every second</span></div>
+    <div><b>94</b><span>stocks with a live USD price</span></div>
+  </div>
+
+  <h2>Done today</h2>
+  <div class="row done"><div class="dot">✓</div><div><b>Reads every trade live</b><span>From Kaldera. Six launchpad programs. Restarts pick up where they left off.</span></div></div>
+  <div class="row done"><div class="dot">✓</div><div><b>Turns each trade into a price</b><span>Checked against Raydium's own chart. Same digits.</span></div></div>
+  <div class="row done"><div class="dot">✓</div><div><b>Builds the chart</b><span>Every trade updates the 1-minute candle.</span></div></div>
+  <div class="row done"><div class="dot">✓</div><div><b>Knows every stock in dollars</b><span>94 stocks, refreshed every 30 seconds.</span></div></div>
+  <div class="row done"><div class="dot">✓</div><div><b>Knows every token that already exists</b><span>Pulled once from Raydium, pump.fun and DexScreener. That was the backfill.</span></div></div>
+  <div class="row run"><div class="dot">…</div><div><b>Loading old charts</b><span>History for the newest 600 tokens. About 10 minutes.</span></div></div>
+
+  <h2>What the data looks like, real rows</h2>
+  <p class="sub" style="margin-bottom:8px">Screen 1 · stocks</p>
+  <div class="tw"><table>
+    <tr><th>Stock</th><th>USD</th><th>24h</th><th>Memes</th></tr>
+    <tr><td class="n">NVDAx</td><td>219.37</td><td>+1.39%</td><td>1,211</td></tr>
+    <tr><td class="n">SPYx</td><td>766.39</td><td>+0.02%</td><td>973</td></tr>
+    <tr><td class="n">SPCXx</td><td>154.81</td><td>+2.81%</td><td>768</td></tr>
+    <tr><td class="n">HOODx</td><td>107.29</td><td>+1.63%</td><td>705</td></tr>
+    <tr><td class="n">ANTHROPIC</td><td>1005.45</td><td>+5.63%</td><td>704</td></tr>
+  </table></div>
+  <p class="sub" style="margin:20px 0 8px">Screen 2 · memes priced in NVDAx, by 24h volume</p>
+  <div class="tw"><table>
+    <tr><th>Token</th><th>Where</th><th>Phase</th><th>Price USD</th><th>Mcap</th><th>Vol 24h</th><th>Buys / sells</th><th>Tax</th></tr>
+    <tr><td class="n">JEV</td><td>StonkFun</td><td>graduated</td><td>0.0000327</td><td>$32,712</td><td>$9,247</td><td>75 / 36</td><td>3%</td></tr>
+    <tr><td class="n">AGI</td><td>StonkFun</td><td>graduated</td><td>0.000426</td><td>$426,357</td><td>$3,408</td><td>8 / 7</td><td>3%</td></tr>
+    <tr><td class="n">JESTER</td><td>pump.fun</td><td>curve</td><td>0.00000388</td><td>$3,885</td><td>$3,122</td><td>23 / 19</td><td>0</td></tr>
+  </table></div>
+  <p class="sub" style="margin:20px 0 8px">Screen 3 · JEV token page: last trades</p>
+  <div class="tw"><table>
+    <tr><th>Time</th><th>Side</th><th>Wallet</th><th>JEV</th><th>NVDAx</th><th>Price in NVDAx</th></tr>
+    <tr><td>16:21:49</td><td class="g">buy</td><td>2dtjkR</td><td>120,419</td><td>0.018736</td><td>1.4912e-7</td></tr>
+    <tr><td>16:20:28</td><td class="g">buy</td><td>6TYDxG</td><td>174,507</td><td>0.027116</td><td>1.4896e-7</td></tr>
+    <tr><td>16:20:21</td><td class="g">buy</td><td>gkAynF</td><td>297,262</td><td>0.046094</td><td>1.4873e-7</td></tr>
+    <tr><td>16:19:54</td><td class="r">sell</td><td>4zFEFU</td><td>10,034,008</td><td>1.536394</td><td>1.4860e-7</td></tr>
+    <tr><td>16:19:49</td><td class="g">buy</td><td>2dtjkR</td><td>284,079</td><td>0.048000</td><td>1.6207e-7</td></tr>
+  </table></div>
+  <p class="sub" style="margin:20px 0 8px">Screen 3 · JEV token page: 1-minute candles, built from those trades</p>
+  <div class="tw"><table>
+    <tr><th>Minute</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Vol NVDAx</th><th>Trades</th></tr>
+    <tr><td>16:21</td><td>1.4912e-7</td><td>1.4912e-7</td><td>1.4912e-7</td><td>1.4912e-7</td><td>0.019</td><td>1</td></tr>
+    <tr><td>16:20</td><td>1.4873e-7</td><td>1.4896e-7</td><td>1.4873e-7</td><td>1.4896e-7</td><td>0.073</td><td>2</td></tr>
+    <tr><td>16:19</td><td>1.5419e-7</td><td>1.6207e-7</td><td>1.4860e-7</td><td>1.4860e-7</td><td>2.445</td><td>5</td></tr>
+    <tr><td>16:18</td><td>1.5421e-7</td><td>1.5421e-7</td><td>1.5405e-7</td><td>1.5405e-7</td><td>0.264</td><td>2</td></tr>
+  </table></div>
+  <p class="sub" style="margin-top:14px">Look at 16:19: five trades, one big sell of 10M JEV, price went from 1.54 to 1.49. That's the red candle the phone will draw.</p>
+
+  <h2>Next</h2>
+  <div class="row next"><div class="dot">6</div><div><b>API + WebSocket</b><span>The thing the phone talks to. Saturday. Needs the ape-be repo.</span></div></div>
+  <div class="row next"><div class="dot">7</div><div><b>One-hour soak</b><span>Run beside Raydium, compare every price. Then phase 0 is done.</span></div></div>
+</div>
+</body></html>

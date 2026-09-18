@@ -1,0 +1,65 @@
+{
+  "stocks": [
+    {
+      "mint": "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
+      "symbol": "NVDAX",
+      "name": "NVIDIA",
+      "issuer": "xstocks",
+      "category": "stock",
+      "logo": "https://www.stonkfun.xyz/api/asset/quote-logo/Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh?v=44a1e3f8",
+      "priceUsd": 220.87,
+      "change24h": 2.35,
+      "memes": 1398,
+      "marketOpen": false
+    },
+    {
+      "mint": "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
+      "symbol": "SPYX",
+      "name": "SP500",
+      "issuer": "xstocks",
+      "category": "etf",
+      "logo": "https://www.stonkfun.xyz/api/asset/quote-logo/XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W?v=c2b8ddb3",
+      "priceUsd": 767.25,
+      "change24h": 0.56,
+      "memes": 1137,
+      "marketOpen": false
+    },
+    {
+      "mint": "Xs3oZwbHvqis4NYcf4YKWmEia2eC84wSiVrcYcTqpH8",
+      "symbol": "SPCXX",
+      "name": "SPACEX",
+      "issuer": "xstocks",
+      "category": "stock",
+      "logo": "https://www.stonkfun.xyz/api/asset/quote-logo/Xs3oZwbHvqis4NYcf4YKWmEia2eC84wSiVrcYcTqpH8?v=8e308f08",
+      "priceUsd": 154.88,
+      "change24h": 1.68,
+      "memes": 831,
+      "marketOpen": false
+    },
+    {
+      "mint": "XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg",
+      "symbol": "HOODX",
+      "name": "HOOD",
+      "issuer": "xstocks",
+      "category": "stock",
+      "logo": "https://www.stonkfun.xyz/api/asset/quote-logo/XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg?v=475fe185",
+      "priceUsd": 111.018,
+      "change24h": 5.34,
+      "memes": 825,
+      "marketOpen": false
+    },
+    {
+      "mint": "Pren1FvFX6J3E4kXhJuCiAD5aDmGEb7qJRncwA8Lkhw",
+      "symbol": "ANTHROPIC",
+      "name": "ANTHROPIC",
+      "issuer": "prestocks",
+      "category": "preipo",
+      "logo": "https://www.stonkfun.xyz/api/asset/quote-logo/Pren1FvFX6J3E4kXhJuCiAD5aDmGEb7qJRncwA8Lkhw?v=aaf04940",
+      "priceUsd": 1008.94,
+      "change24h": 2.7,
+      "memes": 776,
+      "marketOpen": false
+    }
+  ],
+  "asOf": 1789708434
+}

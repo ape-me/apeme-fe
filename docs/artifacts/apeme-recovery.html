@@ -1,0 +1,73 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><title>Indexer Recovery</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{--bg:#0b0e12;--bg2:#12161c;--line:#232a33;--ink:#eef2f5;--ink2:#a7b1bc;--ink3:#6b7682;--g:#5fe39a;--a:#f5b640;--r:#ff5c5c;--b:#6db3ff;--disp:"Bricolage Grotesque",Arial,sans-serif;--body:"IBM Plex Sans",Arial,sans-serif;--mono:"IBM Plex Mono",Menlo,monospace}
+*{box-sizing:border-box}body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5;margin:0}
+.page{max-width:760px;margin:0 auto;padding:48px 24px 80px}
+h1{font-family:var(--disp);font-size:44px;line-height:1;margin:0 0 8px;font-weight:800}
+.sub{color:var(--ink2);margin:0 0 28px}
+h2{font-family:var(--disp);font-size:22px;margin:40px 0 12px;font-weight:700}
+.map{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px;overflow-x:auto}
+.map svg{display:block;width:100%;min-width:640px;height:auto}
+.row{display:grid;grid-template-columns:110px 1fr;gap:14px;padding:12px 0;border-bottom:1px solid var(--line);align-items:start}
+.row .k{font-family:var(--mono);font-size:12px;color:var(--a);padding-top:3px}
+.row b{display:block}.row span{color:var(--ink2);font-size:15px}
+.ok .k{color:var(--g)}
+.proof{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-family:var(--mono);font-size:13px;color:var(--ink2);line-height:1.7;margin-top:12px;overflow-x:auto}
+.proof b{color:var(--g);font-weight:500}
+@media(max-width:600px){h1{font-size:34px}.row{grid-template-columns:1fr}}
+</style>
+<div class="page">
+  <h1>If the indexer stops</h1>
+  <p class="sub">How it comes back, and what I tested.</p>
+
+  <div class="map"><svg viewBox="0 0 720 230" xmlns="http://www.w3.org/2000/svg">
+    <defs><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#6b7682"/></marker></defs>
+    <g font-family="IBM Plex Sans, Arial" font-size="13">
+      <text x="20" y="28" font-family="IBM Plex Mono" font-size="11" fill="#6b7682" letter-spacing="1.5">TIME →</text>
+      <line x1="20" y1="60" x2="700" y2="60" stroke="#2e3742" stroke-width="6" stroke-linecap="round"/>
+      <line x1="20" y1="60" x2="300" y2="60" stroke="#5fe39a" stroke-width="6" stroke-linecap="round"/>
+      <line x1="300" y1="60" x2="420" y2="60" stroke="#ff5c5c" stroke-width="6" stroke-linecap="round"/>
+      <line x1="420" y1="60" x2="700" y2="60" stroke="#5fe39a" stroke-width="6" stroke-linecap="round"/>
+      <text x="160" y="48" text-anchor="middle" fill="#5fe39a" font-weight="600">running</text>
+      <text x="360" y="48" text-anchor="middle" fill="#ff5c5c" font-weight="600">dead</text>
+      <text x="560" y="48" text-anchor="middle" fill="#5fe39a" font-weight="600">running again</text>
+      <g fill="#f5b640"><circle cx="280" cy="60" r="6"/></g>
+      <text x="280" y="90" text-anchor="middle" fill="#f5b640" font-weight="600">cursor saved</text>
+      <text x="280" y="108" text-anchor="middle" fill="#a7b1bc">slot + signature, every 5s</text>
+      <g fill="#ff5c5c"><circle cx="300" cy="60" r="6"/></g>
+      <text x="300" y="135" text-anchor="middle" fill="#ff5c5c" font-weight="600">crash</text>
+      <g fill="#6db3ff"><circle cx="420" cy="60" r="6"/></g>
+      <text x="420" y="90" text-anchor="middle" fill="#6db3ff" font-weight="600">systemd restarts, 3s</text>
+      <text x="420" y="108" text-anchor="middle" fill="#a7b1bc">reads cursor, asks Kaldera</text>
+      <text x="420" y="124" text-anchor="middle" fill="#a7b1bc">to replay from that slot</text>
+      <path d="M420 150 C 380 190, 300 190, 280 150" fill="none" stroke="#6db3ff" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#m)"/>
+      <text x="350" y="205" text-anchor="middle" fill="#6db3ff">replay covers the red part, up to 24h back</text>
+      <text x="560" y="108" text-anchor="middle" fill="#a7b1bc">trades already stored are</text>
+      <text x="560" y="124" text-anchor="middle" fill="#a7b1bc">rejected by their key, no doubles</text>
+    </g>
+  </svg></div>
+
+  <h2>Live test, tonight</h2>
+  <div class="proof">16:37:33  running · cursor at slot 447842390 · 21,830 trades stored
+16:37:34  <b>kill -9</b> the process
+16:37:40  systemd restarted it · <b>resuming from cursor slot=447842390</b>
+16:37:41  <b>subscribed from_slot=447842390</b> · Kaldera replays from the exact slot
+16:38:11  stream n_tx=1135 n_ev=457 · caught up and live
+16:38:19  22,326 trades stored · newest trade is 2s old
+          no gap: 391 slots with trades across the window, none missing
+          trades from the replayed seconds inserted once, duplicates rejected</div>
+
+  <h2>Cases</h2>
+  <div class="row ok"><div class="k">crash</div><div><b>Process dies</b><span>systemd restarts in 3s. Resumes from the cursor. Replay fills the gap. Tested above.</span></div></div>
+  <div class="row ok"><div class="k">stall</div><div><b>Connected, nothing arriving</b><span>Cron watchdog restarts it if the cursor hasn't moved for 3 minutes.</span></div></div>
+  <div class="row ok"><div class="k">db error</div><div><b>Postgres refuses a write</b><span>Found tonight. Before: cursor moved on, trade lost. Now: connection dropped, replay from the cursor, nothing skipped.</span></div></div>
+  <div class="row ok"><div class="k">replay time</div><div><b>Replayed trades get the wrong time</b><span>Found tonight. Was using receive time. Now asks the chain for the real block time of each slot.</span></div></div>
+  <div class="row ok"><div class="k">two swaps</div><div><b>Two swaps of the same program in one instruction</b><span>Found tonight. The second was dropped as a duplicate. Now each event gets its own position in the transaction.</span></div></div>
+  <div class="row ok"><div class="k">decimals</div><div><b>Token first seen mid-life with 9 decimals</b><span>Found tonight. Was assumed 6, price off by 1000×. Now reads the mint before the first trade.</span></div></div>
+  <div class="row ok"><div class="k">new stock</div><div><b>StonkFun adds a stock</b><span>Found tonight. The filter never included it until restart. Now checks hourly and resubscribes.</span></div></div>
+  <div class="row"><div class="k">&gt; 24h down</div><div><b>Longer than the replay window</b><span>Run the backfill once. Catalog and charts return from Raydium and pump.fun. Trade tape for the gap is gone.</span></div></div>
+  <div class="row"><div class="k">disk dies</div><div><b>The VPS is lost</b><span>Postgres is on this disk only. Nightly dump elsewhere is not set up yet. Say yes and it is.</span></div></div>
+  <div class="row"><div class="k">fork</div><div><b>A confirmed trade gets dropped by the chain</b><span>Rare, under 0.1%. We index at confirmed like every terminal does. Accepted.</span></div></div>
+  <div class="row"><div class="k">kaldera</div><div><b>The free month ends</b><span>Stream stops, watchdog restarts forever, nothing arrives. Needs an alert. Telegram if you give a bot token.</span></div></div>
+</div>
+</body></html>

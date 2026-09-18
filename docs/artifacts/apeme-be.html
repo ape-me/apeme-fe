@@ -1,0 +1,127 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><title>ape-be Design</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{--bg:#0b0e12;--bg2:#12161c;--line:#232a33;--ink:#eef2f5;--ink2:#a7b1bc;--ink3:#6b7682;--g:#5fe39a;--a:#f5b640;--r:#ff5c5c;--b:#6db3ff;--p:#c99bff;--disp:"Bricolage Grotesque",Arial,sans-serif;--body:"IBM Plex Sans",Arial,sans-serif;--mono:"IBM Plex Mono",Menlo,monospace}
+*{box-sizing:border-box}body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5;margin:0}
+.page{max-width:800px;margin:0 auto;padding:48px 24px 80px}
+h1{font-family:var(--disp);font-size:44px;line-height:1;margin:0 0 8px;font-weight:800}
+.sub{color:var(--ink2);margin:0 0 28px}
+h2{font-family:var(--disp);font-size:22px;margin:44px 0 10px;font-weight:700}
+p{color:var(--ink2);margin:0 0 12px}
+.map{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px;overflow-x:auto;margin-top:10px}
+.map svg{display:block;width:100%;min-width:680px;height:auto}
+.tw{overflow-x:auto;margin-top:10px}table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);padding:6px 10px 6px 0;border-bottom:1px solid var(--line)}
+td{padding:8px 10px 8px 0;border-bottom:1px solid var(--line);color:var(--ink2);vertical-align:top}td.n{color:var(--ink);font-weight:600;white-space:nowrap}td.c{font-family:var(--mono);font-size:12.5px;color:var(--b);white-space:nowrap}td.g{color:var(--g)}td.r{color:var(--r)}
+pre{background:#0e1218;border:1px solid var(--line);border-radius:12px;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.5;color:var(--ink2);margin:8px 0 0}
+pre b{color:var(--g);font-weight:500}pre i{color:var(--a);font-style:normal}
+.row{display:grid;grid-template-columns:150px 1fr;gap:14px;padding:11px 0;border-bottom:1px solid var(--line);align-items:start}
+.row .k{font-family:var(--mono);font-size:12px;color:var(--a);padding-top:3px}.row b{display:block}.row span{color:var(--ink2);font-size:15px}
+@media(max-width:600px){h1{font-size:34px}.row{grid-template-columns:1fr}}
+</style>
+<div class="page">
+  <h1>ape-be</h1>
+  <p class="sub">Hono on Cloudflare Workers. The service the phone talks to. It owns no data: it reads what the indexer wrote and pushes what the indexer sends.</p>
+
+  <h2>What runs where</h2>
+  <div class="map"><svg viewBox="0 0 760 330" xmlns="http://www.w3.org/2000/svg">
+    <defs><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#6b7682"/></marker>
+    <marker id="ma" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#f5b640"/></marker></defs>
+    <g font-family="IBM Plex Sans, Arial" font-size="12.5" fill="#eef2f5" font-weight="600">
+      <rect x="10" y="120" width="100" height="60" rx="10" fill="#12161c" stroke="#6db3ff"/><text x="60" y="146" text-anchor="middle">iPhone</text><text x="60" y="164" text-anchor="middle" fill="#a7b1bc" font-weight="400">ape-fe</text>
+      <rect x="160" y="30" width="360" height="270" rx="12" fill="none" stroke="#5fe39a" stroke-dasharray="4 4"/><text x="340" y="20" text-anchor="middle" fill="#5fe39a" font-family="IBM Plex Mono" font-size="11">CLOUDFLARE · $5 plan</text>
+      <rect x="176" y="46" width="328" height="60" rx="8" fill="#12161c" stroke="#2e3742"/><text x="340" y="66" text-anchor="middle">Worker · Hono</text><text x="340" y="82" text-anchor="middle" fill="#a7b1bc" font-weight="400">routes → services → repos</text><text x="340" y="97" text-anchor="middle" fill="#a7b1bc" font-weight="400">REST · edge cache 2s · signed ingest from the indexer</text>
+      <rect x="176" y="122" width="156" height="60" rx="8" fill="#12161c" stroke="#f5b640"/><text x="254" y="142" text-anchor="middle">Durable Objects</text><text x="254" y="158" text-anchor="middle" fill="#a7b1bc" font-weight="400">one per token room</text><text x="254" y="173" text-anchor="middle" fill="#a7b1bc" font-weight="400">+ one floor room</text>
+      <rect x="348" y="122" width="156" height="60" rx="8" fill="#12161c" stroke="#2e3742"/><text x="426" y="142" text-anchor="middle">Hyperdrive</text><text x="426" y="158" text-anchor="middle" fill="#a7b1bc" font-weight="400">pooled Postgres</text><text x="426" y="173" text-anchor="middle" fill="#a7b1bc" font-weight="400">over the tunnel</text>
+      <rect x="176" y="198" width="156" height="42" rx="8" fill="#12161c" stroke="#2e3742"/><text x="254" y="216" text-anchor="middle">KV</text><text x="254" y="231" text-anchor="middle" fill="#a7b1bc" font-weight="400">static only: stock list, images</text>
+      <rect x="348" y="198" width="156" height="42" rx="8" fill="#12161c" stroke="#2e3742"/><text x="426" y="216" text-anchor="middle">Tunnel</text><text x="426" y="231" text-anchor="middle" fill="#a7b1bc" font-weight="400">to the VPS, no open ports</text>
+      <rect x="176" y="256" width="328" height="30" rx="8" fill="#12161c" stroke="#2e3742"/><text x="340" y="276" text-anchor="middle" fill="#a7b1bc" font-weight="400">not used: D1, Redis, Queues, R2</text>
+      <rect x="580" y="60" width="160" height="60" rx="10" fill="#12161c" stroke="#5fe39a"/><text x="660" y="84" text-anchor="middle">Postgres</text><text x="660" y="102" text-anchor="middle" fill="#a7b1bc" font-weight="400">the record · VPS</text>
+      <rect x="580" y="150" width="160" height="60" rx="10" fill="#12161c" stroke="#f5b640"/><text x="660" y="174" text-anchor="middle">ape-indexer</text><text x="660" y="192" text-anchor="middle" fill="#a7b1bc" font-weight="400">Rust · VPS · writes Postgres</text>
+      <text x="660" y="240" text-anchor="middle" fill="#6b7682" font-family="IBM Plex Mono" font-size="11">VPS · this box</text>
+    </g>
+    <g fill="none" stroke="#6b7682" stroke-width="2">
+      <path d="M110 150 L176 150" marker-end="url(#m)"/>
+      <path d="M110 140 C 130 80, 150 76, 176 76" marker-end="url(#m)"/>
+      <path d="M504 150 L580 100" marker-end="url(#m)"/>
+      <path d="M580 180 C 540 180, 530 90, 504 76" stroke="#f5b640" marker-end="url(#ma)"/>
+      <path d="M340 106 L300 122" stroke="#f5b640" marker-end="url(#ma)"/>
+    </g>
+    <g font-family="IBM Plex Mono, monospace" font-size="10.5" fill="#6b7682">
+      <text x="20" y="318">amber: each trade, indexer → Worker → room → phones, under a second · grey: reads</text>
+    </g>
+  </svg></div>
+
+  <h2>Why Workers, why not the rest</h2>
+  <div class="row"><div class="k">Workers</div><div><b>Your platform, faster reads, nothing to babysit</b><span>Two products shipped on it already. Reads are served from the edge near the user. Scales sockets without thought. About $12 a month at 10K traders.</span></div></div>
+  <div class="row"><div class="k">not Rust here</div><div><b>Rust stays in the indexer</b><span>Phase 2 is Privy, Jupiter and transaction building, all TypeScript-first. Writing speed is the constraint for eight days.</span></div></div>
+  <div class="row"><div class="k">not D1</div><div><b>One record, not two</b><span>Postgres on the VPS is where the indexer writes. A D1 copy would need syncing, and syncing is where bugs live.</span></div></div>
+  <div class="row"><div class="k">not Redis</div><div><b>Durable Objects replace pub/sub</b><span>The indexer sends trades over signed HTTPS to the Worker, which hands them to the token's room, which fans out. Outgoing socket messages are free on Cloudflare.</span></div></div>
+  <div class="row"><div class="k">not KV for live</div><div><b>KV is eventually consistent</b><span>A price written in Europe can take up to a minute to show in Asia. KV holds the stock list and images only. Live numbers travel through Durable Objects and Hyperdrive.</span></div></div>
+
+  <h2>Latency, chain to phone</h2>
+  <div class="tw"><table>
+    <tr><th>Leg</th><th>Time</th><th>Note</th></tr>
+    <tr><td class="n">Solana confirms</td><td>400 to 800ms</td><td>Same for every terminal. Nobody can beat it honestly.</td></tr>
+    <tr><td class="n">Kaldera → indexer</td><td>~50ms</td><td>New York to France.</td></tr>
+    <tr><td class="n">Indexer → Worker → room</td><td>20 to 50ms</td><td>The only cost of choosing Workers.</td></tr>
+    <tr><td class="n">Room → phone</td><td>100 to 150ms</td><td>Physics, to India.</td></tr>
+    <tr><td class="n">Reads, list or chart</td><td class="g">~30ms</td><td>Edge cache near the user. Was 150ms from the VPS.</td></tr>
+  </table></div>
+
+  <h2>Why each endpoint exists</h2>
+  <p>One screen, one call.</p>
+  <div class="tw"><table>
+    <tr><th>Screen</th><th>Call</th><th>Why</th></tr>
+    <tr><td class="n">1 · Stocks</td><td class="c">GET /v1/stocks</td><td>Whole first screen in one response: 94 rows with USD, 24h, meme count, market open. Edge-cached 2s.</td></tr>
+    <tr><td class="n">2 · Memes for a stock</td><td class="c">GET /v1/stocks/:mint/tokens</td><td>The list under NVDAx, sorted by volume, new or mcap. Paged. Edge-cached 2s.</td></tr>
+    <tr><td class="n">3 · Token header</td><td class="c">GET /v1/tokens/:mint</td><td>Name, image, launchpad, phase, price, mcap, 24h, buys/sells, tax, progress.</td></tr>
+    <tr><td class="n">3 · Chart</td><td class="c">GET /v1/tokens/:mint/candles</td><td>History at 1m, 5m, 15m, 1h, 4h, 1d, rolled from 1m rows. Loaded once per open.</td></tr>
+    <tr><td class="n">3 · Tape</td><td class="c">GET /v1/tokens/:mint/trades</td><td>Last 50 trades. Loaded once, then the socket appends.</td></tr>
+    <tr><td class="n">3 · Live</td><td class="c">WS /v1/live/token/:mint</td><td>Each new trade for the open token, within a second. Phone moves the last candle, prepends the tape.</td></tr>
+    <tr><td class="n">Lists · Live</td><td class="c">WS /v1/live/floor</td><td>New tokens as they launch, and a stats diff every 2s for what's on screen.</td></tr>
+    <tr><td class="n">Indexer only</td><td class="c">POST /ingest/trades</td><td>Batched every 250ms, HMAC-signed, rejected without a valid signature. Never public.</td></tr>
+    <tr><td class="n">Ops</td><td class="c">GET /health</td><td>Postgres reachable, last trade age. Nothing else.</td></tr>
+  </table></div>
+
+  <h2>Shapes, from real rows</h2>
+  <pre><b>GET /v1/stocks/Xsc9…9qEh/tokens?sort=volume&limit=2</b>
+{ "stock": { "symbol": "NVDAx", "priceUsd": 219.37, "change24h": 1.39, "marketOpen": false },
+  "tokens": [
+    { "mint": "27tN…BNeA", "symbol": "JEV", "image": "https://…", "launchpad": "stonkfun", "phase": "graduated",
+      "priceUsd": 0.0000327, "mcapUsd": 32712, "vol24hUsd": 9247, "buys24h": 75, "sells24h": 36, "taxBps": 300, "progressPct": null } ],
+  "next": "eyJ2IjoxNz…" }
+
+<b>WS /v1/live/token/27tN…BNeA</b>
+server → {"t":"trade","ts":1789660013,"side":"sell","wallet":"4zFE…","base":10034008,"quote":1.536394,"priceQuote":1.486e-7,"priceUsd":0.0000326,"sig":"AJSH…"}</pre>
+
+  <h2>Reuse, the rule</h2>
+  <div class="row"><div class="k">thin routes</div><div><b>A handler is ten lines</b><span>Validate with zod, call one service function, return. No SQL, no math in handlers.</span></div></div>
+  <div class="row"><div class="k">fat services</div><div><b>One function per fact</b><span><code>tokenHeader(mint)</code>, <code>candles(mint, tf, limit)</code>, <code>stockTokens(mint, sort, page)</code>. REST calls them. The floor diff calls the same ones. Phase 2's ape flow will too.</span></div></div>
+  <div class="row"><div class="k">dumb repos</div><div><b>Every SQL statement in one file</b><span>Named, typed, one query per function. Change a column once.</span></div></div>
+  <div class="row"><div class="k">one contract</div><div><b>Shared shapes, one place</b><span>Every response and the ingest message are zod schemas in <code>contract.ts</code>. They validate what leaves the server and generate the iOS models. Change once, both sides break loudly.</span></div></div>
+  <div class="row"><div class="k">stateless</div><div><b>Nothing lives only here</b><span>Rooms hold sockets, not truth. Kill everything, phones reconnect and reload from Postgres.</span></div></div>
+
+  <h2>Security, what is actually done</h2>
+  <div class="row"><div class="k">no open ports</div><div><b>Tunnel</b><span>The VPS listens on localhost only. Cloudflare connects out to it. IP never public, no 80 or 443 open.</span></div></div>
+  <div class="row"><div class="k">read-only</div><div><b>Its own Postgres user with SELECT only</b><span>If the Worker is ever broken into, nothing can be written or deleted. Only the indexer writes.</span></div></div>
+  <div class="row"><div class="k">signed ingest</div><div><b>HMAC on every indexer push</b><span>Shared secret in Worker secrets and the VPS env. Wrong or missing signature is 401 before anything is parsed.</span></div></div>
+  <div class="row"><div class="k">validate</div><div><b>zod on every route</b><span>Mints base58, 32 to 44 chars. Timeframes from a list. Limits capped at 500. Anything else is 400 and never reaches the DB.</span></div></div>
+  <div class="row"><div class="k">no injection</div><div><b>Parameterised queries only</b><span>postgres.js tagged templates bind every value. No string-built SQL anywhere.</span></div></div>
+  <div class="row"><div class="k">limits</div><div><b>Per IP: 20 requests/s, 3 sockets, 10 subscriptions each</b><span>Cloudflare rate rules at the edge, message size 1KB, idle sockets closed after 60s without a pong.</span></div></div>
+  <div class="row"><div class="k">fail closed</div><div><b>Bad input 400, DB down 503</b><span>Never a stack trace. Logs carry a request id and no secrets.</span></div></div>
+  <div class="row"><div class="k">auth, later</div><div><b>v1 is public chain data, no login</b><span>Phase 2 adds Privy: the phone sends a JWT, the Worker verifies it, and only then touches anything user-specific.</span></div></div>
+
+  <h2>Build order</h2>
+  <div class="tw"><table>
+    <tr><th>#</th><th>Step</th><th>Check</th></tr>
+    <tr><td class="n">1</td><td>Scaffold, contract.ts, /health, deploy to workers.dev</td><td class="c">curl /health → 200</td></tr>
+    <tr><td class="n">2</td><td>Tunnel on the VPS, read-only DB user, Hyperdrive binding</td><td class="c">/v1/stocks returns 94 rows from the edge</td></tr>
+    <tr><td class="n">3</td><td>Repos + services for the five reads, edge cache</td><td class="c">candles p95 &lt; 50ms from India</td></tr>
+    <tr><td class="n">4</td><td>Ingest route, HMAC, indexer pushes batches</td><td class="c">signature bad → 401, good → 200</td></tr>
+    <tr><td class="n">5</td><td>Durable Objects: token rooms, floor room, hibernation</td><td class="c">trade on chain → phone &lt; 1s</td></tr>
+    <tr><td class="n">6</td><td>Validation, error shapes, rate rules</td><td class="c">1,000 bad inputs → all 400</td></tr>
+    <tr><td class="n">7</td><td>Load: 500 sockets + 200 req/s, 10 min · soak vs Raydium, 1h</td><td class="c">no drops · prices match · phase 0 closed</td></tr>
+  </table></div>
+  <p style="margin-top:12px">Needs from you: apeme.fun on the Cloudflare account, Workers Paid on. Steps 1 and 3 to 6 run on workers.dev until then.</p>
+</div>
+</body></html>

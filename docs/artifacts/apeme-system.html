@@ -1,0 +1,426 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><title>ApeMe System Design</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#0b0e12;--bg2:#12161c;--bg3:#1a2028;--line:#232a33;--line2:#2e3742;--ink:#eef2f5;--ink2:#a7b1bc;--ink3:#6b7682;--g:#5fe39a;--gs:#16302a;--a:#f5b640;--as:#3a2c12;--r:#ff5c5c;--rs:#3a1a1a;--b:#6db3ff;--bs:#14243a;--p:#c99bff;--ps:#2a1f3d;--disp:"Bricolage Grotesque","Archivo",Arial,sans-serif;--body:"IBM Plex Sans",Arial,sans-serif;--mono:"IBM Plex Mono",Menlo,monospace}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;margin:0}
+.page{max-width:1120px;margin:0 auto;padding:48px 24px 96px}
+h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1{font-size:56px;line-height:.95;font-weight:800}
+h2{font-size:28px;line-height:1.1;font-weight:700;margin:72px 0 8px}
+h3{font-size:17px;font-weight:700}
+p{margin:0 0 14px;max-width:66ch;color:var(--ink2)}
+.sub{color:var(--ink2);font-size:17px;margin-bottom:20px;max-width:70ch}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:14px}
+.eyebrow b{color:var(--g);font-weight:600}
+.lede{font-size:21px;line-height:1.35;color:var(--ink);max-width:44ch;margin:16px 0 22px}
+a{color:var(--g);text-decoration:none;border-bottom:1px solid #234a3a}
+.map{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:20px;overflow-x:auto}
+.map svg{display:block;min-width:900px;width:100%;height:auto;font-family:var(--body)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--ink2);margin-top:12px;padding:0 4px}
+.legend span::before{content:"";display:inline-block;width:22px;height:3px;border-radius:2px;margin-right:8px;vertical-align:middle;background:var(--c)}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:20px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;gap:6px;align-content:start;border-top:3px solid var(--tc,var(--line2))}
+.card .k{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)}
+.card h3{font-size:20px}
+.card .row{display:grid;grid-template-columns:78px 1fr;gap:10px;font-size:13.5px;padding:6px 0;border-top:1px solid var(--line)}
+.card .row b{font-family:var(--mono);font-size:11px;color:var(--ink3);font-weight:600;padding-top:3px;text-transform:uppercase;letter-spacing:.06em}
+.card .row span{color:var(--ink2)} .card .row span i{color:var(--ink);font-style:normal;font-weight:600}
+.card .row.no b{color:var(--r)}
+.flow{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-top:12px}
+.flow h3{font-size:20px;margin-bottom:4px}
+.flow .t{font-size:13.5px;color:var(--ink3);font-family:var(--mono);margin-bottom:12px}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.step{background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--ink2);position:relative;display:grid;gap:4px}
+.step .n{font-family:var(--mono);font-size:11px;color:var(--fc);letter-spacing:.06em}
+.step .w{font-family:var(--mono);font-size:10.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
+.step b{color:var(--ink);font-weight:600;font-size:13.5px}
+.tw{overflow-x:auto;margin-top:16px} table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);padding:8px 12px 8px 0;border-bottom:1px solid var(--line);font-weight:600}
+td{padding:9px 12px 9px 0;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)} td.n{font-weight:600;color:var(--ink);white-space:nowrap} td.c{font-family:var(--mono);font-size:12.5px} td.g{color:var(--g)} td.r{color:var(--r)}
+.foot{margin-top:72px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink3);font-family:var(--mono)}
+@media(max-width:820px){.grid,.grid3{grid-template-columns:1fr}h1{font-size:40px}}
+</style>
+<div class="page">
+  <div class="eyebrow">ApeMe · apeme.fun · <b>system design</b></div>
+  <h1>How ApeMe is built</h1>
+  <p class="lede">Three places run code: the phone, Cloudflare, and one VPS. Everything else is a public API we read. Every box below has one job, and the arrows are the only ways they talk.</p>
+  <p class="sub">The app never touches a chain or a data provider directly. It talks to one API. The indexer never talks to the app. It feeds the API. That rule is what keeps the whole thing debuggable at 3am.</p>
+
+  <h2>Two kinds of things, one example</h2>
+  <p class="sub">Everything on this page is explained with the same story. Read it once and every box below makes sense.</p>
+  <div class="grid">
+    <div class="card" style="--tc:#5fe39a"><span class="k">kind 1 · the money</span><h3>Stock tokens</h3>
+      <div class="row"><b>who</b><span>xStocks, Backpack, PreStocks. They take a real share and mint a token for it on Solana.</span></div>
+      <div class="row"><b>example</b><span><i>NVDAx</i> is Nvidia, issued by xStocks. <i>SPACEX</i> is SpaceX, issued by PreStocks.</span></div>
+      <div class="row"><b>we</b><span>Read the list once a day. Never mint, never redeem, never hold a share.</span></div></div>
+    <div class="card" style="--tc:#f5b640"><span class="k">kind 2 · the casino</span><h3>Launchpads</h3>
+      <div class="row"><b>who</b><span>StonkFun on Raydium LaunchLab, pump.fun Custom Pairs, Clawpump on Meteora DBC. Memes get created here, priced in a stock token.</span></div>
+      <div class="row"><b>example</b><span><i>CATNVDA</i> is a cat meme launched on StonkFun, priced in NVDAx. Buying it costs NVDAx, not SOL.</span></div>
+      <div class="row"><b>we</b><span>Index them live. Never launch anything.</span></div></div>
+  </div>
+  <div class="flow" style="--fc:#eef2f5;margin-top:12px"><h3>The story every box below uses</h3><div class="t">Tuesday 14:30, NYSE open</div>
+    <div class="steps">
+      <div class="step"><span class="n">14:16</span><b>CATNVDA launches</b>on StonkFun, paired with NVDAx</div>
+      <div class="step"><span class="n">14:30</span><b>@ravi posts</b>"$CATNVDA is the play today"</div>
+      <div class="step"><span class="n">14:30</span><b>Joey gets a push</b>he watches @ravi in the app</div>
+      <div class="step"><span class="n">14:32</span><b>Joey apes $20 of NVDAx</b>into CATNVDA, one tap</div>
+      <div class="step"><span class="n">14:32</span><b>40 phones see his buy</b>on the CATNVDA tape, under a second</div>
+    </div></div>
+
+  <h2>The map</h2>
+  <div class="map">
+  <svg viewBox="0 0 1100 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ApeMe system map">
+    <defs>
+      <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5 0 10z" fill="#5fe39a"/></marker>
+      <marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5 0 10z" fill="#f5b640"/></marker>
+      <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5 0 10z" fill="#6db3ff"/></marker>
+      <marker id="ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5 0 10z" fill="#c99bff"/></marker>
+    </defs>
+    <!-- lanes -->
+    <rect x="20" y="20" width="270" height="500" rx="14" fill="#0e1218" stroke="#232a33"/>
+    <rect x="310" y="20" width="460" height="500" rx="14" fill="#0e1218" stroke="#232a33"/>
+    <rect x="790" y="20" width="290" height="500" rx="14" fill="#0e1218" stroke="#232a33"/>
+    <rect x="20" y="560" width="1060" height="140" rx="14" fill="#0e1218" stroke="#232a33"/>
+    <g font-family="IBM Plex Mono, monospace" font-size="11" fill="#6b7682" letter-spacing="1.5">
+      <text x="36" y="44">THE PHONE</text>
+      <text x="326" y="44">CLOUDFLARE · WORKERS PAID $5</text>
+      <text x="806" y="44">VPS · ANY BOX WITH NODE</text>
+      <text x="36" y="584">OUTSIDE · PUBLIC APIS AND ONE PAID PLAN</text>
+    </g>
+
+    <!-- phone boxes -->
+    <g>
+      <rect x="40" y="64" width="230" height="150" rx="10" fill="#12161c" stroke="#2e3742"/>
+      <text x="56" y="90" font-family="Bricolage Grotesque, Arial" font-weight="700" font-size="16" fill="#eef2f5">ApeMe iOS app</text>
+      <text x="56" y="110" font-size="12" fill="#a7b1bc">SwiftUI, three screens</text>
+      <text x="56" y="130" font-size="12" fill="#a7b1bc">Stocks · memes per stock · token</text>
+      <text x="56" y="150" font-size="12" fill="#a7b1bc">Chart drawn on Canvas</text>
+      <text x="56" y="170" font-size="12" fill="#a7b1bc">Live tape over WebSocket</text>
+      <text x="56" y="190" font-size="12" fill="#a7b1bc">Pushes with an Ape button</text>
+      <rect x="40" y="240" width="230" height="86" rx="10" fill="#12161c" stroke="#2e3742"/>
+      <text x="56" y="266" font-family="Bricolage Grotesque, Arial" font-weight="700" font-size="16" fill="#eef2f5">Privy wallet</text>
+      <text x="56" y="286" font-size="12" fill="#a7b1bc">Login, embedded Solana key</text>
+      <text x="56" y="306" font-size="12" fill="#a7b1bc">Signs on the device, no popup</text>
+      <rect x="40" y="356" width="230" height="60" rx="10" fill="#12161c" stroke="#2e3742" stroke-dasharray="4 3"/>
+      <text x="56" y="382" font-family="Bricolage Grotesque, Arial" font-weight="700" font-size="14" fill="#a7b1bc">Keys never leave here</text>
+      <text x="56" y="400" font-size="12" fill="#6b7682">The Worker only sees signed bytes</text>
+    </g>
+
+    <!-- cloudflare boxes -->
+    <g>
+      <rect x="330" y="64" width="200" height="118" rx="10" fill="#12161c" stroke="#5fe39a"/>
+      <text x="346" y="90" font-family="Bricolage Grotesque, Arial" font-weight="700" font-size="16" fill="#eef2f5">API · Hono</text>
+      <text x="346" y="110" font-size="12" fill="#a7b1bc">The one door for the app</text>
+      <text x="346" y="130" font-size="12" fill="#a7b1bc">stocks, memes, token, quote,</text>
+      <text x="346" y="150" font-size="12" fill="#a7b1bc">ape, me, kols, calls</text>
+      <text x="346" y="170" font-size="12" fill="#a7b1bc">Reads KV first, D1 second</text>
+
+      <rect x="550" y="64" width="200" height="118" rx="10" fill="#12161c" stroke="#2e3742"/>
+      <text x="566" y="90" font-family="Bricolage Grotesque, Arial" font-weight="700" font-size="16" fill="#eef2f5">Crons</text>
+      <text x="566" y="110" font-size="12" fill="#a7b1bc">Catalog: StonkFun, LaunchLab,</text>
+      <text x="566" y="130" font-size="12" fill="#a7b1bc">pump.fun, every minute</text>
+      <text x="566" y="150" font-size="12" fill="#a7b1bc">Prices and heat every 30s</text>
+      <text x="566" y="170" font-size="12" fill="#a7b1bc">X reader every 2 min</text>
+
+      <rect x="330" y="204" width="200" height="96" rx="10" fill="#12161c" stroke="#6db3ff"/>
+      <text x="346" y="230" font-family="Bricolage Grotesque, Arial" font-weight="700" font-size="16" fill="#eef2f5">Live feed · Durable Object</text>
+      <text x="346" y="250" font-size="12" fill="#a7b1bc">One room per token</text>
+      <text x="346" y="270" font-size="12" fill="#a7b1bc">Holds the WebSockets</text>
+      <text x="346" y="290" font-size="12" fill="#a7b1bc">Fans out every trade</text>
+
+      <rect x="550" y="204" width="200" height="96" rx="10" fill="#12161c" stroke="#2e3742"/>
+      <text x="566" y="230" font-family="Bricolage Grotesque, Arial" font-weight="700" font-size="16" fill="#eef2f5">Ingest</text>
+      <text x="566" y="250" font-size="12" fill="#a7b1bc">Signed POST from the indexer</text>
+      <text x="566" y="270" font-size="12" fill="#a7b1bc">Dedupe by signature</text>
+      <text x="566" y="290" font-size="12" fill="#a7b1bc">Write D1, bump KV, wake the room</text>
+
+      <rect x="330" y="322" width="200" height="70" rx="10" fill="#12161c" stroke="#2e3742"/>
+      <text x="346" y="348" font-family="Bricolage Grotesque, Arial" font-weight="700" font-size="16" fill="#eef2f5">KV</text>
+      <text x="346" y="368" font-size="12" fill="#a7b1bc">Hot numbers, 30s expiry</text>
+      <text x="346" y="384" font-size="12" fill="#a7b1bc">price, mcap, vol, heat, floor order</text>
+
+      <rect x="550" y="322" width="200" height="70" rx="10" fill="#12161c" stroke="#2e3742"/>
+      <text x="566" y="348" font-family="Bricolage Grotesque, Arial" font-weight="700" font-size="16" fill="#eef2f5">D1</text>
+      <text x="566" y="368" font-size="12" fill="#a7b1bc">The record: stocks, tokens, trades,</text>
+      <text x="566" y="384" font-size="12" fill="#a7b1bc">candles, kols, calls, users, fees</text>
+
+      <rect x="330" y="414" width="420" height="60" rx="10" fill="#12161c" stroke="#c99bff"/>
+      <text x="346" y="440" font-family="Bricolage Grotesque, Arial" font-weight="700" font-size="16" fill="#eef2f5">Push · Queue to APNs</text>
+      <text x="346" y="460" font-size="11.5" fill="#a7b1bc">A call lands in the queue, the push goes out with an Ape button, retried on failure</text>
+    </g>
+
+    <!-- vps box -->
+    <g>
+      <rect x="810" y="64" width="250" height="410" rx="10" fill="#12161c" stroke="#f5b640"/>
+      <text x="826" y="90" font-family="Bricolage Grotesque, Arial" font-weight="700" font-size="16" fill="#eef2f5">Indexer microservice</text>
+      <text x="826" y="110" font-size="12" fill="#a7b1bc">One Node process, systemd</text>
+      <rect x="826" y="128" width="218" height="56" rx="8" fill="#1a2028" stroke="#2e3742"/>
+      <text x="838" y="150" font-size="12.5" font-weight="600" fill="#eef2f5">1 · gRPC client</text>
+      <text x="838" y="170" font-size="11.5" fill="#a7b1bc">Yellowstone stream from Nexus</text>
+      <rect x="826" y="196" width="218" height="72" rx="8" fill="#1a2028" stroke="#2e3742"/>
+      <text x="838" y="218" font-size="12.5" font-weight="600" fill="#eef2f5">2 · Filter</text>
+      <text x="838" y="238" font-size="11.5" fill="#a7b1bc">6 programs: pump.fun, PumpSwap, LaunchLab,</text>
+      <text x="838" y="256" font-size="11.5" fill="#a7b1bc">Raydium CPMM, Meteora DBC, DAMM v2</text>
+      <rect x="826" y="280" width="218" height="72" rx="8" fill="#1a2028" stroke="#2e3742"/>
+      <text x="838" y="302" font-size="12.5" font-weight="600" fill="#eef2f5">3 · Decode</text>
+      <text x="838" y="322" font-size="11.5" fill="#a7b1bc">Shyft parser + program IDLs</text>
+      <text x="838" y="340" font-size="11.5" fill="#a7b1bc">→ create, buy, sell, graduate</text>
+      <rect x="826" y="364" width="218" height="56" rx="8" fill="#1a2028" stroke="#2e3742"/>
+      <text x="838" y="386" font-size="12.5" font-weight="600" fill="#eef2f5">4 · Batch and post</text>
+      <text x="838" y="406" font-size="11.5" fill="#a7b1bc">Every 500ms to Ingest, signed</text>
+      <text x="826" y="446" font-size="11.5" fill="#6b7682">Watchdog: reconnect, replay last slot,</text>
+      <text x="826" y="464" font-size="11.5" fill="#6b7682">health endpoint, alerts on silence</text>
+    </g>
+
+    <!-- outside rail -->
+    <g font-size="11.5">
+      <rect x="40" y="600" width="130" height="84" rx="10" fill="#12161c" stroke="#2e3742"/>
+      <text x="52" y="622" font-weight="600" font-size="13" fill="#eef2f5">StonkFun</text>
+      <text x="52" y="640" fill="#a7b1bc">stock list</text>
+      <text x="52" y="656" fill="#a7b1bc">recent launches</text>
+
+      <rect x="184" y="600" width="130" height="84" rx="10" fill="#12161c" stroke="#2e3742"/>
+      <text x="196" y="622" font-weight="600" font-size="13" fill="#eef2f5">Raydium LaunchLab</text>
+      <text x="196" y="640" fill="#a7b1bc">launch list, trades,</text>
+      <text x="196" y="656" fill="#a7b1bc">klines on the curve</text>
+
+      <rect x="328" y="600" width="120" height="84" rx="10" fill="#12161c" stroke="#2e3742"/>
+      <text x="340" y="622" font-weight="600" font-size="13" fill="#eef2f5">pump.fun</text>
+      <text x="340" y="640" fill="#a7b1bc">coins feed with</text>
+      <text x="340" y="656" fill="#a7b1bc">quote mint</text>
+
+      <rect x="462" y="600" width="130" height="84" rx="10" fill="#12161c" stroke="#2e3742"/>
+      <text x="474" y="622" font-weight="600" font-size="13" fill="#eef2f5">Gecko · DexScreener</text>
+      <text x="474" y="640" fill="#a7b1bc">after graduation:</text>
+      <text x="474" y="656" fill="#a7b1bc">OHLCV, snapshots</text>
+
+      <rect x="606" y="600" width="110" height="84" rx="10" fill="#12161c" stroke="#2e3742"/>
+      <text x="618" y="622" font-weight="600" font-size="13" fill="#eef2f5">Jupiter</text>
+      <text x="618" y="640" fill="#a7b1bc">quote, swap tx,</text>
+      <text x="618" y="656" fill="#a7b1bc">1% fee param</text>
+
+      <rect x="730" y="600" width="80" height="84" rx="10" fill="#12161c" stroke="#2e3742"/>
+      <text x="742" y="622" font-weight="600" font-size="13" fill="#eef2f5">X API</text>
+      <text x="742" y="640" fill="#a7b1bc">KOL posts</text>
+      <text x="742" y="656" fill="#a7b1bc">$0.005 each</text>
+
+      <rect x="824" y="600" width="80" height="84" rx="10" fill="#12161c" stroke="#2e3742"/>
+      <text x="836" y="622" font-weight="600" font-size="13" fill="#eef2f5">APNs</text>
+      <text x="836" y="640" fill="#a7b1bc">pushes to</text>
+      <text x="836" y="656" fill="#a7b1bc">the phone</text>
+
+      <rect x="918" y="600" width="142" height="84" rx="10" fill="#12161c" stroke="#f5b640"/>
+      <text x="930" y="622" font-weight="600" font-size="13" fill="#eef2f5">constant-k Nexus</text>
+      <text x="930" y="640" fill="#a7b1bc">RPC: apes in</text>
+      <text x="930" y="656" fill="#a7b1bc">gRPC: stream out</text>
+      <text x="930" y="672" fill="#6b7682">free 1 mo, then $179</text>
+    </g>
+
+    <!-- arrows: green = data into the catalog, amber = the stream and the ape, blue = live, purple = call to push -->
+    <g fill="none" stroke-width="2">
+      <path d="M270 110 L330 110" stroke="#5fe39a" marker-end="url(#ag)"/>
+      <path d="M270 250 L330 250" stroke="#6db3ff" marker-end="url(#ab)" marker-start="url(#ab)"/>
+      <path d="M155 214 L155 240" stroke="#f5b640" marker-end="url(#aa)" marker-start="url(#aa)"/>
+      <path d="M650 300 L650 322" stroke="#f5b640" marker-end="url(#aa)"/>
+      <path d="M550 252 L530 252" stroke="#6db3ff" marker-end="url(#ab)"/>
+      <path d="M810 392 L780 392 L780 252 L750 252" stroke="#f5b640" marker-end="url(#aa)"/>
+      <!-- crons trunk: right gap, branch into D1, then the green ribbon -->
+      <path d="M750 120 L782 120 L782 357 L750 357" stroke="#5fe39a" marker-end="url(#ag)"/>
+      <path d="M782 357 L782 536 L105 536 L105 600" stroke="#5fe39a" stroke-dasharray="5 4" marker-end="url(#ag)"/>
+      <path d="M249 536 L249 600" stroke="#5fe39a" stroke-dasharray="5 4" marker-end="url(#ag)"/>
+      <path d="M388 536 L388 600" stroke="#5fe39a" stroke-dasharray="5 4" marker-end="url(#ag)"/>
+      <path d="M527 536 L527 600" stroke="#5fe39a" stroke-dasharray="5 4" marker-end="url(#ag)"/>
+      <path d="M770 536 L770 600" stroke="#5fe39a" stroke-dasharray="5 4" marker-end="url(#ag)"/>
+      <!-- api trunk: left gap, amber ribbon to Jupiter and Nexus RPC -->
+      <path d="M330 150 L300 150 L300 546 L950 546 L950 600" stroke="#f5b640" stroke-dasharray="5 4" marker-end="url(#aa)"/>
+      <path d="M661 546 L661 600" stroke="#f5b640" stroke-dasharray="5 4" marker-end="url(#aa)"/>
+      <!-- nexus stream up into the indexer -->
+      <path d="M1030 600 L1030 474" stroke="#f5b640" marker-end="url(#aa)"/>
+      <!-- push to apns -->
+      <path d="M600 474 L600 554 L864 554 L864 600" stroke="#c99bff" marker-end="url(#ap)"/>
+    </g>
+    <g font-family="IBM Plex Mono, monospace" font-size="10.5" fill="#6b7682">
+      <text x="276" y="100">read</text>
+      <text x="276" y="242">live</text>
+      <text x="160" y="232">sign</text>
+      <text x="786" y="330">catalog</text>
+      <text x="786" y="470">trades</text>
+      <text x="1036" y="540">stream</text>
+      <text x="606" y="500">calls</text>
+    </g>
+  </svg>
+  <div class="legend"><span style="--c:#5fe39a">data into the catalog</span><span style="--c:#f5b640">the stream and the ape</span><span style="--c:#6db3ff">live feed</span><span style="--c:#c99bff">KOL call to push</span></div>
+  </div>
+
+  <h2>Who is responsible for what</h2>
+  <p class="sub">Each piece owns one thing. If a bug is about that thing, it lives in that box, nowhere else.</p>
+  <div class="grid">
+    <div class="card" style="--tc:#eef2f5"><span class="k">the phone · swift</span><h3>ApeMe iOS app</h3>
+      <div class="row"><b>owns</b><span>Everything the user sees. Screens, the chart, the tape, the ape button, pushes.</span></div>
+      <div class="row"><b>does</b><span>Reads the API. Keeps one WebSocket open to the room of the token on screen. Asks Privy to sign. Sends signed bytes back.</span></div>
+      <div class="row no"><b>never</b><span>Calls a chain, a DEX, or a data provider. Holds a fee. Computes heat or PnL.</span></div>
+      <div class="row"><b>example</b><span>Joey opens Stocks, taps Nvidia, sees CATNVDA at $41K, taps it. Chart, tape, Ape button. He taps Ape, $20 preset, done. His buy scrolls onto his own tape a second later.</span></div>
+      <div class="row"><b>talks to</b><span>API, Live feed, Privy, APNs.</span></div></div>
+    <div class="card" style="--tc:#eef2f5"><span class="k">the phone · privy sdk</span><h3>Privy wallet</h3>
+      <div class="row"><b>owns</b><span>Login and the user's Solana key.</span></div>
+      <div class="row"><b>does</b><span>Email or Phantom login. Creates the embedded wallet. Signs the swap transaction on the device with no popup.</span></div>
+      <div class="row no"><b>never</b><span>Sends the key anywhere. Signs server-side, until auto-ape and only through a session signer the user granted.</span></div>
+      <div class="row"><b>example</b><span>Joey signed up with email on day one, the wallet was made then. At 14:32 it signs the CATNVDA swap in the background. No popup, no seed phrase.</span></div>
+      <div class="row"><b>talks to</b><span>The app only.</span></div></div>
+    <div class="card" style="--tc:#5fe39a"><span class="k">cloudflare · hono</span><h3>API</h3>
+      <div class="row"><b>owns</b><span>The contract with the app. Every endpoint, every response shape.</span></div>
+      <div class="row"><b>does</b><span>Serves stocks, memes per stock, token page, quote, ape, me, kols, calls. Reads KV first, D1 second. Builds the swap through Jupiter with the 1% fee. Broadcasts signed transactions through Nexus RPC. Writes the fee ledger.</span></div>
+      <div class="row no"><b>never</b><span>Polls anything. Holds a stream. Holds a key. Does slow work inside a request.</span></div>
+      <div class="row"><b>example</b><span>GET /stocks returns Nvidia. GET /stocks/NVDAx/memes returns CATNVDA. POST /quote asks Jupiter for $20 NVDAx into CATNVDA with the 1% fee. POST /ape takes the signed bytes, broadcasts, writes the fee row: $0.20 fee, $0.06 to @ravi.</span></div>
+      <div class="row"><b>talks to</b><span>KV, D1, Live feed, Jupiter, Nexus RPC.</span></div></div>
+    <div class="card" style="--tc:#5fe39a"><span class="k">cloudflare · scheduled</span><h3>Crons</h3>
+      <div class="row"><b>owns</b><span>The catalog and the slow-moving numbers.</span></div>
+      <div class="row"><b>does</b><span>Every minute: stock list from StonkFun, launches from LaunchLab and pump.fun filtered to stock quotes, into D1. Every 30s: DexScreener snapshots and heat into KV. Every 2 min: X reader for tracked KOLs, classifies calls, drops them on the push queue.</span></div>
+      <div class="row no"><b>never</b><span>Serves a request. Touches trades, that is the indexer's.</span></div>
+      <div class="row"><b>example</b><span>09:00: stock list pulled, Nvidia in it. 14:17: LaunchLab list shows CATNVDA created a minute ago, token row written. Every 30s: DexScreener says CATNVDA $41K. 14:30:10: X reader sees @ravi’s post, classifier matches $CATNVDA, call goes on the queue.</span></div>
+      <div class="row"><b>talks to</b><span>StonkFun, LaunchLab, pump.fun, DexScreener, GeckoTerminal, X API, D1, KV, Queue.</span></div></div>
+    <div class="card" style="--tc:#f5b640"><span class="k">cloudflare · endpoint</span><h3>Ingest</h3>
+      <div class="row"><b>owns</b><span>The only write path for trades and launch events.</span></div>
+      <div class="row"><b>does</b><span>Accepts signed batches from the indexer. Drops anything already seen by signature. Writes trades and candles to D1, bumps price and volume in KV, wakes the token's room.</span></div>
+      <div class="row no"><b>never</b><span>Accepts unsigned posts. Accepts a trade from anyone but the indexer.</span></div>
+      <div class="row"><b>example</b><span>14:32:05.5: a batch arrives from the indexer with Joey’s buy and three others. Signature not seen before, so: trades row, folded into the 14:32 candle, KV price bumped, CATNVDA room woken.</span></div>
+      <div class="row"><b>talks to</b><span>D1, KV, Live feed.</span></div></div>
+    <div class="card" style="--tc:#6db3ff"><span class="k">cloudflare · durable object</span><h3>Live feed</h3>
+      <div class="row"><b>owns</b><span>Real time to the phone.</span></div>
+      <div class="row"><b>does</b><span>One room per token. Holds every open WebSocket for it. When Ingest wakes it, fans the trade to every phone in under 100ms. Keeps the last 50 trades in memory for a fresh join.</span></div>
+      <div class="row no"><b>never</b><span>Stores history. Reads a provider. Does math beyond the tape.</span></div>
+      <div class="row"><b>example</b><span>40 phones have CATNVDA open. The room pushes "buy 0.19 NVDAx Â· Jo…4f" to all 40 in one go. Joey’s phone is one of them.</span></div>
+      <div class="row"><b>talks to</b><span>The app, Ingest.</span></div></div>
+    <div class="card" style="--tc:#a7b1bc"><span class="k">cloudflare · storage</span><h3>KV and D1</h3>
+      <div class="row"><b>KV</b><span>Hot numbers with a 30-second life: price, market cap, volume, heat, the floor order. Cheap to read a million times.</span></div>
+      <div class="row"><b>D1</b><span>The record. Stocks, tokens, trades, 1-minute candles, KOLs, calls, users, positions, the fee ledger. Thousands of tokens, millions of trades, fine.</span></div>
+      <div class="row"><b>example</b><span>KV: price and mcap for CATNVDA, refreshed every 30s. D1: the CATNVDA token row, Joey’s trade row, @ravi’s call row, the $0.06 fee row waiting for @ravi to claim.</span></div>
+      <div class="row no"><b>never</b><span>KV holds anything we cannot lose. D1 sits in a hot request path when KV can answer.</span></div></div>
+    <div class="card" style="--tc:#c99bff"><span class="k">cloudflare · queue</span><h3>Push</h3>
+      <div class="row"><b>owns</b><span>Getting a call onto the lock screen.</span></div>
+      <div class="row"><b>does</b><span>Takes a call from the queue, looks up who watches that KOL, sends the APNs push with an Ape button, retries on failure, records delivery.</span></div>
+      <div class="row no"><b>never</b><span>Decides what a call is. Sends to users who did not opt in.</span></div>
+      <div class="row"><b>example</b><span>14:30:10 the call hits the queue. The consumer finds 312 users watching @ravi and sends 312 pushes with an Ape button. Joey’s phone buzzes at 14:30:14.</span></div>
+      <div class="row"><b>talks to</b><span>D1, APNs.</span></div></div>
+    <div class="card" style="--tc:#f5b640"><span class="k">vps · node · systemd · six programs</span><h3>Indexer microservice</h3>
+      <div class="row"><b>owns</b><span>Seeing every trade and every launch the second it lands.</span></div>
+      <div class="row"><b>does</b><span>Holds the Yellowstone stream from Nexus. Filters to six programs: pump.fun, PumpSwap, Raydium LaunchLab and CPMM, Meteora DBC and DAMM v2. Decodes each transaction with Shyft's parser into create, buy, sell, graduate. Batches every 500ms and posts to Ingest with a signature. On restart, resumes from the last slot using 24h replay.</span></div>
+      <div class="row no"><b>never</b><span>Talks to the app. Holds a database. Decides what is a stonk meme, Ingest checks the quote mint against D1.</span></div>
+      <div class="row"><b>example</b><span>14:32:05 the stream delivers Joey’s transaction on the LaunchLab program. Parser decodes buy_exact_in into pool, wallet, side buy, 0.19 NVDAx in, 1.2M CATNVDA out. Batched with three other trades, posted to Ingest half a second later.</span></div>
+      <div class="row"><b>talks to</b><span>Nexus gRPC, Ingest. A health endpoint for us.</span></div></div>
+    <div class="card" style="--tc:#f5b640"><span class="k">outside · paid</span><h3>constant-k Nexus</h3>
+      <div class="row"><b>owns</b><span>Our view of the chain, in and out.</span></div>
+      <div class="row"><b>does</b><span>Streams the six programs to the indexer. Broadcasts signed apes with priority through SWQoS. 500 requests a second, 200 sends, 20 priority sends.</span></div>
+      <div class="row no"><b>never</b><span>Is the only path. Helius free is the spare RPC, polling is the spare feed.</span></div>
+      <div class="row"><b>example</b><span>14:32:03 broadcasts Joey’s signed swap with priority. 14:32:05 streams the confirmed transaction back to the indexer, along with every other trade on the six programs.</span></div>
+      <div class="row"><b>talks to</b><span>Indexer, API.</span></div></div>
+  </div>
+
+  <h2>The four things that happen</h2>
+  <p class="sub">Numbered because order is the point. Each step names the box that does it.</p>
+  <div class="flow" style="--fc:#5fe39a"><h3>A new meme launches against a stock</h3><div class="t">under 1 second live, 1 minute by cron as backup</div>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><span class="w">nexus</span><b>Create instruction hits the stream</b>on pump.fun, LaunchLab or Meteora DBC</div>
+      <div class="step"><span class="n">2</span><span class="w">indexer</span><b>Decoded to a create event</b>mint, pool, quote mint, creator</div>
+      <div class="step"><span class="n">3</span><span class="w">ingest</span><b>Quote mint checked against stocks</b>not a stock, dropped</div>
+      <div class="step"><span class="n">4</span><span class="w">d1 · kv</span><b>Token row written, floor order bumped</b>status: new, launchpad badge</div>
+      <div class="step"><span class="n">5</span><span class="w">app</span><b>Card appears under its stock</b>next refresh or room wake</div>
+    </div></div>
+  <div class="flow" style="--fc:#6db3ff"><h3>Someone trades a meme</h3><div class="t">stream to screen in about 300ms</div>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><span class="w">nexus</span><b>Buy or sell in the stream</b>any of the four programs</div>
+      <div class="step"><span class="n">2</span><span class="w">indexer</span><b>Decoded, batched 500ms</b>wallet, side, amounts, price, slot</div>
+      <div class="step"><span class="n">3</span><span class="w">ingest</span><b>Dedupe, write trade, fold into the 1m candle</b>bump price and volume in KV</div>
+      <div class="step"><span class="n">4</span><span class="w">live feed</span><b>Room fans out</b>every phone on that token</div>
+      <div class="step"><span class="n">5</span><span class="w">app</span><b>Tape scrolls, candle moves</b>callout avatars stay pinned</div>
+    </div></div>
+  <div class="flow" style="--fc:#f5b640"><h3>Someone apes</h3><div class="t">one tap, about 2 seconds to confirmed</div>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><span class="w">app</span><b>Tap Ape, amount preset</b>asks API for a quote</div>
+      <div class="step"><span class="n">2</span><span class="w">api</span><b>Jupiter quote and swap tx</b>1% fee set, referral account ours</div>
+      <div class="step"><span class="n">3</span><span class="w">privy</span><b>Signed on the device</b>no popup, no key leaves</div>
+      <div class="step"><span class="n">4</span><span class="w">api</span><b>Broadcast through Nexus RPC</b>priority send, ledger row: 0.3% to the tapped KOL</div>
+      <div class="step"><span class="n">5</span><span class="w">indexer</span><b>The trade comes back in the stream</b>position badge updates like any other trade</div>
+    </div></div>
+  <div class="flow" style="--fc:#c99bff"><h3>A KOL calls a token</h3><div class="t">post to lock screen in about 2 minutes</div>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><span class="w">cron</span><b>X reader pulls new posts</b>50 tracked handles, since last id</div>
+      <div class="step"><span class="n">2</span><span class="w">cron</span><b>Classifier finds a token</b>cashtag, mint, ticker, launch link</div>
+      <div class="step"><span class="n">3</span><span class="w">d1 · queue</span><b>Call row stamped with time and price</b>dropped on the push queue</div>
+      <div class="step"><span class="n">4</span><span class="w">push</span><b>APNs to everyone watching that KOL</b>with an Ape button</div>
+      <div class="step"><span class="n">5</span><span class="w">app</span><b>Callout pinned on the candle</b>tap opens the buy screen, that tap is the attribution</div>
+    </div></div>
+
+  <h2>Everything we use</h2>
+  <p class="sub">The full inventory. If it is not here, we do not use it.</p>
+  <div class="tw"><table>
+    <tr><th>Layer</th><th>Thing</th><th>What it does for us</th><th>Cost</th></tr>
+    <tr><td class="n">Phone</td><td>Swift, SwiftUI</td><td>The app. Screens, navigation, Canvas chart, WebSocket tape.</td><td class="c">Apple Developer, owned</td></tr>
+    <tr><td class="n">Phone</td><td>Privy Swift SDK</td><td>Login, embedded Solana wallet, signing on device.</td><td class="c">free under 499 users</td></tr>
+    <tr><td class="n">Phone</td><td>APNs</td><td>Pushes with an Ape button.</td><td class="c">free</td></tr>
+    <tr><td class="n">Cloudflare</td><td>Workers, Hono</td><td>The API and every endpoint.</td><td class="c">$5 plan</td></tr>
+    <tr><td class="n">Cloudflare</td><td>Cron triggers</td><td>Catalog pollers, price refresh, X reader.</td><td class="c">included</td></tr>
+    <tr><td class="n">Cloudflare</td><td>KV</td><td>Hot numbers, 30s life.</td><td class="c">included</td></tr>
+    <tr><td class="n">Cloudflare</td><td>D1</td><td>The record, eight tables.</td><td class="c">included</td></tr>
+    <tr><td class="n">Cloudflare</td><td>Durable Objects</td><td>One live room per token, WebSockets.</td><td class="c">included</td></tr>
+    <tr><td class="n">Cloudflare</td><td>Queues</td><td>Calls waiting to become pushes.</td><td class="c">included</td></tr>
+    <tr><td class="n">VPS</td><td>Node, systemd</td><td>The indexer process, restarts itself.</td><td class="c">what you pay now</td></tr>
+    <tr><td class="n">VPS</td><td>Yellowstone gRPC client</td><td>Holds the stream from Nexus.</td><td class="c">open source</td></tr>
+    <tr><td class="n">VPS</td><td>Shyft transaction parser + IDLs</td><td>Turns raw transactions into create, buy, sell, graduate for pump.fun, PumpSwap, LaunchLab, CPMM.</td><td class="c">open source</td></tr>
+    <tr><td class="n">VPS</td><td>Meteora DBC SDK</td><td>Reads DBC pool state: curve progress, fees, migration. Also the DBC bounty entry.</td><td class="c">open source</td></tr>
+    <tr><td class="n">Chain</td><td>constant-k Nexus</td><td>gRPC stream of six programs, RPC for sending apes with priority.</td><td class="c">free 1 month, then $179 or $49</td></tr>
+    <tr><td class="n">Chain</td><td>Helius free</td><td>Spare RPC if Nexus is down.</td><td class="c">free</td></tr>
+    <tr><td class="n">Chain</td><td>Jupiter</td><td>Every swap. Quote, route, transaction, 1% fee on it.</td><td class="c">free</td></tr>
+    <tr><td class="n">Stocks</td><td>StonkFun quote-tokens</td><td>The stock list, all three issuers in one call.</td><td class="c">free, no key</td></tr>
+    <tr><td class="n">Stocks</td><td>Backpack API</td><td>NYSE open or closed, holidays.</td><td class="c">free, no key</td></tr>
+    <tr><td class="n">Stocks</td><td>PreStocks API</td><td>Pre-IPO valuations for the Pre-IPO section. The PreStocks bounty entry.</td><td class="c">free, no key</td></tr>
+    <tr><td class="n">Stocks</td><td>Finnhub</td><td>Last NYSE close for the vs NYSE pill.</td><td class="c">free key</td></tr>
+    <tr><td class="n">Launches</td><td>StonkFun recent-launches</td><td>Newest StonkFun pools, backup to the stream.</td><td class="c">free, no key</td></tr>
+    <tr><td class="n">Launches</td><td>Raydium LaunchLab API</td><td>Every StonkFun launch by platform id, trades and klines on the curve.</td><td class="c">free, no key</td></tr>
+    <tr><td class="n">Launches</td><td>pump.fun coins feed</td><td>Newest coins with quote mint, filtered to stocks.</td><td class="c">free, no key</td></tr>
+    <tr><td class="n">Prices</td><td>DexScreener</td><td>Card snapshot: price, change, buys and sells, liquidity.</td><td class="c">free, 300 rpm</td></tr>
+    <tr><td class="n">Prices</td><td>GeckoTerminal</td><td>OHLCV and trades after graduation.</td><td class="c">free, 30 rpm</td></tr>
+    <tr><td class="n">KOLs</td><td>X API</td><td>Posts from tracked handles, pay per read.</td><td class="c">~$150 at 50 handles</td></tr>
+    <tr><td class="n">Not used</td><td>Smart contracts, our own token, a launchpad, Vybe, Moralis, CoinStats for now</td><td>Cut, or parked until a screen needs them.</td><td class="c">$0</td></tr>
+  </table></div>
+
+  <h2>What D1 holds</h2>
+  <div class="tw"><table>
+    <tr><th>Table</th><th>Key</th><th>What is in a row</th></tr>
+    <tr><td class="n">stocks</td><td class="c">mint</td><td>symbol, name, issuer (xStocks, Backpack, PreStocks), decimals, logo, NYSE ticker or pre-IPO valuation, last close. The dictionary: a meme is a stonk meme when its quote mint is in here.</td></tr>
+    <tr><td class="n">tokens</td><td class="c">mint</td><td>symbol, name, image, quote stock, launchpad, pool, creator, created, status (curve or graduated), tax bps, reward flag</td></tr>
+    <tr><td class="n">trades</td><td class="c">signature</td><td>token, wallet, side, base amount, quote amount, price in the stock, slot, time</td></tr>
+    <tr><td class="n">candles_1m</td><td class="c">token + minute</td><td>open, high, low, close, volume, trade count. Higher frames are rolled on read.</td></tr>
+    <tr><td class="n">kols</td><td class="c">x handle</td><td>display name, avatar, claimed wallet or null, followers count, tracked since</td></tr>
+    <tr><td class="n">calls</td><td class="c">post id</td><td>kol, token, posted at, price at post, text, classifier confidence</td></tr>
+    <tr><td class="n">users</td><td class="c">privy id</td><td>wallet, push token, watchlist of kols, gate slot, created</td></tr>
+    <tr><td class="n">fees</td><td class="c">trade signature</td><td>user, token, fee amount, kol share, kol handle, claimed or not</td></tr>
+  </table></div>
+
+  <h2>When something dies</h2>
+  <p class="sub">Every single point of failure has a degraded mode. Nothing takes the app down with it.</p>
+  <div class="tw"><table>
+    <tr><th>What dies</th><th>What the user sees</th><th>What happens</th></tr>
+    <tr><td class="n">Nexus stream</td><td>Tape updates every 30s instead of live</td><td class="g">Crons keep polling LaunchLab and GeckoTerminal. Indexer reconnects with backoff and replays from the last slot.</td></tr>
+    <tr><td class="n">The VPS</td><td>Same as above</td><td class="g">Ingest gets nothing, KV still refreshed by crons. Restart resumes from the last slot, 24h replay window.</td></tr>
+    <tr><td class="n">Nexus RPC</td><td>Apes still land</td><td class="g">API fails over to the free Helius endpoint for sends, without priority.</td></tr>
+    <tr><td class="n">A data API</td><td>Nothing, for hours</td><td class="g">Catalog is in D1. A missing poll leaves stale numbers, not empty screens.</td></tr>
+    <tr><td class="n">Jupiter</td><td>Ape button says try again</td><td class="r">The one hard dependency for trading. Quote retried across the Lite and Pro hosts.</td></tr>
+    <tr><td class="n">X API</td><td>Calls arrive late</td><td class="g">Reader resumes from the last post id. No call is lost, only delayed.</td></tr>
+    <tr><td class="n">Cloudflare</td><td>App is down</td><td class="r">Accepted. Same blast radius as every other app on Workers.</td></tr>
+  </table></div>
+
+  <h2>What runs where, and what it costs</h2>
+  <div class="tw"><table>
+    <tr><th>Place</th><th>Runs</th><th>Cost</th></tr>
+    <tr><td class="n">iPhone</td><td>SwiftUI app, Privy SDK</td><td class="c">Apple Developer, owned</td></tr>
+    <tr><td class="n">Cloudflare</td><td>API, crons, Ingest, Live feed, KV, D1, Queue</td><td class="c">$5 Workers Paid</td></tr>
+    <tr><td class="n">VPS</td><td>Indexer, one Node process, 1 vCPU and 1 GB is enough</td><td class="c">what you already pay</td></tr>
+    <tr><td class="n">constant-k</td><td>gRPC stream and RPC</td><td class="c">free for a month, then $179 Nexus or $49 Blade Runner</td></tr>
+    <tr><td class="n">X</td><td>KOL reads</td><td class="c">about $150 at 50 handles</td></tr>
+    <tr><td class="n">Everything else</td><td>StonkFun, LaunchLab, pump.fun, Gecko, DexScreener, Jupiter, Privy under 499 users</td><td class="c">$0</td></tr>
+  </table></div>
+  <div class="foot">Written 15 Sep 2026. Repo: /root/apestonks with worker, indexer, ios. Companion: the Solana build sheet for every limit and price.</div>
+</div>
+</body></html>

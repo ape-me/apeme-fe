@@ -1,0 +1,225 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><title>What Indexing Gives Us</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{--bg:#0b0e12;--bg2:#12161c;--line:#232a33;--ink:#eef2f5;--ink2:#a7b1bc;--ink3:#6b7682;--g:#5fe39a;--a:#f5b640;--r:#ff5c5c;--b:#6db3ff;--disp:"Bricolage Grotesque",Arial,sans-serif;--body:"IBM Plex Sans",Arial,sans-serif;--mono:"IBM Plex Mono",Menlo,monospace}
+*{box-sizing:border-box}body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5;margin:0}
+.page{max-width:760px;margin:0 auto;padding:48px 24px 80px}
+h1{font-family:var(--disp);font-size:44px;line-height:1;margin:0 0 8px;font-weight:800}
+.sub{color:var(--ink2);margin:0 0 28px}
+h2{font-family:var(--disp);font-size:22px;margin:44px 0 10px;font-weight:700}
+p{color:var(--ink2);margin:0 0 12px}
+.box{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-family:var(--mono);font-size:13px;line-height:1.7;overflow-x:auto;margin-top:10px}
+.box b{color:var(--g);font-weight:500}.box i{color:var(--a);font-style:normal}.box s{color:var(--ink3);text-decoration:none}
+.map{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px;overflow-x:auto;margin-top:10px}
+.map svg{display:block;width:100%;min-width:640px;height:auto}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.two div{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:14px}
+.two b{display:block;margin-bottom:4px}.two span{color:var(--ink2);font-size:15px}
+.bad{border-color:#5a2a2a!important}.good{border-color:#215a3a!important}
+@media(max-width:600px){h1{font-size:34px}.two{grid-template-columns:1fr}}
+.tw{overflow-x:auto;margin-top:10px}table{border-collapse:collapse;width:100%;font-size:14px}th{text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);padding:6px 10px 6px 0;border-bottom:1px solid var(--line)}td{padding:7px 10px 7px 0;border-bottom:1px solid var(--line);color:var(--ink2)}td.n{color:var(--ink);font-weight:600}td.g{color:var(--g)}td.a{color:var(--a)}
+</style>
+<div class="page">
+  <h1>What indexing gives us</h1>
+  <p class="sub">One real token, GTA Speed, priced in TTWO (Take-Two stock). Launched on pump.fun on 13 Sep.</p>
+
+  <h2>1 · A trade happens on chain</h2>
+  <p>Someone sold Speed at 16:44:53 UTC tonight. Kaldera hands us the transaction. We decode it into one row.</p>
+  <div class="box">time <b>16:44:53</b> · side <i>sell</i> · wallet <b>EiDKVt…</b> · sold <b>6,029,324 SPEED</b> · got <b>1.067 TTWO</b>
+price = 1.067 ÷ 6,029,324 = <b>0.000000174 TTWO</b> per SPEED  ·  × TTWO $209.68 = <b>$0.0000365</b></div>
+  <p style="margin-top:10px">That row is the tape on the token page. Every trade since 21:23 IST tonight is in there. 22,000 rows so far, across all tokens.</p>
+
+  <h2>2 · Rows become candles</h2>
+  <p>All trades in the same minute fold into one candle: first price, highest, lowest, last, and volume. That's what a chart is.</p>
+  <div class="box">minute <b>16:44</b> · open 1.800e-7 · high 1.801e-7 · low <i>1.740e-7</i> · close <i>1.740e-7</i> · vol 1.08 TTWO · <s>3 trades</s>
+<s>the big sell above pushed low and close down. Red candle.</s></div>
+
+  <h2>3 · The chart needs the token's whole life</h2>
+  <p>Speed is four days old. We only started listening tonight. Left of the orange line is copied once from pump.fun's chart. Right of it is ours, built from our own rows as they arrive.</p>
+  <div class="map"><svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg">
+<rect x="56" y="20" width="610.1" height="200" fill="#6b7682" fill-opacity=".08"/>
+<rect x="666.1" y="20" width="17.9" height="200" fill="#5fe39a" fill-opacity=".08"/>
+<line x1="60.5" y1="218.6" x2="60.5" y2="220.0" stroke="#8a94a0" stroke-width="1"/>
+<rect x="57.3" y="218.6" width="6.3" height="1.0" fill="#8a94a0"/>
+<line x1="69.5" y1="214.9" x2="69.5" y2="218.6" stroke="#8a94a0" stroke-width="1"/>
+<rect x="66.3" y="217.4" width="6.3" height="1.2" fill="#8a94a0"/>
+<line x1="78.4" y1="213.7" x2="78.4" y2="217.4" stroke="#8a94a0" stroke-width="1"/>
+<rect x="75.3" y="213.7" width="6.3" height="3.7" fill="#8a94a0"/>
+<line x1="87.4" y1="207.4" x2="87.4" y2="213.7" stroke="#8a94a0" stroke-width="1"/>
+<rect x="84.3" y="207.4" width="6.3" height="6.2" fill="#8a94a0"/>
+<line x1="96.4" y1="200.1" x2="96.4" y2="207.4" stroke="#8a94a0" stroke-width="1"/>
+<rect x="93.2" y="202.7" width="6.3" height="4.7" fill="#8a94a0"/>
+<line x1="105.3" y1="202.7" x2="105.3" y2="205.6" stroke="#c06060" stroke-width="1"/>
+<rect x="102.2" y="202.7" width="6.3" height="2.9" fill="#c06060"/>
+<line x1="114.3" y1="202.5" x2="114.3" y2="205.6" stroke="#8a94a0" stroke-width="1"/>
+<rect x="111.2" y="202.5" width="6.3" height="3.1" fill="#8a94a0"/>
+<line x1="123.3" y1="200.7" x2="123.3" y2="202.5" stroke="#8a94a0" stroke-width="1"/>
+<rect x="120.1" y="200.7" width="6.3" height="1.7" fill="#8a94a0"/>
+<line x1="132.3" y1="199.7" x2="132.3" y2="200.8" stroke="#c06060" stroke-width="1"/>
+<rect x="129.1" y="200.7" width="6.3" height="1.0" fill="#c06060"/>
+<line x1="141.2" y1="193.1" x2="141.2" y2="200.8" stroke="#8a94a0" stroke-width="1"/>
+<rect x="138.1" y="195.7" width="6.3" height="5.1" fill="#8a94a0"/>
+<line x1="150.2" y1="195.7" x2="150.2" y2="195.8" stroke="#c06060" stroke-width="1"/>
+<rect x="147.1" y="195.7" width="6.3" height="1.0" fill="#c06060"/>
+<line x1="159.2" y1="195.7" x2="159.2" y2="195.8" stroke="#8a94a0" stroke-width="1"/>
+<rect x="156.0" y="195.7" width="6.3" height="1.0" fill="#8a94a0"/>
+<line x1="168.1" y1="194.7" x2="168.1" y2="197.9" stroke="#c06060" stroke-width="1"/>
+<rect x="165.0" y="195.7" width="6.3" height="1.0" fill="#c06060"/>
+<line x1="177.1" y1="190.7" x2="177.1" y2="197.9" stroke="#8a94a0" stroke-width="1"/>
+<rect x="174.0" y="190.7" width="6.3" height="5.1" fill="#8a94a0"/>
+<line x1="186.1" y1="184.1" x2="186.1" y2="190.7" stroke="#8a94a0" stroke-width="1"/>
+<rect x="182.9" y="184.6" width="6.3" height="6.1" fill="#8a94a0"/>
+<line x1="195.1" y1="181.3" x2="195.1" y2="185.0" stroke="#8a94a0" stroke-width="1"/>
+<rect x="191.9" y="181.3" width="6.3" height="3.4" fill="#8a94a0"/>
+<line x1="204.0" y1="172.3" x2="204.0" y2="181.3" stroke="#8a94a0" stroke-width="1"/>
+<rect x="200.9" y="174.2" width="6.3" height="7.1" fill="#8a94a0"/>
+<line x1="213.0" y1="172.8" x2="213.0" y2="174.2" stroke="#8a94a0" stroke-width="1"/>
+<rect x="209.9" y="173.6" width="6.3" height="1.0" fill="#8a94a0"/>
+<line x1="222.0" y1="173.5" x2="222.0" y2="175.5" stroke="#c06060" stroke-width="1"/>
+<rect x="218.8" y="173.6" width="6.3" height="1.8" fill="#c06060"/>
+<line x1="230.9" y1="175.5" x2="230.9" y2="175.9" stroke="#c06060" stroke-width="1"/>
+<rect x="227.8" y="175.5" width="6.3" height="1.0" fill="#c06060"/>
+<line x1="239.9" y1="175.9" x2="239.9" y2="183.2" stroke="#c06060" stroke-width="1"/>
+<rect x="236.8" y="175.9" width="6.3" height="7.2" fill="#c06060"/>
+<line x1="248.9" y1="182.0" x2="248.9" y2="186.9" stroke="#c06060" stroke-width="1"/>
+<rect x="245.7" y="183.2" width="6.3" height="1.0" fill="#c06060"/>
+<line x1="257.9" y1="172.6" x2="257.9" y2="186.1" stroke="#8a94a0" stroke-width="1"/>
+<rect x="254.7" y="174.6" width="6.3" height="8.7" fill="#8a94a0"/>
+<line x1="266.8" y1="172.2" x2="266.8" y2="176.5" stroke="#c06060" stroke-width="1"/>
+<rect x="263.7" y="174.6" width="6.3" height="1.9" fill="#c06060"/>
+<line x1="275.8" y1="176.5" x2="275.8" y2="180.1" stroke="#c06060" stroke-width="1"/>
+<rect x="272.7" y="176.5" width="6.3" height="3.6" fill="#c06060"/>
+<line x1="284.8" y1="180.1" x2="284.8" y2="181.9" stroke="#c06060" stroke-width="1"/>
+<rect x="281.6" y="180.1" width="6.3" height="1.0" fill="#c06060"/>
+<line x1="293.7" y1="180.1" x2="293.7" y2="183.9" stroke="#c06060" stroke-width="1"/>
+<rect x="290.6" y="180.3" width="6.3" height="2.3" fill="#c06060"/>
+<line x1="302.7" y1="182.6" x2="302.7" y2="183.7" stroke="#c06060" stroke-width="1"/>
+<rect x="299.6" y="182.6" width="6.3" height="1.0" fill="#c06060"/>
+<line x1="311.7" y1="181.0" x2="311.7" y2="182.7" stroke="#8a94a0" stroke-width="1"/>
+<rect x="308.5" y="181.0" width="6.3" height="1.7" fill="#8a94a0"/>
+<line x1="320.7" y1="177.4" x2="320.7" y2="183.8" stroke="#8a94a0" stroke-width="1"/>
+<rect x="317.5" y="177.4" width="6.3" height="3.7" fill="#8a94a0"/>
+<line x1="329.6" y1="172.5" x2="329.6" y2="177.4" stroke="#8a94a0" stroke-width="1"/>
+<rect x="326.5" y="174.7" width="6.3" height="2.7" fill="#8a94a0"/>
+<line x1="338.6" y1="174.7" x2="338.6" y2="180.2" stroke="#c06060" stroke-width="1"/>
+<rect x="335.5" y="174.7" width="6.3" height="4.9" fill="#c06060"/>
+<line x1="347.6" y1="167.5" x2="347.6" y2="182.6" stroke="#8a94a0" stroke-width="1"/>
+<rect x="344.4" y="169.3" width="6.3" height="10.2" fill="#8a94a0"/>
+<line x1="356.5" y1="169.3" x2="356.5" y2="171.2" stroke="#c06060" stroke-width="1"/>
+<rect x="353.4" y="169.3" width="6.3" height="1.7" fill="#c06060"/>
+<line x1="365.5" y1="161.5" x2="365.5" y2="171.0" stroke="#8a94a0" stroke-width="1"/>
+<rect x="362.4" y="161.5" width="6.3" height="9.5" fill="#8a94a0"/>
+<line x1="374.5" y1="110.9" x2="374.5" y2="161.5" stroke="#8a94a0" stroke-width="1"/>
+<rect x="371.3" y="152.2" width="6.3" height="9.3" fill="#8a94a0"/>
+<line x1="383.5" y1="147.1" x2="383.5" y2="152.3" stroke="#8a94a0" stroke-width="1"/>
+<rect x="380.3" y="148.9" width="6.3" height="3.3" fill="#8a94a0"/>
+<line x1="392.4" y1="148.9" x2="392.4" y2="157.0" stroke="#c06060" stroke-width="1"/>
+<rect x="389.3" y="148.9" width="6.3" height="8.1" fill="#c06060"/>
+<line x1="401.4" y1="157.0" x2="401.4" y2="157.0" stroke="#c06060" stroke-width="1"/>
+<rect x="398.3" y="157.0" width="6.3" height="1.0" fill="#c06060"/>
+<line x1="410.4" y1="153.8" x2="410.4" y2="157.0" stroke="#8a94a0" stroke-width="1"/>
+<rect x="407.2" y="153.8" width="6.3" height="3.2" fill="#8a94a0"/>
+<line x1="419.3" y1="153.8" x2="419.3" y2="157.3" stroke="#c06060" stroke-width="1"/>
+<rect x="416.2" y="153.8" width="6.3" height="3.5" fill="#c06060"/>
+<line x1="428.3" y1="156.6" x2="428.3" y2="157.3" stroke="#8a94a0" stroke-width="1"/>
+<rect x="425.2" y="157.1" width="6.3" height="1.0" fill="#8a94a0"/>
+<line x1="437.3" y1="153.1" x2="437.3" y2="157.5" stroke="#8a94a0" stroke-width="1"/>
+<rect x="434.1" y="156.5" width="6.3" height="1.0" fill="#8a94a0"/>
+<line x1="446.3" y1="155.5" x2="446.3" y2="156.6" stroke="#8a94a0" stroke-width="1"/>
+<rect x="443.1" y="155.5" width="6.3" height="1.0" fill="#8a94a0"/>
+<line x1="455.2" y1="154.7" x2="455.2" y2="155.6" stroke="#8a94a0" stroke-width="1"/>
+<rect x="452.1" y="155.0" width="6.3" height="1.0" fill="#8a94a0"/>
+<line x1="464.2" y1="149.9" x2="464.2" y2="155.0" stroke="#8a94a0" stroke-width="1"/>
+<rect x="461.1" y="149.9" width="6.3" height="5.1" fill="#8a94a0"/>
+<line x1="473.2" y1="139.1" x2="473.2" y2="149.9" stroke="#8a94a0" stroke-width="1"/>
+<rect x="470.0" y="140.2" width="6.3" height="9.7" fill="#8a94a0"/>
+<line x1="482.1" y1="91.7" x2="482.1" y2="144.2" stroke="#c06060" stroke-width="1"/>
+<rect x="479.0" y="140.2" width="6.3" height="3.8" fill="#c06060"/>
+<line x1="491.1" y1="142.3" x2="491.1" y2="144.0" stroke="#8a94a0" stroke-width="1"/>
+<rect x="488.0" y="142.3" width="6.3" height="1.8" fill="#8a94a0"/>
+<line x1="500.1" y1="142.2" x2="500.1" y2="142.7" stroke="#c06060" stroke-width="1"/>
+<rect x="496.9" y="142.3" width="6.3" height="1.0" fill="#c06060"/>
+<line x1="509.1" y1="90.2" x2="509.1" y2="142.7" stroke="#8a94a0" stroke-width="1"/>
+<rect x="505.9" y="119.1" width="6.3" height="23.6" fill="#8a94a0"/>
+<line x1="518.0" y1="119.1" x2="518.0" y2="149.6" stroke="#c06060" stroke-width="1"/>
+<rect x="514.9" y="119.1" width="6.3" height="29.7" fill="#c06060"/>
+<line x1="527.0" y1="147.2" x2="527.0" y2="167.8" stroke="#c06060" stroke-width="1"/>
+<rect x="523.9" y="148.8" width="6.3" height="19.0" fill="#c06060"/>
+<line x1="536.0" y1="149.9" x2="536.0" y2="168.0" stroke="#8a94a0" stroke-width="1"/>
+<rect x="532.8" y="149.9" width="6.3" height="17.9" fill="#8a94a0"/>
+<line x1="544.9" y1="140.4" x2="544.9" y2="151.1" stroke="#8a94a0" stroke-width="1"/>
+<rect x="541.8" y="140.4" width="6.3" height="9.4" fill="#8a94a0"/>
+<line x1="553.9" y1="132.9" x2="553.9" y2="143.9" stroke="#c06060" stroke-width="1"/>
+<rect x="550.8" y="140.4" width="6.3" height="3.4" fill="#c06060"/>
+<line x1="562.9" y1="130.7" x2="562.9" y2="144.0" stroke="#8a94a0" stroke-width="1"/>
+<rect x="559.7" y="130.7" width="6.3" height="13.2" fill="#8a94a0"/>
+<line x1="571.9" y1="130.4" x2="571.9" y2="134.5" stroke="#c06060" stroke-width="1"/>
+<rect x="568.7" y="130.7" width="6.3" height="1.4" fill="#c06060"/>
+<line x1="580.8" y1="112.7" x2="580.8" y2="132.7" stroke="#8a94a0" stroke-width="1"/>
+<rect x="577.7" y="117.1" width="6.3" height="15.1" fill="#8a94a0"/>
+<line x1="589.8" y1="62.8" x2="589.8" y2="130.4" stroke="#c06060" stroke-width="1"/>
+<rect x="586.7" y="117.1" width="6.3" height="12.9" fill="#c06060"/>
+<line x1="598.8" y1="106.2" x2="598.8" y2="131.1" stroke="#8a94a0" stroke-width="1"/>
+<rect x="595.6" y="108.6" width="6.3" height="21.4" fill="#8a94a0"/>
+<line x1="607.7" y1="108.6" x2="607.7" y2="121.9" stroke="#c06060" stroke-width="1"/>
+<rect x="604.6" y="108.6" width="6.3" height="9.1" fill="#c06060"/>
+<line x1="616.7" y1="117.5" x2="616.7" y2="123.9" stroke="#c06060" stroke-width="1"/>
+<rect x="613.6" y="117.7" width="6.3" height="1.5" fill="#c06060"/>
+<line x1="625.7" y1="110.9" x2="625.7" y2="119.2" stroke="#8a94a0" stroke-width="1"/>
+<rect x="622.5" y="110.9" width="6.3" height="8.3" fill="#8a94a0"/>
+<line x1="634.7" y1="86.4" x2="634.7" y2="120.4" stroke="#8a94a0" stroke-width="1"/>
+<rect x="631.5" y="86.4" width="6.3" height="24.5" fill="#8a94a0"/>
+<line x1="643.6" y1="20.0" x2="643.6" y2="101.8" stroke="#c06060" stroke-width="1"/>
+<rect x="640.5" y="86.4" width="6.3" height="14.0" fill="#c06060"/>
+<line x1="652.6" y1="69.6" x2="652.6" y2="137.3" stroke="#8a94a0" stroke-width="1"/>
+<rect x="649.5" y="81.8" width="6.3" height="18.5" fill="#8a94a0"/>
+<line x1="661.6" y1="81.6" x2="661.6" y2="87.2" stroke="#c06060" stroke-width="1"/>
+<rect x="658.4" y="81.8" width="6.3" height="5.3" fill="#c06060"/>
+<line x1="670.5" y1="99.7" x2="670.5" y2="99.7" stroke="#5fe39a" stroke-width="1"/>
+<rect x="667.4" y="99.7" width="6.3" height="1.0" fill="#5fe39a"/>
+<line x1="679.5" y1="80.3" x2="679.5" y2="96.1" stroke="#5fe39a" stroke-width="1"/>
+<rect x="676.4" y="94.6" width="6.3" height="1.5" fill="#5fe39a"/>
+<text x="50" y="224.0" text-anchor="end" font-family="IBM Plex Mono" font-size="10" fill="#6b7682">1.96e-08</text>
+<text x="50" y="124.0" text-anchor="end" font-family="IBM Plex Mono" font-size="10" fill="#6b7682">1.43e-07</text>
+<text x="50" y="24.0" text-anchor="end" font-family="IBM Plex Mono" font-size="10" fill="#6b7682">2.67e-07</text>
+<text x="60.5" y="236" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#6b7682">13 Sep 18:00</text>
+<text x="159.2" y="236" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#6b7682">15 Sep 04:00</text>
+<text x="257.9" y="236" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#6b7682">15 Sep 15:00</text>
+<text x="356.5" y="236" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#6b7682">16 Sep 02:00</text>
+<text x="455.2" y="236" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#6b7682">16 Sep 13:00</text>
+<text x="553.9" y="236" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#6b7682">17 Sep 00:00</text>
+<text x="652.6" y="236" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#6b7682">17 Sep 11:00</text>
+<line x1="666.1" y1="20" x2="666.1" y2="220" stroke="#f5b640" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="660.1" y="32" text-anchor="end" font-family="IBM Plex Sans" font-size="11" fill="#a7b1bc">copied once from pump.fun</text>
+<text x="672.1" y="32" font-family="IBM Plex Sans" font-size="11" fill="#5fe39a" font-weight="600">ours, live</text>
+<text x="666.1" y="258" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#f5b640">indexer started 17 Sep 21:23 IST</text>
+</svg></div>
+  <p style="margin-top:10px">583 minutes copied, 26 minutes ours so far. From tomorrow, the green part keeps growing forever. The grey part never changes and never needs fetching again.</p>
+
+  <h2>4 · Why the copy matters</h2>
+  <div class="two">
+    <div class="bad"><b>Without it</b><span>Open Speed at 21:30 tonight: chart shows 7 minutes. Market cap fine, 24h change unknown, looks like a token born an hour ago.</span></div>
+    <div class="good"><b>With it</b><span>Open Speed: four days of price, the pump on the 17th, the 24h change, the same chart pump.fun shows. Plus our live tape they don't have.</span></div>
+  </div>
+
+  <h2>5 · Which tool does which job</h2>
+  <div class="tw"><table>
+    <tr><th>Job</th><th>Tool</th><th>When</th></tr>
+    <tr><td class="n">Every trade, every new token, live</td><td>constant-k Kaldera stream</td><td class="g">forever, every second</td></tr>
+    <tr><td class="n">Block time, token supply, name, tax</td><td>constant-k RPC</td><td class="g">forever, per new slot and token</td></tr>
+    <tr><td class="n">Sending the user's swap</td><td>constant-k staked RPC</td><td class="g">forever, phase 2</td></tr>
+    <tr><td class="n">Stock price in dollars</td><td>DexScreener</td><td class="g">forever, every 30s, 94 stocks</td></tr>
+    <tr><td class="n">List of stock tokens</td><td>StonkFun quote-tokens</td><td class="g">forever, hourly</td></tr>
+    <tr><td class="n">Tokens that existed before tonight</td><td>Raydium list, pump.fun list, DexScreener</td><td class="a">once, done</td></tr>
+    <tr><td class="n">Charts from before tonight</td><td>Raydium klines, pump.fun candles</td><td class="a">once, running now</td></tr>
+    <tr><td class="n">Record of everything</td><td>Postgres on our VPS</td><td class="g">forever</td></tr>
+    <tr><td class="n">Push each trade to phones</td><td>Redis on our VPS</td><td class="g">forever</td></tr>
+  </table></div>
+  <p style="margin-top:12px">Green rows are the product. Amber rows are a one-time copy of the past, because the chain stream only rewinds 24 hours and these tokens are days or months old. After tonight, no chart on our app is ever fetched from pump.fun or Raydium again. Ours is the only source.</p>
+
+  <h2>6 · What each screen reads</h2>
+  <div class="box"><b>Stocks list</b>      stocks table: 94 rows, USD price every 30s, count of memes per stock
+<b>Memes for NVDAx</b>  tokens + token_stats: name, image, launchpad, price, mcap, 24h vol, buys/sells, graduated or not
+<b>Token page</b>       candles_1m for the chart · trades for the tape · token_stats for the header
+<b>Live</b>             each new trade pushed to the phone; it moves the last candle itself</div>
+  <p style="margin-top:14px">None of these screens call Raydium, pump.fun or DexScreener. They call our database. That's the point of indexing: we own the data, so the app is fast, and we can show things nobody else does.</p>
+</div></body></html>

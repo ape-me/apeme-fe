@@ -1,0 +1,150 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><title>ApeMe Build Plan</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#0b0e12;--bg2:#12161c;--bg3:#1a2028;--line:#232a33;--line2:#2e3742;--ink:#eef2f5;--ink2:#a7b1bc;--ink3:#6b7682;--g:#5fe39a;--gs:#16302a;--a:#f5b640;--as:#3a2c12;--r:#ff5c5c;--rs:#3a1a1a;--b:#6db3ff;--bs:#14243a;--p:#c99bff;--disp:"Bricolage Grotesque","Archivo",Arial,sans-serif;--body:"IBM Plex Sans",Arial,sans-serif;--mono:"IBM Plex Mono",Menlo,monospace}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;margin:0}
+.page{max-width:1080px;margin:0 auto;padding:48px 24px 96px}
+h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1{font-size:56px;line-height:.95;font-weight:800}
+h2{font-size:28px;line-height:1.1;font-weight:700;margin:72px 0 8px}
+h3{font-size:17px;font-weight:700}
+p{margin:0 0 14px;max-width:66ch;color:var(--ink2)}
+.sub{color:var(--ink2);font-size:17px;margin-bottom:20px;max-width:70ch}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:14px}
+.eyebrow b{color:var(--g);font-weight:600}
+.lede{font-size:21px;line-height:1.35;color:var(--ink);max-width:44ch;margin:16px 0 22px}
+a{color:var(--g);text-decoration:none;border-bottom:1px solid #234a3a}
+.rules{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}
+.rule{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:16px 18px;border-top:3px solid var(--g)}
+.rule .k{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)} .rule h3{font-size:19px;margin:6px 0 6px} .rule p{font-size:14px;margin:0}
+.phase{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:20px 22px;margin-top:14px;display:grid;gap:12px;border-left:4px solid var(--pc,var(--line2))}
+.phase .head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+.phase .head h3{font-size:24px} .phase .head .n{font-family:var(--mono);font-size:12px;color:var(--pc);letter-spacing:.08em;text-transform:uppercase}
+.phase .when{font-family:var(--mono);font-size:12.5px;color:var(--ink3)}
+.ship{background:var(--bg3);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:15px;color:var(--ink)}
+.ship b{color:var(--pc);font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:4px}
+.lanes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lane{border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13.5px;color:var(--ink2)}
+.lane b{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:6px}
+.lane ul{margin:0;padding-left:16px;display:grid;gap:3px}
+.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:13.5px}
+.meta div{border-top:1px solid var(--line);padding-top:8px;color:var(--ink2)}
+.meta b{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:3px}
+.meta .ok{color:var(--g)} .meta .no{color:var(--ink)}
+.tw{overflow-x:auto;margin-top:16px} table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);padding:8px 12px 8px 0;border-bottom:1px solid var(--line);font-weight:600}
+td{padding:9px 12px 9px 0;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)} td.n{font-weight:600;color:var(--ink);white-space:nowrap} td.c{font-family:var(--mono);font-size:12.5px} td.g{color:var(--g)} td.r{color:var(--r)} td.w{color:var(--a)}
+.cal{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:16px}
+.day{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 8px;font-size:12px;color:var(--ink2);min-height:120px;display:grid;gap:4px;align-content:start}
+.day .d{font-family:var(--mono);font-size:11px;color:var(--ink3)} .day .t{font-weight:600;color:var(--ink);font-size:12.5px}
+.day span{display:block;padding:3px 6px;border-radius:6px;background:var(--bg3);font-size:11.5px}
+.day span.p0{border-left:3px solid #a7b1bc}.day span.p1{border-left:3px solid #5fe39a}.day span.p2{border-left:3px solid #f5b640}.day span.p3{border-left:3px solid #6db3ff}.day span.p4{border-left:3px solid #c99bff}.day span.p5{border-left:3px solid #ff8fb1}.day span.p6{border-left:3px solid #ff5c5c}
+.foot{margin-top:72px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink3);font-family:var(--mono)}
+@media(max-width:820px){.rules,.meta,.lanes{grid-template-columns:1fr}h1{font-size:40px}.cal{grid-template-columns:repeat(3,1fr)}}
+</style>
+<div class="page">
+  <div class="eyebrow">ApeMe · apeme.fun · <b>build plan</b></div>
+  <h1>Six phases, indexer first, nothing waits</h1>
+  <p class="lede">The indexer is phase 0 because it is the product. Every screen is built in parallel against a fixed contract, so nothing waits on it, and nothing is built on top of it.</p>
+  <p class="sub">Nine days from Wednesday 16 Sep. Two lanes run at once: backend on the VPS and Cloudflare, app on the Mac. If a phase slips, the ones after it still ship, because every one has a fallback written down.</p>
+
+  <div class="rules">
+    <div class="rule"><div class="k">rule 1</div><h3>Contract on the first morning</h3><p>Before the indexer gets a line of code, the schema, the Event shape and every endpoint's JSON shape are written, and the Worker serves fake data for all of them. Two hours. The app builds every screen against that. Real data replaces fake underneath without the app changing.</p></div>
+    <div class="rule"><div class="k">rule 2</div><h3>Indexer first, but nothing on top of it</h3><p>The stream is built first because it is the beef. But every number also has a polled source from public APIs, so if the stream slips, screens go live on time and just run 5 seconds behind until it catches up.</p></div>
+    <div class="rule"><div class="k">rule 3</div><h3>Every phase has a demo</h3><p>A phase is done when the thing it ships can be opened on a phone or hit with curl and shown to someone. Not when the code is written.</p></div>
+  </div>
+
+  <h2>The phases</h2>
+
+  <div class="phase" style="--pc:#f5b640"><div class="head"><div><div class="n">phase 0</div><h3>The indexer</h3></div><div class="when">Wed 16 to Fri 18 · 3 days</div></div>
+    <div class="ship"><b>ships</b>A StonkFun or pump.fun trade lands in our database under a second after it lands on chain, decoded into the two primitives, with a health route showing slot lag. This is the beef. Everything else is a skin on it.</div>
+    <div class="lanes">
+      <div class="lane"><b>backend, Wed morning, before any code</b><ul><li>D1 schema: stocks, tokens, pools, trades, candles_1m, token_stats, cursor</li><li>The Event shape: PoolCreated and Swap, fields fixed</li><li>API contract and fixture JSON for every endpoint, served behind a mock flag. Two hours. This is what lets the app lane run without waiting</li></ul><b style="margin-top:10px">backend, Wed to Thu · decoders</b><ul><li>Generic Anchor event decoder, emit_cpi tag and discriminator lookup from the six IDLs</li><li>Six adapters to PoolCreated and Swap. LaunchLab and DBC pull quote mint and payer from accounts. CPMM from accounts plus balance delta</li><li>Fixtures: 8 real transactions per program saved as JSON, tests green</li></ul><b style="margin-top:10px">backend, Thu to Fri · stream</b><ul><li>Yellowstone client on Nexus, one stream per program, source filter with the stock mint list, proven live</li><li>Batch every 500ms, sign, post to Ingest. Cursor by slot, replay on restart</li><li>Ingest on the Worker: dedupe by signature, upsert token and pool on PoolCreated, insert trade, fold candle, bump stats</li><li>systemd unit, health route, alert on silence</li></ul></div>
+      <div class="lane"><b>app, same three days, on mocks</b><ul><li>Xcode project, SwiftUI shell, three tabs, API client from the contract</li><li>Privy SDK, login screen</li><li>Stocks screen and memes-for-stock screen on fixture data</li><li>Token page: Canvas candle chart, trade tape on a fixture WebSocket</li><li>By Friday night every screen exists and works on fake data</li></ul></div>
+    </div>
+    <div class="meta"><div><b>needs</b><span class="ok">the five data decisions, the Nexus key, VPS access</span></div><div><b>unblocks</b><span class="no">phase 1 reads what this writes</span></div><div><b>if it slips</b><span class="no">phase 1 has a polled fallback for every number, so screens still go live on time, just 5 seconds behind</span></div></div>
+  </div>
+
+  <div class="phase" style="--pc:#5fe39a"><div class="head"><div><div class="n">phase 1</div><h3>Real data on every screen</h3></div><div class="when">Sat 19 · 1 day</div></div>
+    <div class="ship"><b>ships</b>Screens 1, 2 and 3 with real data, mock flag off. Every stock token, every stonk meme under its stock, the token page live from the indexer.</div>
+    <div class="lanes">
+      <div class="lane"><b>backend</b><ul><li>Stocks poller: StonkFun quote-tokens into stocks. Tessera valuations only if time at the end</li><li>Backfill: LaunchLab list by both StonkFun platform ids, pump.fun coins by quote mint, historical curve trades from the LaunchLab history API. Everything launched before the stream started</li><li>Snapshot cron: DexScreener into token_stats and KV</li><li>Endpoints on real tables: stocks, memes by stock, token, trades, candles</li><li>Live room per token fed by Ingest. Floor room with 2-second diffs</li></ul></div>
+      <div class="lane"><b>app</b><ul><li>Flip the base URL from mock to real. That is the whole change</li><li>Fix what real data breaks: long names, empty states, thousands of rows</li></ul></div>
+    </div>
+    <div class="meta"><div><b>needs</b><span class="ok">phase 0 schema. The stream if it is up, polling if not</span></div><div><b>unblocks</b><span class="no">phases 3 and 4 read the catalog</span></div><div><b>if the stream is not up</b><span class="no">trades and candles come from the LaunchLab history API and GeckoTerminal, 5 seconds behind, same endpoints</span></div></div>
+  </div>
+
+  <div class="phase" style="--pc:#6db3ff"><div class="head"><div><div class="n">phase 2</div><h3>The ape</h3></div><div class="when">Sun 20 · 1 day</div></div>
+    <div class="ship"><b>ships</b>A real buy on mainnet from the phone. Tap Ape, preset amount, signed on device, confirmed, position badge on the card, fee row in the ledger.</div>
+    <div class="lanes">
+      <div class="lane"><b>backend</b><ul><li>Quote endpoint: Jupiter quote with the 1% fee parameter and our referral account</li><li>Ape endpoint: takes signed bytes, broadcasts through Nexus RPC with priority, records the fee row</li><li>Me endpoint: balances by RPC, positions from our trades table</li></ul></div>
+      <div class="lane"><b>app</b><ul><li>Ape sheet: amount presets, quote, one tap</li><li>Privy signing on device, no popup</li><li>Confirmation state, error states, position badge</li></ul></div>
+    </div>
+    <div class="meta"><div><b>needs</b><span class="ok">the contract, a Privy app id, a Jupiter referral account. Not the indexer</span></div><div><b>unblocks</b><span class="no">phase 4 pushes need an Ape button to land on</span></div><div><b>if it slips</b><span class="no">balances come from RPC, nothing here touches the stream. If Privy is late, Phantom deep link as the stopgap</span></div></div>
+  </div>
+
+  <div class="phase" style="--pc:#c99bff"><div class="head"><div><div class="n">phase 3</div><h3>Meteora DBC, the bounty target</h3></div><div class="when">Mon 21 · 1 day</div></div>
+    <div class="ship"><b>ships</b>A DBC view inside the app that nobody else has: every stock-quoted DBC pool on Solana, the curve drawn from its config, progress to the migration threshold, the fee schedule, and where it graduates to. Working on mainnet, which is what Meteora asked for over slides.</div>
+    <div class="lanes">
+      <div class="lane"><b>backend</b><ul><li>The indexer already streams every stock-quoted DBC pool from phase 0, so the list exists</li><li>Meteora DBC SDK reads each pool's config and state: curve points, quote reserve, migration threshold, fee scheduler, migration target DAMM v1 or v2</li><li>Endpoint per DBC pool: curve shape, progress, fees, next fee step, graduation ETA from recent volume</li><li>Config comparison: which DBC configs are used for stock pairs, grouped by fee and threshold, so an issuer can see what works</li></ul></div>
+      <div class="lane"><b>app</b><ul><li>DBC filter on the memes screen and a DBC badge on cards</li><li>Token page for a DBC pool: the curve drawn on Canvas with the current point marked, progress bar to migration, fee line</li><li>A small "DBC pools" section with the config comparison</li></ul></div>
+    </div>
+    <div class="meta"><div><b>needs</b><span class="ok">phase 0 stream on DBC, phase 1 catalog</span></div><div><b>unblocks</b><span class="no">nothing, it is leaf work</span></div><div><b>if it slips</b><span class="no">the list and progress bar ship from indexer data alone, the curve drawing and config comparison follow</span></div></div>
+  </div>
+
+  <div class="phase" style="--pc:#ff8fb1"><div class="head"><div><div class="n">phase 4</div><h3>KOL calls, first version</h3></div><div class="when">Tue 22 · 1 day</div></div>
+    <div class="ship"><b>ships</b>A tracked X account posts about a token we index, everyone watching them gets a push with an Ape button within two minutes, and the call is pinned on the chart at the price it was posted.</div>
+    <div class="lanes">
+      <div class="lane"><b>backend</b><ul><li>X reader cron, 20 seed handles, since last id</li><li>Classifier: cashtag, mint, ticker, launch link, against the catalog</li><li>Calls table with price at post, callouts endpoint per token</li><li>Queue to APNs with an Ape action</li><li>Fee ledger credits 0.3% to the called handle on apes from the push</li></ul></div>
+      <div class="lane"><b>app</b><ul><li>KOL watchlist screen, add by handle</li><li>Push handling, deep link into the ape sheet</li><li>Callout avatars pinned on the chart, callouts feed with return since call</li></ul></div>
+    </div>
+    <div class="meta"><div><b>needs</b><span class="ok">phase 1 catalog, phase 2 for the Ape action, an X developer account with a card, an APNs key</span></div><div><b>unblocks</b><span class="no">nothing</span></div><div><b>if it slips</b><span class="no">it is the last feature in, the submission stands without it</span></div></div>
+  </div>
+
+  <div class="phase" style="--pc:#ff5c5c"><div class="head"><div><div class="n">phase 5</div><h3>Break it, then ship it</h3></div><div class="when">Wed 23 to Thu 24 · 2 days</div></div>
+    <div class="ship"><b>ships</b>A TestFlight build ten people have traded on, a three-minute video, a README, and the submission form filled for the main track and Meteora DBC, plus Tessera only if it got done, a day before the deadline.</div>
+    <div class="lanes">
+      <div class="lane"><b>backend</b><ul><li>Kill the VPS, kill Nexus, kill a data API, one at a time. Fix anything that takes a screen down</li><li>Rate limit checks against the free tiers under ten users</li><li>README with architecture, the verification sheet, how to run</li></ul></div>
+      <div class="lane"><b>app</b><ul><li>TestFlight group of ten, collect what confused them, fix the top three</li><li>Record the video on device: open Nvidia, tap a meme, ape, see it land, open a DBC pool and its curve, get a call, ape from the push</li><li>Submit</li></ul></div>
+    </div>
+    <div class="meta"><div><b>needs</b><span class="ok">phases 0 to 2 at minimum</span></div><div><b>unblocks</b><span class="no">the submission</span></div><div><b>if it slips</b><span class="no">submit Wednesday night with what works, edits are allowed until close</span></div></div>
+  </div>
+
+  <h2>Who waits on whom</h2>
+  <p class="sub">Read across: what each phase needs before it can start. The app lane needs only the Wednesday-morning contract, ever.</p>
+  <div class="tw"><table>
+    <tr><th>Phase</th><th>Needs the contract</th><th>Needs the indexer</th><th>Needs the catalog</th><th>Needs the ape</th><th>Needs from you</th></tr>
+    <tr><td class="n">0 Indexer</td><td class="g">yes, the schema half</td><td></td><td></td><td></td><td>five decisions, Nexus key, VPS</td></tr>
+    <tr><td class="n">App screens on mocks</td><td class="g">yes</td><td></td><td></td><td></td><td>the Mac</td></tr>
+    <tr><td class="n">1 Real data</td><td class="g">yes</td><td class="w">preferred, polling if not</td><td></td><td></td><td>Cloudflare account</td></tr>
+    <tr><td class="n">2 Ape</td><td class="g">yes</td><td></td><td></td><td></td><td>Privy app id, Jupiter referral</td></tr>
+    <tr><td class="n">3 Meteora DBC</td><td class="g">yes</td><td></td><td class="g">yes</td><td></td><td></td></tr>
+    <tr><td class="n">4 KOL calls</td><td class="g">yes</td><td></td><td class="g">yes</td><td class="g">yes</td><td>X developer, APNs key</td></tr>
+    <tr><td class="n">5 Ship</td><td class="g">yes</td><td></td><td class="g">yes</td><td class="g">yes</td><td>ten testers, the Mac</td></tr>
+  </table></div>
+  <p class="sub" style="margin-top:14px">The indexer is built first because it is the product. Nothing is built on top of it, so a slip there never stops a screen.</p>
+
+  <h2>The calendar, both lanes</h2>
+  <div class="cal">
+    <div class="day"><div class="d">WED 16</div><div class="t">Schema, decoders</div><span class="p0">am · schema, Event, contract mocks</span><span class="p2">0 · decoder, adapters</span><span class="p0">app · shell, screens 1 and 2 on mocks</span></div>
+    <div class="day"><div class="d">THU 17</div><div class="t">Fixtures, stream</div><span class="p2">0 · fixtures green, stream on Nexus</span><span class="p0">app · token page on mocks</span></div>
+    <div class="day"><div class="d">FRI 18</div><div class="t">Indexer live</div><span class="p2">0 · ingest, cursor, systemd, health</span><span class="p0">app · chart, tape on mock socket</span></div>
+    <div class="day"><div class="d">SAT 19</div><div class="t">Real data</div><span class="p1">1 · stocks, backfill, stats, rooms</span><span class="p1">app · flip to real, fix breakage</span></div>
+    <div class="day"><div class="d">SUN 20</div><div class="t">Ape</div><span class="p3">2 · quote, ape, me</span><span class="p3">app · Privy signing, real ape</span></div>
+    <div class="day"><div class="d">MON 21</div><div class="t">Bounties</div><span class="p4">3 · DBC pools, curve, config</span><span class="p4">app · DBC filter, curve view</span></div>
+    <div class="day"><div class="d">TUE 22</div><div class="t">KOL calls</div><span class="p5">4 · reader, classifier, push</span><span class="p5">app · watchlist, callouts, push</span></div>
+    <div class="day"><div class="d">WED 23</div><div class="t">Break it</div><span class="p6">5 · failure drills, README</span><span class="p6">app · TestFlight to ten</span></div>
+    <div class="day"><div class="d">THU 24</div><div class="t">Ship</div><span class="p6">5 · submit, buffer</span><span class="p6">app · video, submit</span></div>
+  </div>
+
+  <h2>What you review and confirm</h2>
+  <div class="tw"><table>
+    <tr><th>Item</th><th>Why it matters</th><th>Status</th></tr>
+    <tr><td class="n">The deadline</td><td>The rules say Friday 18 Sep 4pm ET. This plan assumes nine days. If it is Friday, phases 0 to 2a and 3 ship and the rest waits.</td><td class="w">confirm on the site</td></tr>
+    <tr><td class="n">The five data decisions</td><td>Two primitives, source filter, confirmed commitment, D1, floor room. Phase 0's schema is written from them.</td><td class="w">on the verification sheet</td></tr>
+    <tr><td class="n">The phase order</td><td>Indexer first, as you asked. Then real data, ape, Meteora DBC, KOL calls, ship. Tracks: main and DBC only, Tessera if time, no PreStocks, Pyth or Clawpump.</td><td class="w">your call</td></tr>
+    <tr><td class="n">Accounts</td><td>Cloudflare account name, Nexus key by Thu, Privy app id by Sat, X developer and APNs key by Mon.</td><td class="w">yours</td></tr>
+  </table></div>
+  <div class="foot">Written 16 Sep 2026. Companions: the system design, the program verification sheet, the Solana build sheet. All linked from the hub.</div>
+</div>
+</body></html>
