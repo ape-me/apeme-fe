@@ -39,6 +39,12 @@ WS  wss://…/ws/:mint      trades for one token
 - Money semantics: `priceQuote` = stock units per meme (e.g. NVDAx per NIU). `priceUsd = priceQuote × stock.priceUsd`. `mcapUsd` is already computed. Trade `base`/`quote` are what the wallet paid/received (transfer tax included), same as explorers show. `taxBps` = the meme's transfer tax (100 = 1%). `phase` is `curve` (on the launch curve, `progressPct` toward graduation) or `graduated` (on an AMM). `marketOpen` = NYSE regular session.
 - Test ids: NVDAx `Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh`; busiest meme on it, NIU `GXL9wD1F5TzVXfZ33fKkBxeuNi7wKMUR25SDEBGEZ9mN`.
 
+## Apelist (landing-page waitlist, live)
+Base: `https://apme-be.iamjoey.workers.dev/api/apelist`. Turnstile **site key** (public): `0x4AAAAAAE7uvyin5VEgyZCu`, domains apeme.fun / www / localhost.
+- `POST /` `{email, turnstile, ref?}` → 201 `{ok:true}` new · 200 `{ok:true}` existing (treat the same) · 400 `{ok:false,error:"invalid_email"|"bot"}` · 429 `rate_limited` · 500 `server`
+- `GET /count` → `{count}` (60s cache) · `GET /confirm?t=` → 302 to `https://apeme.fun/?confirmed=1|0`
+- CORS allows only apeme.fun, www.apeme.fun, http://localhost:5173. Confirmation email goes out via Resend from hey@apeme.fun.
+
 ## The three screens for this weekend
 1. **Stocks** — `/v1/stocks`. Rows: logo, symbol, name, USD price, 24h %, meme count. Sort by meme count. Tap → floor.
 2. **Floor** (per stock) — `/v1/stocks/:mint/tokens`, sort tabs volume / new / mcap, infinite scroll with `next`. Cards: image, symbol, phase pill, price USD, mcap, 24h vol, buys/sells, tax. Subscribe to `/ws/floor`, filter by the stock's memes (`quoteMint`), flash the card and bump the numbers on each trade.
