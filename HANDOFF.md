@@ -24,6 +24,7 @@ The app talks only to the backend. Never to Solana RPC or Postgres.
 ## The API (live now, no auth)
 ```
 GET /health
+GET /v1/ticker?memes=10&stonks=10  (alias /api/ticker)   → {updatedAt, tokens:[{id, kind:meme|stonk, label, logo, change24h, price}]}  memes first, by 24h volume
 GET /v1/stocks                                          → {stocks:[Stock], asOf}
 GET /v1/stocks/:mint/tokens?sort=volume|new|mcap&limit=50&cursor=   → {stock, tokens:[TokenCard], next}
 GET /v1/tokens/:mint                                    → TokenHeader
