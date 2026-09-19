@@ -27,6 +27,9 @@ GET /health
 GET /v1/ticker?memes=10&stonks=10  (alias /api/ticker)   → {updatedAt, tokens:[{id, kind:meme|stonk, label, logo, change24h, price}]}  memes first, by 24h volume
 GET /v1/stocks?issuer=prestocks                         → {stocks:[Stock], asOf}   Pre-IPO tab. issuer=xstocks,backpack → Stocks tab. Omit for all. Sorted by heat.
 GET /v1/stocks/:mint                                    → Stock                    stock page header
+GET /v1/stocks/:mint/history?range=1h|1d|1w|1m          → {mint, range, from, to, points:[{t, price, mark}], changeAbs, changePct}   Invest-mode line chart, oldest→newest
+GET /v1/collections                                     → {collections:[{id, title, tagline, stocks:[Stock]}], asOf}   home chips: Pre-IPO, AI, Big Tech, Crypto stocks, Meme stocks, Bets & markets, Defense, Health, ETFs
+GET /v1/movers?limit=5                                  → {gainers:[Stock], losers:[Stock], mostTraded:[Stock], asOf}   24h; pumped thin pools excluded
 GET /v1/floor?stock=<mint>&limit=30&<filters>            → {stock, new:[card], graduating:[card], graduated:[card], asOf}   one call = whole floor screen; omit stock for all stocks
 GET /v1/tokens?column=new|graduating|graduated&stock=&sort=&limit=50&cursor=&<filters>   → {tokens:[card], next}   one column, paged
 GET /v1/stocks/:mint/tokens?column=&sort=&limit=50&cursor=&<filters>   → {stock, tokens:[TokenCard], next}
