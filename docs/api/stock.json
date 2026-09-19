@@ -1,0 +1,28 @@
+{
+    "mint": "PreweJYECqtQwBtpxHL171nL2K6umo692gTm7Q3rpgF",
+    "symbol": "OPENAI",
+    "name": "OPENAI",
+    "issuer": "prestocks",
+    "category": "preipo",
+    "logo": "https://www.stonkfun.xyz/api/asset/quote-logo/PreweJYECqtQwBtpxHL171nL2K6umo692gTm7Q3rpgF?v=f6dce61d",
+    "priceUsd": 1140.6684873709637,
+    "change24h": 1.5,
+    "memes": 62,
+    "marketOpen": false,
+    "markUsd": 988.27,
+    "premiumPct": 15.42,
+    "liquidityUsd": 788866,
+    "stockVol24hUsd": 441849,
+    "buys24h": 1109,
+    "sells24h": 5266,
+    "heat": 2410,
+    "launched24h": 62,
+    "memeVol24hUsd": 199302,
+    "wallets24h": 1591,
+    "king": {
+        "mint": "9xhMStAAufkH5jA5nevaGy6M9fCsQ74BZnsXyo93DkfA",
+        "symbol": "ACORNELIUS",
+        "image": "https://metadata.j7tracker.io/images/40e647c75d0b46fc",
+        "vol24hUsd": 126597
+    }
+}

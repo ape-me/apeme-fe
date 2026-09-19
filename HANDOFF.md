@@ -25,7 +25,8 @@ The app talks only to the backend. Never to Solana RPC or Postgres.
 ```
 GET /health
 GET /v1/ticker?memes=10&stonks=10  (alias /api/ticker)   → {updatedAt, tokens:[{id, kind:meme|stonk, label, logo, change24h, price}]}  memes first, by 24h volume
-GET /v1/stocks                                          → {stocks:[Stock], asOf}
+GET /v1/stocks?issuer=prestocks                         → {stocks:[Stock], asOf}   Pre-IPO tab. issuer=xstocks,backpack → Stocks tab. Omit for all. Sorted by heat.
+GET /v1/stocks/:mint                                    → Stock                    stock page header
 GET /v1/floor?stock=<mint>&limit=30&<filters>            → {stock, new:[card], graduating:[card], graduated:[card], asOf}   one call = whole floor screen; omit stock for all stocks
 GET /v1/tokens?column=new|graduating|graduated&stock=&sort=&limit=50&cursor=&<filters>   → {tokens:[card], next}   one column, paged
 GET /v1/stocks/:mint/tokens?column=&sort=&limit=50&cursor=&<filters>   → {stock, tokens:[TokenCard], next}
@@ -33,8 +34,10 @@ GET /v1/tokens/:mint                                    → TokenHeader
 GET /v1/tokens/:mint/candles?tf=1m|5m|15m|1h|4h|1d&limit=300&before=   → {mint, tf, candles:[{t,o,h,l,c,v,n}]}  oldest→newest
 GET /v1/tokens/:mint/trades?limit=100&before=           → {mint, trades:[Trade]}  newest first
 WS  wss://…/ws/floor      every trade on every token
+WS  wss://…/ws/stock:<mint>   trades + launches on one stock's floor (the stock page)
 WS  wss://…/ws/:mint      trades for one token
 ```
+- **Stock fields** (Sun 20 Sep): `priceUsd` (Jupiter, what a buyer pays) · `markUsd` = fair value (PreStocks' mark for pre-IPO, the real Nasdaq price for xStocks/Backpack) · `premiumPct` = token vs fair value (+15 = trades 15% above; the badge on the card) · `liquidityUsd` · `stockVol24hUsd buys24h sells24h` = the stock's own trading · `heat` = launches×10 + wallets + meme volume/1000 (24h; the ranking) · `launched24h memeVol24hUsd wallets24h` = its floor · `king` = `{mint, symbol, image, vol24hUsd}` top meme by 24h volume, or null · `issuer` = prestocks | xstocks | backpack · `category` = preipo | stock | etf. Crypto pairs are never returned. Real response: `docs/api/stocks-prestocks.json`.
 - Columns: `new` = on the curve, created in the last 24h, newest first · `graduating` = on the curve, progress ≥ 60%, highest first · `graduated` = on the AMM, by 1h volume.
 - Sorts: `new mcap vol5m vol1h vol24h txns1h progress change1h change24h` (default per column as above).
 - Filters (all optional, combinable): `minMcap maxMcap minVol1h minVol24h minAge maxAge (minutes) minProgress maxProgress minTxns1h minBuys24h maxTax (bps) minHolders maxTop10 maxDev maxSnipers launchpad=stonkfun,pumpfun,dbc dexPaid=1 social=1 q=<search>`.
@@ -52,10 +55,11 @@ Base: `https://apme-be.iamjoey.workers.dev/api/apelist`. Turnstile **site key** 
 - `GET /count` → `{count}` (60s cache) · `GET /confirm?t=` → 302 to `https://apeme.fun/?confirmed=1|0`
 - CORS allows only apeme.fun, www.apeme.fun, http://localhost:5173. Confirmation email goes out via Resend from hey@apeme.fun.
 
-## The three screens for this weekend
-1. **Stocks** — `/v1/stocks`. Rows: logo, symbol, name, USD price, 24h %, meme count. Sort by meme count. Tap → floor.
-2. **Floor** (per stock) — `/v1/stocks/:mint/tokens`, sort tabs volume / new / mcap, infinite scroll with `next`. Cards: image, symbol, phase pill, price USD, mcap, 24h vol, buys/sells, tax. Subscribe to `/ws/floor`, filter by the stock's memes (`quoteMint`), flash the card and bump the numbers on each trade.
-3. **Token** — `/v1/tokens/:mint` header; candlestick chart from `/candles` (1m default, tf picker), live tape from `/ws/:mint` prepended to `/trades`. Append live trades into the current candle client-side. Big **Ape** button, disabled until Monday's wallet work.
+## The screens (updated Sun 20 Sep: Pre-IPO first)
+1. **Pre-IPO** (tab 1, the demo opener) — `/v1/stocks?issuer=prestocks`. 7 cards in the order returned (heat). Card: logo, symbol, price, **premium badge** (`premiumPct`, orange when > 5), 24h %, "N memes · $X today" (`launched24h`, `memeVol24hUsd`), king thumbnail. Tap → stock page.
+2. **Stocks** (tab 2) — same cards, `/v1/stocks?issuer=xstocks,backpack`.
+3. **Stock page** — header from `/v1/stocks/:mint` (price, fair value, premium, liquidity, buys/sells). **Buy the stock** button (Monday). **King of the floor** pinned with buy/sell. Then the floor list `/v1/stocks/:mint/tokens` (sort tabs volume / new / mcap, `next` paging). Subscribe `/ws/stock:<mint>` for live trades and launches on this floor; flash cards, bump numbers.
+4. **Token** — `/v1/tokens/:mint` header; candles from `/candles` (1m default, tf picker), live tape from `/ws/:mint` prepended to `/trades`. Append live trades into the current candle client-side. Ape button, disabled until Monday's wallet work. "Launched against $OPENAI" links back to the stock page.
 
 Read-only. No wallet, no login, no settings. Get these three feeling live and fast before anything else.
 
