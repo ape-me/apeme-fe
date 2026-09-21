@@ -68,8 +68,7 @@ struct StockView: View {
         VStack(alignment: .leading, spacing: 0) {
             hero(s)
             chart(s).padding(.top, 20)
-            RangePills(items: HistoryRange.allCases, selected: store.range, label: \.label) { store.setRange($0) }
-                .padding(.top, 14)
+            ranges.padding(.top, 14)
             HStack(spacing: 10) {
                 BigButton(label: "Buy", style: .primary) { app.sheet = .buyStock(s) }
                 BigButton(label: "Sell", style: .ghost) { app.show("Nothing to sell yet") }
@@ -108,12 +107,49 @@ struct StockView: View {
     }
 
     @ViewBuilder private func chart(_ s: Stock) -> some View {
+        let live = store.range == .live
         if store.chartLoading && store.points.isEmpty {
-            Skeleton(height: 200).padding(.horizontal, 20)
+            Skeleton(height: live ? 260 : 200).padding(.horizontal, 20)
         } else {
-            LineChart(points: store.points) { store.scrub = $0 }
+            LineChart(points: store.points, live: live, height: live ? 260 : 200) { store.scrub = $0 }
                 .animation(.easeOut(duration: 0.3), value: store.points.last?.price)
         }
+    }
+
+    /// LIVE · 1H · 1D · 7D▾ · ALL. The ▾ pill is a menu for 7D / 30D and shows whichever is picked.
+    private var ranges: some View {
+        HStack {
+            rangePill(.live); Spacer(); rangePill(.h1); Spacer(); rangePill(.d1); Spacer()
+            Menu {
+                ForEach(HistoryRange.long) { r in
+                    Button(r.label) { store.longRange = r; store.setRange(r) }
+                }
+            } label: {
+                let on = HistoryRange.long.contains(store.range)
+                HStack(spacing: 3) {
+                    Text(store.longRange.label)
+                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
+                }
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(on ? skin.accent : Theme.muted)
+                .frame(width: 56, height: 32)
+                .background(on ? skin.accentTint : .clear, in: .capsule)
+            }
+            Spacer(); rangePill(.all)
+        }
+        .padding(.horizontal, 8)
+    }
+
+    private func rangePill(_ r: HistoryRange) -> some View {
+        let on = store.range == r
+        return Button { store.setRange(r) } label: {
+            Text(r.label)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(on ? skin.accent : Theme.muted)
+                .frame(width: r == .live ? 52 : 44, height: 32)
+                .background(on ? skin.accentTint : .clear, in: .capsule)
+        }
+        .buttonStyle(.plain)
     }
 
     private func fairValue(_ s: Stock, _ mark: Double, _ p: Double) -> some View {

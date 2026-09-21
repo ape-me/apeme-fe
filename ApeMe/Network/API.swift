@@ -33,7 +33,7 @@ actor API {
         try await fetch("/stocks/\(mint)", ttl: fresh ? 0 : 5)
     }
     func history(_ mint: String, range: HistoryRange, fresh: Bool = false) async throws -> HistoryResponse {
-        try await fetch("/stocks/\(mint)/history?range=\(range.rawValue)", ttl: fresh ? 0 : 30)
+        try await fetch("/stocks/\(mint)/history?range=\(range.api)", ttl: fresh ? 0 : 30)
     }
     func floorTokens(_ mint: String, sort: FloorSort, cursor: String? = nil, limit: Int = 40) async throws -> StockTokensResponse {
         var p = "/stocks/\(mint)/tokens?sort=\(sort.rawValue)&limit=\(limit)"

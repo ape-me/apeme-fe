@@ -5,7 +5,8 @@ import Observation
 final class StockStore {
     let mint: String
     var stock: Stock?
-    var range: HistoryRange = .d1
+    var range: HistoryRange = .live
+    var longRange: HistoryRange = .w1
     var points: [LineChart.Point] = []
     var chartLoading = true
     var error: String?
