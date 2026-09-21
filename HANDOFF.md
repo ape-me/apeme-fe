@@ -73,7 +73,49 @@ Errors: 401 `unauthorized` (bad/missing token), 403 `invite_required` on trade r
 Invite gate is ON. While `status == "invite_required"` the app must show the invite screen before trading; browsing works. Test codes are with Joey.
 Every user's `referral.code` is also an invite code (5 uses). Share link `https://apeme.fun/i/<code>`.
 
-Coming next: `POST /v1/swap/quote`, `POST /v1/swap/submit`, `GET /v1/tx/:sig` (USDC only, we pay gas), then referral claim.
+Trading routes: see the Trading section below.
+
+## Trading (live Mon 21 Sep night, USDC only, we pay gas)
+
+All three need `privy-id-token`; `quote`/`submit` also need an activated account (403 `invite_required` otherwise).
+
+**`POST /v1/swap/quote`**
+```json
+{ "inputMint": "usdc", "outputMint": "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh", "amount": "1000000", "taker": "<user wallet>",
+  "slippageBps": 100, "priority": "normal" }
+```
+- `amount` = raw integer units of `inputMint` (USDC has 6 decimals: $1 = `1000000`; for sells it's the stock's raw units from `/v1/wallet` holdings `raw`).
+- One side must be USDC (`"usdc"` alias) → 422 `usdc_only` otherwise. Sell = inputMint is the stock.
+- `slippageBps` / `priority` optional; fall back to the user's Settings. Turbo silently drops to fast under $50.
+
+Response (real, $1 → NVDAx):
+```json
+{ "requestId": "8f0c…", "side": "buy", "inputMint": "EPjF…Dt1v", "outputMint": "Xsc9…9qEh", "symbol": "NVDAX",
+  "inAmount": "1000000", "outAmount": "434587", "minOut": "430241",
+  "inUsd": 1.0, "outUsd": 0.99, "priceImpactPct": 0.0, "slippageBps": 100,
+  "fee": { "bps": 100, "amountRaw": "10000", "mint": "EPjF…Dt1v", "usd": 0.01 },
+  "gas": { "paidBy": "apeme", "priority": "normal", "lamports": 10469, "rentLamports": 2039280 },
+  "premiumPct": 0.09, "markUsd": 224.05,
+  "transaction": "<base64 unsigned v0 tx>", "signers": { "feePayer": "95VX…XjYu", "user": "<taker>" }, "expiresAt": 1790010000 }
+```
+Show: "You get ≈ 0.4346 NVDAx", "Nasdaq $224.05 · here +0.09%", "Fee $0.01 · Gas free". Warn if `premiumPct > 5`. Re-quote on amount change (debounce 300 ms); a quote is valid 60 s (`expiresAt`), re-quote before submit if older.
+
+**Sign (Privy Swift)** — the user is a required signer but NOT the fee payer; the tx has two signature slots.
+```swift
+let tx = try VersionedTransaction.deserialize(Data(base64Encoded: quote.transaction)!)
+let msg = tx.message.serialize()                        // bytes to sign
+let sig = try await wallet.provider.signMessage(message: msg.base64EncodedString())
+tx.addSignature(publicKey: userPubkey, signature: Data(base64Encoded: sig)!)   // fills the user's slot; fee payer slot stays empty
+let signed = tx.serialize().base64EncodedString()
+```
+(SolanaSwift or solana-swift both expose deserialize/addSignature/serialize for VersionedTransaction.)
+
+**`POST /v1/swap/submit`** `{ "requestId", "signedTransaction": "<base64>" }` → `{ "signature": "5Kd…", "status": "submitted", "requestId" }`.
+BE checks the tx is byte-identical to the quote, verifies the user's signature, co-signs as fee payer, broadcasts. Errors (all 4xx, `error` field): `quote_expired` (410, re-quote), `slippage` (422, "price moved, try again"), `insufficient_funds` (422, show Deposit), `transaction does not match the quote` (422, bug), `too many trades this hour` (429).
+
+**`GET /v1/tx/:signature`** (public) → `{ "status": "pending" | "confirmed" | "failed", "slot"?, "error"? }`. Poll every 1 s after submit, stop on confirmed/failed (usually < 3 s). On confirmed: refresh `/v1/wallet/:address`; the position appears. `failed` with `error: "expired"` = blockhash timed out, re-quote and retry.
+
+Rules baked into the BE: 1% fee always in USDC (taken off the top on buys, from the guaranteed minimum on sells); gas + token-account rent paid by ApeMe; 20 sponsored trades per user per hour; referrer earns 20% of the fee on every confirmed swap ≥ $5.
 
 ## Apelist (landing-page waitlist, live)
 Base: `https://apme-be.iamjoey.workers.dev/api/apelist`. Turnstile **site key** (public): `0x4AAAAAAE7uvyin5VEgyZCu`, domains apeme.fun / www / localhost.
