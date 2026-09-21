@@ -29,11 +29,11 @@ actor API {
     func stocks(mints: [String]) async throws -> StocksResponse {
         try await fetch("/stocks?mints=\(mints.joined(separator: ","))", ttl: 5)
     }
-    func stock(_ mint: String) async throws -> Stock {
-        try await fetch("/stocks/\(mint)", ttl: 5)
+    func stock(_ mint: String, fresh: Bool = false) async throws -> Stock {
+        try await fetch("/stocks/\(mint)", ttl: fresh ? 0 : 5)
     }
-    func history(_ mint: String, range: HistoryRange) async throws -> HistoryResponse {
-        try await fetch("/stocks/\(mint)/history?range=\(range.rawValue)", ttl: 30)
+    func history(_ mint: String, range: HistoryRange, fresh: Bool = false) async throws -> HistoryResponse {
+        try await fetch("/stocks/\(mint)/history?range=\(range.rawValue)", ttl: fresh ? 0 : 30)
     }
     func floorTokens(_ mint: String, sort: FloorSort, cursor: String? = nil, limit: Int = 40) async throws -> StockTokensResponse {
         var p = "/stocks/\(mint)/tokens?sort=\(sort.rawValue)&limit=\(limit)"

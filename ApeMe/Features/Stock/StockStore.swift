@@ -33,18 +33,29 @@ final class StockStore {
         Task { await loadRange() }
     }
 
-    func loadRange() async {
+    func loadRange(fresh: Bool = false) async {
         rangeGen += 1
         let gen = rangeGen
-        chartLoading = true
+        chartLoading = points.isEmpty
         defer { if gen == rangeGen { chartLoading = false } }
         do {
-            let h = try await API.shared.history(mint, range: range)
+            let h = try await API.shared.history(mint, range: range, fresh: fresh)
             guard gen == rangeGen else { return }
-            points = h.points.compactMap { p in p.price.map { LineChart.Point(t: p.t, price: $0, mark: p.mark) } }
+            // The chart shows what people pay; fair value lives in the bar below, not on the line.
+            points = h.points.compactMap { p in p.price.map { LineChart.Point(t: p.t, price: $0, mark: nil) } }
         } catch {
-            guard gen == rangeGen else { return }
+            guard gen == rangeGen, !fresh else { return }
             points = []
+        }
+    }
+
+    /// No socket carries the stock's own price yet, so poll the edge every 5s while on screen.
+    func poll(app: AppState) async {
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(5))
+            if Task.isCancelled { break }
+            if let s = try? await API.shared.stock(mint, fresh: true) { stock = s; app.stocksByMint[mint] = s }
+            if scrub == nil { await loadRange(fresh: true) }
         }
     }
 

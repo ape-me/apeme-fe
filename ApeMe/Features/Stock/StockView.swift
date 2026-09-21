@@ -28,6 +28,7 @@ struct StockView: View {
         }
         .background(Theme.ground)
         .task { await store.load(app: app) }
+        .task { await store.poll(app: app) }
     }
 
     private var topbar: some View {
@@ -89,6 +90,7 @@ struct StockView: View {
         return VStack(alignment: .leading, spacing: 6) {
             Text(s.name).font(.system(size: 18, weight: .medium)).tracking(-0.45)
             Text(Fmt.usd(price)).heroText().contentTransition(.numericText())
+                .animation(.easeOut(duration: 0.3), value: price)
             HStack(spacing: 4) {
                 Text(Fmt.arrow(change)).foregroundStyle(Theme.change(change))
                 if let sp = store.scrub {
@@ -107,7 +109,8 @@ struct StockView: View {
         if store.chartLoading && store.points.isEmpty {
             Skeleton(height: 200).padding(.horizontal, 20)
         } else {
-            LineChart(points: store.points, reference: s.markUsd) { store.scrub = $0 }
+            LineChart(points: store.points) { store.scrub = $0 }
+                .animation(.easeOut(duration: 0.3), value: store.points.last?.price)
         }
     }
 
