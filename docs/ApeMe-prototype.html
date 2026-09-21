@@ -742,12 +742,12 @@ const MOCK={
     referral:{code:'R4DFAQ',invitesLeft:5,earnedUsd:0.24} },
   referrals:{ code:'R4DFAQ', link:'https://apeme.fun/i/R4DFAQ', invitesLeft:5, earnedUsd:0.24, claimableUsd:0.24,
     referred:[{userId:'did:privy:a1',handle:'sam',joinedAt:1790012000,volumeUsd:120.5},{userId:'did:privy:b2',handle:null,joinedAt:1790013000,volumeUsd:0}], payouts:[] },
-  wallets:{ [MOCK_ADDR]:{ address:MOCK_ADDR, cashUsd:24.35, solUsd:0, pnlUsd:-0.02, pendingSwaps:0,
-      holdings:[ {mint:'EPjF',kind:'cash',symbol:'USDC',name:'Cash',amount:24.35,raw:'24350000',decimals:6,priceUsd:1,valueUsd:24.35},
+  wallets:{ [MOCK_ADDR]:{ address:MOCK_ADDR, cashUsd:500, solUsd:0, pnlUsd:-0.02, pendingSwaps:0,
+      holdings:[ {mint:'EPjF',kind:'cash',symbol:'USDC',name:'Cash',amount:500,raw:'500000000',decimals:6,priceUsd:1,valueUsd:500},
         {mint:'Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh',kind:'stock',symbol:'NVDAX',name:'NVIDIA',image:'https://www.stonkfun.xyz/api/asset/quote-logo/Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh',amount:0.5249,raw:'52490000',decimals:8,priceUsd:227.58,valueUsd:119.46,change24h:1.91,costUsd:118.20,pnlUsd:1.26,pnlPct:1.07},
         {mint:'9xhMStAAufkH5jA5nevaGy6M9fCsQ74BZnsXyo93DkfA',kind:'meme',symbol:'ACORNELIUS',name:'acornelius',image:'https://metadata.j7tracker.io/images/40e647c75d0b46fc',quoteSymbol:'OPENAI',amount:1240000,raw:'1240000000000',decimals:6,priceUsd:0.0000025,valueUsd:3.10,change24h:-12.4,costUsd:5,pnlUsd:-1.9,pnlPct:-38} ],
       activity:[ {sig:'4oETxJB7q2mW8dLp1sK9vN3cR6tY5bH0aZfG7jXe5Vmn4',ts:Math.floor(Date.now()/1000)-300,type:'buy',status:'confirmed',source:'apeme',symbol:'NVDAX',image:'https://www.stonkfun.xyz/api/asset/quote-logo/Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh',stockSymbol:null,amount:0.5249,usd:1.00,feeUsd:0.01},
-        {sig:'2bQz7kLm9pRt4vXn1cWy6sHd8eJf3aGu5oPi0rTl2Kx',ts:Math.floor(Date.now()/1000)-1500,type:'deposit',status:'confirmed',source:'chain',symbol:'USDC',image:'',usd:25.00,from:'7ov6HkP2rQm8Lz3bWx1nYc5dVe9sFt4aGj6uNi0pR8oEh'},
+        {sig:'2bQz7kLm9pRt4vXn1cWy6sHd8eJf3aGu5oPi0rTl2Kx',ts:Math.floor(Date.now()/1000)-1500,type:'deposit',status:'confirmed',source:'chain',symbol:'USDC',image:'',usd:500.00,from:'7ov6HkP2rQm8Lz3bWx1nYc5dVe9sFt4aGj6uNi0pR8oEh'},
         {sig:null,ts:Math.floor(Date.now()/1000)-3600,type:'buy',status:'failed',source:'apeme',symbol:'ACORNELIUS',image:'https://metadata.j7tracker.io/images/40e647c75d0b46fc',stockSymbol:'OPENAI',amount:0,usd:5,error:'slippage'} ] },
     [MOCK_ADDR2]:{ address:MOCK_ADDR2, cashUsd:0, solUsd:0, pnlUsd:0, pendingSwaps:0, holdings:[{mint:'EPjF',kind:'cash',symbol:'USDC',name:'Cash',amount:0,raw:'0',decimals:6,priceUsd:1,valueUsd:0}], activity:[] } }
 };
@@ -812,7 +812,7 @@ function tradeSheet({side,item,stock,holding}){
   const usd=()=>Number(amount)||0;
   const youGet=()=>!q?'—':side==='sell'?fmt.usd(q.outUsd):fmt.qty(q.outQty,item.symbol);
   const requote=()=>{ clearTimeout(timer); q=null; if(side==='buy'?usd()<=0:pct==null){ phase='idle'; paint(); return; } if(side==='buy'&&usd()>cash){ phase='insufficient'; paint(); return; } phase='quoting'; paint();
-    timer=setTimeout(()=>{ q=acct.quote({side,item,usd:usd(),pct,holding,priority}); if(side==='sell') q.pct=pct; phase=(side==='buy'&&q.inUsd+q.totalChargeUsd>cash)?'insufficient':'ready'; paint(); },350); };
+    timer=setTimeout(()=>{ q=acct.quote({side,item,usd:usd(),pct,holding,priority}); if(side==='sell') q.pct=pct; phase=(side==='buy'&&q.inUsd+q.totalChargeUsd>cash)?'insufficient':'ready'; paint(); },180); };
   const header=()=>`<div class="sheet-title"><div style="display:flex;align-items:center;gap:10px">${isStock?logo({symbol:item.symbol,logo:item.logo||item.image},28):avatar({symbol:item.symbol,image:item.logo||item.image},'m')}<div><div class="h3">${verb} ${esc(item.symbol)}</div><div class="sub mono">${side==='sell'?`You hold ${fmt.qty(holding.amount,item.symbol)} · ${fmt.usd(holding.valueUsd)}`:`Cash ${fmt.usd(cash)}`}</div></div></div><button class="iconbtn" data-close aria-label="Close">${I.x}</button></div>`;
   const details=()=>`<div style="display:flex;flex-direction:column;gap:8px">
     ${isStock&&q?`<div class="sub mono"><span>${stock?.issuer==='prestocks'?'Fair value':'Nasdaq'} ${fmt.usd(q.markUsd)}</span> <span class="faint">·</span> <span style="color:var(--ink)">here ${fmt.pct(q.premiumPct,2)}</span></div>`:''}
