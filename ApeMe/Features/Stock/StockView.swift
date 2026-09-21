@@ -174,7 +174,6 @@ struct StockView: View {
             VStack(alignment: .leading, spacing: 0) {
                 SectionTitle("Market stats")
                 KCard {
-                    KV("Fair value", Fmt.usd(s.markUsd))
                     KV("Liquidity", Fmt.big(s.liquidityUsd))
                     KV("24h volume", Fmt.big(s.stockVol24hUsd))
                     KV("Buys · sells") {
@@ -222,87 +221,38 @@ private func zip2<A, B>(_ a: A?, _ b: B?) -> (A, B)? {
     return (a, b)
 }
 
-/// Premium to fair value. Two stats, a chip, and a gauge that fills from centre to the needle.
+/// Premium to fair value as three plain rows: what you pay, what it's worth, the gap.
+/// Same card pattern as Market stats. Premium badge is grey under 5%, amber at or above.
 struct FairValueBlock: View {
     let stock: Stock
     let mark: Double
     let premium: Double
 
     private var neutral: Bool { abs(premium) <= 0.25 }
-    private var tone: Color { neutral ? Theme.muted : premium < 0 ? Theme.green : Theme.red }
-    private var toneTint: Color { neutral ? Theme.greyT : premium < 0 ? Theme.greenT : Theme.redT }
-    private var chip: String {
-        neutral ? "At fair value" : "\(String(format: "%.1f", abs(premium)))% \(premium < 0 ? "under" : "over") fair value"
-    }
-    private var caption: String {
-        if stock.isPreIPO {
-            return "Fair value is PreStocks' mark from the company's last funding round. Above it means buyers are paying a premium."
-        }
-        var base = stock.symbol
-        if base.count > 1, base.last?.lowercased() == "x" { base.removeLast() }
-        return "Fair value is the live Nasdaq price for \(base). The token usually trades within 1% of it."
+    private var gapUsd: Double? { stock.priceUsd.map { $0 - mark } }
+    private var sentence: String {
+        let what = stock.isPreIPO ? "PreStocks' mark from the last funding round" : "the live Nasdaq price"
+        guard !neutral, let gap = gapUsd else { return "Trading at fair value — \(what)." }
+        let dir = premium > 0 ? "more" : "less"
+        return "Buyers pay \(Fmt.usd(abs(gap))) \(dir) than \(what)."
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             SectionTitle("Fair value")
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(alignment: .top) {
-                    stat("FAIR VALUE", Fmt.usd(mark), Theme.amber)
-                    Spacer()
-                    stat("TRADING AT", Fmt.usd(stock.priceUsd), Theme.ink, trailing: true)
+            KCard {
+                KV("You pay", Fmt.usd(stock.priceUsd))
+                KV("It's worth", Fmt.usd(mark))
+                KV(premium > 0 ? "Premium" : premium < 0 ? "Discount" : "Gap") {
+                    HStack(spacing: 8) {
+                        if let gap = gapUsd, !neutral { Text(Fmt.usd(abs(gap))) }
+                        PremiumBadge(pct: premium)
+                    }
                 }
-                gauge
-                HStack(spacing: 10) {
-                    Text(chip)
-                        .font(.system(size: 13, weight: .semibold)).monospacedDigit()
-                        .foregroundStyle(tone)
-                        .padding(.horizontal, 10).padding(.vertical, 6)
-                        .background(toneTint, in: .capsule)
-                    Spacer()
-                }
-                Text(caption).font(.sub).foregroundStyle(Theme.muted).lineSpacing(2)
+                Text(sentence).font(.sub).foregroundStyle(Theme.muted).lineSpacing(2)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
             }
-            .padding(16)
-            .background(Theme.surface, in: .rect(cornerRadius: 16))
         }
         .padding(.horizontal, 20).padding(.top, 22)
-    }
-
-    private func stat(_ label: String, _ value: String, _ color: Color, trailing: Bool = false) -> some View {
-        VStack(alignment: trailing ? .trailing : .leading, spacing: 4) {
-            Text(label).font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundStyle(Theme.faint)
-            Text(value).font(.system(size: 22, weight: .semibold)).tracking(-0.6).monospacedDigit().foregroundStyle(color)
-        }
-    }
-
-    /// −10% … +10%, zero in the centre. The fill runs from centre to the needle: left = under, right = over.
-    private var gauge: some View {
-        VStack(spacing: 8) {
-            GeometryReader { g in
-                let w = g.size.width
-                let frac = 0.5 + min(10, max(-10, premium)) / 20
-                let x = w * frac
-                let mid = w / 2
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.surface2).frame(height: 8)
-                    Capsule().fill(tone.opacity(0.9))
-                        .frame(width: max(4, abs(x - mid)), height: 8)
-                        .offset(x: min(x, mid))
-                    Rectangle().fill(Theme.faint).frame(width: 2, height: 16).position(x: mid, y: 4)
-                    Circle().fill(tone).frame(width: 16, height: 16)
-                        .overlay(Circle().stroke(Theme.surface, lineWidth: 3))
-                        .position(x: x, y: 4)
-                }
-            }
-            .frame(height: 16)
-            HStack {
-                Text("−10%").frame(maxWidth: .infinity, alignment: .leading)
-                Text("fair").frame(maxWidth: .infinity)
-                Text("+10%").frame(maxWidth: .infinity, alignment: .trailing)
-            }
-            .font(.system(size: 11, weight: .medium)).monospacedDigit().foregroundStyle(Theme.faint)
-        }
-        .padding(.top, 2)
     }
 }

@@ -2,7 +2,9 @@ import SwiftUI
 
 /// Horizontal ticker strip: symbol, price, arrow.
 struct StripItem: Identifiable, Hashable {
+    enum Kind { case stock, meme }
     let id: String
+    let kind: Kind
     let label: String
     let price: Double?
     let change: Double?
@@ -10,22 +12,48 @@ struct StripItem: Identifiable, Hashable {
 
 struct Strip: View {
     let items: [StripItem]
+    @Environment(AppState.self) private var app
+    /// Tap any change figure to flip the whole strip between `↑ 3.1%` and `↑ $32.10`.
+    @State private var showAmount = false
 
     var body: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 18) {
                 ForEach(items) { it in
                     HStack(spacing: 6) {
-                        Text(it.label).foregroundStyle(Theme.muted)
-                        Text(Fmt.usd(it.price))
-                        Text(Fmt.arrow(it.change, 1)).foregroundStyle(Theme.change(it.change))
+                        Button {
+                            switch it.kind {
+                            case .stock: app.openStock(it.id)
+                            case .meme: app.push(.token(it.id))
+                            }
+                        } label: {
+                            Text(it.label).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.muted).contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
+                        // Groww-style change chip: bold figure on a light green/red tint.
+                        Button {
+                            withAnimation(.easeOut(duration: 0.15)) { showAmount.toggle() }
+                        } label: {
+                            Text(change(it))
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(Theme.change(it.change))
+                                .padding(.horizontal, 7).frame(height: 22)
+                                .background((it.change ?? 0) >= 0 ? Theme.greenT : Theme.redT, in: .capsule)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .font(.system(size: 12, weight: .medium)).monospacedDigit()
+                    .monospacedDigit()
                 }
             }
             .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 12)
         }
         .scrollIndicators(.hidden)
+    }
+
+    private func change(_ it: StripItem) -> String {
+        guard showAmount, let pct = it.change, let price = it.price else { return Fmt.arrow(it.change, 1) }
+        let delta = price - price / (1 + pct / 100)
+        return (delta >= 0 ? "↑ " : "↓ ") + Fmt.usd(abs(delta))
     }
 }
 

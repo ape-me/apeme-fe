@@ -3,43 +3,27 @@ import SwiftUI
 struct YouView: View {
     @Environment(AppState.self) private var app
     @State private var confirmOnboarding = false
+    @State private var confirmSignOut = false
 
     var body: some View {
         VStack(spacing: 0) {
             Text("You").h1Text().frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 20).padding(.top, 16)
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Mode").h2Text()
-                        HStack {
-                            Text("Ape mode shows floors, kings and the live tape").font(.sub).foregroundStyle(Theme.muted)
-                            Spacer()
-                            ModeSwitch()
-                        }
-                        Text(app.isApe ? "Green. Floors, kings and the live tape up front." : "Blue. Stocks first, fair values, the calm view. Community tokens one tap away.")
-                            .font(.sub).foregroundStyle(Theme.muted).padding(.top, 4)
+                VStack(alignment: .leading, spacing: 0) {
+                    SettingRow(symbol: app.isApe ? "flame" : "chart.line.uptrend.xyaxis", title: "Ape mode",
+                               sub: app.isApe ? "Floors, kings and the live tape" : "Off · stocks and fair values",
+                               trailing: AnyView(SwitchShape(on: app.isApe, tint: Skin(mode: app.mode ?? .invest).accent))) {
+                        app.toggleMode()
                     }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Money").h2Text()
-                        SettingRow(symbol: "plus", title: "Add money", sub: "Apple Pay, another chain, or send SOL") { app.sheet = .deposit }
-                        SettingRow(symbol: nil, glyph: "◎", title: "Demo wallet",
-                                   sub: app.demoWallet ? "\(Fmt.short(API.demoAddress)) · a real wallet from the tape" : "Signed out · Portfolio shows the empty state",
-                                   trailing: AnyView(SwitchShape(on: app.demoWallet, tint: Skin(mode: app.mode ?? .invest).accent))) {
-                            app.demoWallet.toggle()
-                        }
-                        SettingRow(symbol: "doc.on.doc", title: "Wallet address", sub: Fmt.short(API.demoAddress)) { app.copy(API.demoAddress) }
+                    SettingRow(symbol: "doc.on.doc", title: "Wallet address", sub: Fmt.short(API.demoAddress)) { app.copy(API.demoAddress) }
+                    SettingRow(symbol: "arrow.counterclockwise", title: "Show onboarding again", sub: "Three slides and the mode question") { confirmOnboarding = true }
+                    if app.demoWallet {
+                        SettingRow(symbol: "rectangle.portrait.and.arrow.right", title: "Sign out", sub: "Demo wallet \(Fmt.short(API.demoAddress))") { confirmSignOut = true }
+                    } else {
+                        SettingRow(symbol: "person.crop.circle", title: "Use the demo wallet", sub: "A real wallet from the tape") { app.demoWallet = true }
                     }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("App").h2Text()
-                        SettingRow(symbol: "arrow.counterclockwise", title: "Show onboarding again", sub: "Three slides and the mode question") { confirmOnboarding = true }
-                        SettingRow(symbol: "star", title: "Clear watchlist", sub: "\(app.watch.count) stocks · \(app.tokenWatch.count) tokens") {
-                            app.watch = []; app.tokenWatch = []
-                        }
-                    }
-                    Text("v0.1 · orders and funding are previews").font(.sub).foregroundStyle(Theme.muted)
-                        .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 24)
+                .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
         }
@@ -49,6 +33,12 @@ struct YouView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("You'll pick a mode again. Nothing else changes.")
+        }
+        .confirmationDialog("Sign out of the demo wallet?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+            Button("Sign out", role: .destructive) { app.demoWallet = false }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Portfolio will show the empty state until you sign back in.")
         }
     }
 }

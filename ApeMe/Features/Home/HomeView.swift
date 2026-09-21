@@ -9,7 +9,6 @@ struct HomeView: View {
         ScrollView {
             VStack(spacing: 0) {
                 header
-                quickPills
                 strip
                 HR().padding(.top, 8)
                 tabs
@@ -20,56 +19,27 @@ struct HomeView: View {
         .scrollIndicators(.hidden)
         .background(Theme.ground)
         .task(id: app.mode) { await store.load(app: app) }
-        .task(id: app.demoWallet) { await app.loadWallet() }
         .onDisappear { store.disconnect() }
         .refreshable { await store.load(app: app) }
     }
 
+    /// Title left, mode switch right. Nothing about the wallet lives here — that's Portfolio.
     private var header: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                CentsText(value: app.wallet?.totalUsd ?? 0)
-                walletCaption
-            }
+        HStack(alignment: .center, spacing: 12) {
+            Text(app.isApe ? "Floors" : "Home").h1Text()
             Spacer()
             ModeSwitch()
         }
-        .padding(.horizontal, 20).padding(.top, 12)
-    }
-
-    @ViewBuilder private var walletCaption: some View {
-        if app.demoWallet, let w = app.wallet {
-            HStack(spacing: 4) {
-                Text(w.pnlUsd.map { ($0 >= 0 ? "↑ " : "↓ ") + Fmt.usd(abs($0)) } ?? "—")
-                    .foregroundStyle(Theme.change(w.pnlUsd))
-                Text("all time").foregroundStyle(Theme.muted)
-            }
-            .font(.sub).monospacedDigit()
-        } else {
-            Text(app.demoWallet ? "Loading…" : "Add money to start").font(.sub).foregroundStyle(Theme.muted)
-        }
-    }
-
-    private var quickPills: some View {
-        HStack(spacing: 8) {
-            Pill(label: app.isApe ? "Ape" : "Buy", filled: true) {
-                guard let s = store.preipo.first else { return }
-                if app.isApe, let k = s.king { app.push(.token(k.mint)) } else { app.openStock(s.mint) }
-            }
-            Pill(label: "Add money") { app.sheet = .deposit }
-            Pill(label: app.isApe ? "Positions" : "Portfolio") { app.root(.portfolio) }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20).padding(.top, 16)
     }
 
     @ViewBuilder private var strip: some View {
         if app.isApe {
-            Strip(items: store.ticker.filter { $0.kind == "meme" }.map { StripItem(id: $0.id, label: $0.label, price: $0.price, change: $0.change24h) })
+            Strip(items: store.ticker.filter { $0.kind == "meme" }.map { StripItem(id: $0.id, kind: .meme, label: $0.label, price: $0.price, change: $0.change24h) }).padding(.top, 10)
         } else {
             let items = (store.preipo + (store.movers?.mostTraded ?? []).prefix(4))
-                .map { StripItem(id: $0.mint, label: $0.symbol, price: $0.priceUsd, change: $0.change24h) }
-            Strip(items: items)
+                .map { StripItem(id: $0.mint, kind: .stock, label: $0.symbol, price: $0.priceUsd, change: $0.change24h) }
+            Strip(items: items).padding(.top, 10)
         }
     }
 

@@ -3,7 +3,7 @@ import SwiftUI
 struct PortfolioView: View {
     @Environment(AppState.self) private var app
     @State private var error: String?
-    @State private var confirmSignOut = false
+    @State private var showPct = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,12 +29,6 @@ struct PortfolioView: View {
             guard app.demoWallet else { return }
             await app.loadWallet()
             if app.wallet == nil { error = "Couldn't load the wallet." }
-        }
-        .confirmationDialog("Sign out of the demo wallet?", isPresented: $confirmSignOut, titleVisibility: .visible) {
-            Button("Sign out", role: .destructive) { app.demoWallet = false }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Portfolio will show the empty state until you sign back in.")
         }
     }
 
@@ -78,23 +72,7 @@ struct PortfolioView: View {
         let activity = app.isApe ? w.activity : w.activity.filter { $0.stockSymbol == nil || app.stocksByMint[$0.mint] != nil }
         return VStack(alignment: .leading, spacing: 0) {
             CentsText(value: w.totalUsd).padding(.top, 10)
-            HStack(spacing: 4) {
-                pnl(w.pnlUsd); Text("unrealised").foregroundStyle(Theme.muted).fontWeight(.medium)
-                Text("·").foregroundStyle(Theme.muted)
-                pnl(w.realizedUsd); Text("realised").foregroundStyle(Theme.muted).fontWeight(.medium)
-            }
-            .font(.system(size: 13, weight: .semibold)).monospacedDigit().padding(.top, 4)
-
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible())], alignment: .leading, spacing: 18) {
-                stat(app.isApe ? "Memes" : "Stocks", Fmt.usd(app.isApe ? w.memesUsd : w.stocksUsd))
-                stat("Cash (SOL)", Fmt.usd(w.solUsd))
-                stat("Cost basis", w.costUsd.map(Fmt.usd) ?? "—")
-                stat("Realised", w.realizedUsd.map(Fmt.usd) ?? "—", color: Theme.change(w.realizedUsd))
-            }
-            .padding(.vertical, 18).padding(.top, 2)
-            .overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
-            .overlay(alignment: .bottom) { Rectangle().fill(Theme.line).frame(height: 1) }
-            .padding(.top, 20)
+            pnlLine(w).padding(.top, 4)
 
             ForEach(groups, id: \.0) { kind, title in
                 let hs = w.holdings.filter { $0.kind == kind }
@@ -112,23 +90,33 @@ struct PortfolioView: View {
                 ForEach(activity.prefix(20)) { ActivityRow(activity: $0) }
             }
             .padding(.top, 4)
+        }
+    }
+
+    /// One P&L figure: `↑ $10.90` or `↑ 3.1%`. Tap flips between them.
+    private func pnlLine(_ w: Wallet) -> some View {
+        let pnl = w.pnlUsd
+        let pct: Double? = {
+            guard let pnl, let cost = w.costUsd, cost > 0 else { return nil }
+            return pnl / cost * 100
+        }()
+        let value: String = {
+            guard let pnl else { return "—" }
+            if showPct, let pct { return Fmt.arrow(pct, 1) }
+            return (pnl >= 0 ? "↑ " : "↓ ") + Fmt.usd(abs(pnl))
+        }()
+        return Button {
+            withAnimation(.easeOut(duration: 0.15)) { showPct.toggle() }
+        } label: {
             HStack(spacing: 4) {
-                Text("Demo wallet \(Fmt.short(w.address)) ·")
-                Button("sign out") { confirmSignOut = true }.font(.sub.weight(.semibold)).foregroundStyle(Theme.ink)
+                Text(value).foregroundStyle(Theme.change(pnl))
+                Text("all time").foregroundStyle(Theme.muted)
             }
-            .font(.sub).foregroundStyle(Theme.muted).frame(maxWidth: .infinity).padding(.top, 20)
+            .font(.sub).monospacedDigit()
+            .contentShape(.rect)
         }
-    }
-
-    private func pnl(_ v: Double?) -> Text {
-        Text(v.map { ($0 >= 0 ? "↑ " : "↓ ") + Fmt.usd(abs($0)) } ?? "—").foregroundStyle(Theme.change(v))
-    }
-
-    private func stat(_ label: String, _ value: String, color: Color = Theme.ink) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label).font(.eyebrow).foregroundStyle(Theme.muted)
-            Text(value).font(.stat).tracking(-0.4).monospacedDigit().foregroundStyle(color)
-        }
+        .buttonStyle(.plain)
+        .disabled(pnl == nil)
     }
 }
 
