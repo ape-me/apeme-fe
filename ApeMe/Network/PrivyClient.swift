@@ -59,8 +59,15 @@ final class Auth {
     // MARK: Login
 
     func loginWithApple() async throws {
-        let u = try await privy.oAuth.login(with: .apple, appUrlScheme: Self.urlScheme)
-        await signedIn(u)
+        do {
+            let u = try await privy.oAuth.login(with: .apple, appUrlScheme: Self.urlScheme)
+            await signedIn(u)
+        } catch {
+            // Privy occasionally fails to fetch Apple's JWKS while verifying the token. One quiet retry.
+            guard "\(error)".contains("JWKS") else { throw error }
+            let u = try await privy.oAuth.login(with: .apple, appUrlScheme: Self.urlScheme)
+            await signedIn(u)
+        }
     }
 
     func sendCode(to email: String) async throws {

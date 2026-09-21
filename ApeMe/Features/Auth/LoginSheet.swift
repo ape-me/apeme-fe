@@ -155,6 +155,11 @@ struct LoginForm: View {
             }
         }
         if ns.domain == NSURLErrorDomain { return "No connection. Check your network and try again." }
+        let raw = "\(error)"
+        if raw.contains("PrivyError") {
+            if raw.contains("JWKS") { return "Apple sign-in didn't go through on Privy's side. Try again." }
+            if raw.contains("authenticationFailure") { return "Sign-in didn't go through. Try again." }
+        }
         let text = (error as? LocalizedError)?.errorDescription ?? ns.localizedDescription
         if emailCode, text.lowercased().contains("invalid") || text.lowercased().contains("code") { return "That code didn't match. Check it and try again." }
         if text.lowercased().contains("cancel") { return nil }
