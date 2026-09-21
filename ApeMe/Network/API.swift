@@ -12,7 +12,9 @@ actor API {
     private let decoder = JSONDecoder()
     private let cache = ResponseCache()
     private var inflight: [String: Task<Data, Error>] = [:]
-    private var tokenProvider: (@Sendable () async -> String?)?
+    /// Identity token (when the Privy app has them enabled) and access token (always), from `Auth`.
+    struct Tokens: Sendable { var identity: String?; var access: String? }
+    private var tokenProvider: (@Sendable () async -> Tokens)?
 
     init() {
         let cfg = URLSessionConfiguration.default
@@ -69,12 +71,46 @@ actor API {
         try await fetch("/ticker?memes=\(memes)&stonks=\(stonks)", ttl: 30)
     }
 
-    /// Who am I, per ape-be. Needs a signed-in user; the identity token goes in the header.
-    func me() async throws -> String {
-        String(decoding: try await load("/me"), as: UTF8.self)
+    // MARK: Account (signed in; `privy-id-token` goes on every request)
+
+    /// Creates the user on first call. `raw` is the untouched JSON for debugging the token shape.
+    func me() async throws -> Data {
+        try await send("GET", "/me")
     }
 
-    func setTokenProvider(_ p: @escaping @Sendable () async -> String?) { tokenProvider = p }
+    func redeemInvite(_ code: String) async throws -> InviteResponse {
+        try decoder.decode(InviteResponse.self, from: try await send("POST", "/me/invite", body: ["code": code]))
+    }
+
+    /// Uncached request with an optional JSON body. Used for everything under /me and for trades.
+    private func send(_ method: String, _ path: String, body: [String: Any]? = nil) async throws -> Data {
+        var req = URLRequest(url: URL(string: API.base.absoluteString + path)!)
+        req.httpMethod = method
+        await authorize(&req)
+        if let body {
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.httpBody = try JSONSerialization.data(withJSONObject: body)
+        }
+        let data: Data
+        let resp: URLResponse
+        do { (data, resp) = try await session.data(for: req) } catch { throw APIError.transport(error) }
+        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(code) else {
+            let body = try? decoder.decode(ErrorBody.self, from: data)
+            var msg = body?.error ?? "request failed"
+            if let rid = body?.requestId ?? (resp as? HTTPURLResponse)?.value(forHTTPHeaderField: "cf-ray") { msg += " · req \(rid)" }
+            throw APIError.http(code, msg)
+        }
+        return data
+    }
+
+    func setTokenProvider(_ p: @escaping @Sendable () async -> Tokens) { tokenProvider = p }
+
+    private func authorize(_ req: inout URLRequest) async {
+        guard let t = await tokenProvider?() else { return }
+        if let id = t.identity { req.setValue(id, forHTTPHeaderField: "privy-id-token") }
+        if let a = t.access { req.setValue("Bearer \(a)", forHTTPHeaderField: "Authorization") }
+    }
 
     // MARK: Cached copy for instant first paint
 
@@ -109,7 +145,7 @@ actor API {
         let task = Task<Data, Error> {
             let url = URL(string: API.base.absoluteString + path)!
             var req = URLRequest(url: url)
-            if let token = await tokenProvider?() { req.setValue(token, forHTTPHeaderField: "privy-id-token") }
+            await authorize(&req)
             let data: Data
             let resp: URLResponse
             do { (data, resp) = try await session.data(for: req) } catch { throw APIError.transport(error) }

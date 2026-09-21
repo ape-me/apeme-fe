@@ -2,6 +2,8 @@ import SwiftUI
 
 /// Three slides and one question. The answer sets the mode.
 struct OnboardingView: View {
+    /// Signed out: Get started hands over to the login screen. Signed in (replay from You): straight back to Home.
+    var onGetStarted: (() -> Void)? = nil
     @Environment(AppState.self) private var app
     @State private var index = 0
     @State private var choice: Mode? = nil
@@ -24,7 +26,10 @@ struct OnboardingView: View {
                 BigButton(label: index < 3 ? "Continue" : "Get started",
                           style: index == 3 && choice == nil ? .off : .white) {
                     if index < 3 { withAnimation { index += 1 } }
-                    else if let choice { app.mode = choice; app.root(.home) }
+                    else if let choice {
+                        app.mode = choice
+                        if let onGetStarted { onGetStarted() } else { app.onboarded = true; app.root(.home) }
+                    }
                 }
             }
             .padding(.horizontal, 28).padding(.top, 8).padding(.bottom, 20)

@@ -6,12 +6,17 @@ struct RootView: View {
     var body: some View {
         @Bindable var app = app
         Group {
-            if app.mode == nil {
-                OnboardingView()
+            if !app.auth.ready {
+                Color.clear
+            } else if !app.signedIn {
+                SignedOutFlow()               // slides → Get started → Sign in, every launch until login succeeds
+            } else if !app.onboarded || app.mode == nil {
+                OnboardingView()              // replay from You
             } else {
                 MainShell()
             }
         }
+        .animation(.easeOut(duration: 0.25), value: app.signedIn)
         .background(Theme.ground)
         .sheet(item: $app.sheet) { sheet in
             switch sheet {
@@ -19,6 +24,7 @@ struct RootView: View {
             case .apeToken(let t, let ref): BuySheet(kind: .token, stock: nil, token: t, stockRef: ref)
             case .deposit: DepositSheet()
             case .login: LoginSheet()
+            case .invite: InviteSheet()
             }
         }
         .overlay(alignment: .bottom) {
@@ -28,6 +34,19 @@ struct RootView: View {
             }
         }
         .animation(.easeOut(duration: 0.25), value: app.toast)
+    }
+}
+
+/// Slides first, then the login screen. Nothing is persisted until the user is actually signed in.
+private struct SignedOutFlow: View {
+    @State private var showLogin = false
+    var body: some View {
+        if showLogin {
+            LoginView()
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+        } else {
+            OnboardingView(onGetStarted: { withAnimation(.easeOut(duration: 0.25)) { showLogin = true } })
+        }
     }
 }
 

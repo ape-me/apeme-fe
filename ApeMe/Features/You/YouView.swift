@@ -20,14 +20,15 @@ struct YouView: View {
                     }
                     SettingRow(symbol: "arrow.counterclockwise", title: "Show onboarding again", sub: "Three slides and the mode question") { confirmOnboarding = true }
                     if app.signedIn {
-                        SettingRow(symbol: "rectangle.portrait.and.arrow.right", title: "Sign out", sub: app.auth.accountLabel ?? "Signed in") { confirmSignOut = true }
-                    } else {
-                        SettingRow(symbol: "person.crop.circle", title: "Sign in", sub: "Apple or email · a wallet is made for you") { app.sheet = .login }
-                        if app.demoWallet {
-                            SettingRow(symbol: "eye", title: "Leave the demo wallet", sub: "Demo \(Fmt.short(API.demoAddress))") { app.demoWallet = false }
-                        } else {
-                            SettingRow(symbol: "eye", title: "Use the demo wallet", sub: "A real wallet from the tape, read-only") { app.demoWallet = true }
+                        if app.needsInvite {
+                            SettingRow(symbol: "ticket", title: "Enter invite code", sub: "Needed before your first trade") { app.sheet = .invite }
                         }
+                        SettingRow(symbol: "rectangle.portrait.and.arrow.right", title: "Sign out", sub: app.auth.accountLabel ?? "Signed in") { confirmSignOut = true }
+                        #if DEBUG
+                        SettingRow(symbol: "ladybug", title: "Copy /v1/me response", sub: app.auth.me.map { "status: \($0.status)" } ?? app.auth.meRaw.map { String($0.prefix(60)) } ?? "not loaded yet") {
+                            Task { await app.auth.refreshMe(); app.copy(app.auth.meRaw ?? "no response") }
+                        }
+                        #endif
                     }
                 }
                 .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
@@ -36,7 +37,7 @@ struct YouView: View {
         }
         .background(Theme.ground)
         .confirmationDialog("Show onboarding again?", isPresented: $confirmOnboarding, titleVisibility: .visible) {
-            Button("Show it") { app.mode = nil; app.path.removeAll() }
+            Button("Show it") { app.onboarded = false; app.path.removeAll() }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("You'll pick a mode again. Nothing else changes.")

@@ -6,6 +6,7 @@ enum TradeSheet: Identifiable {
     case apeToken(TokenCard, StockRef?)
     case deposit
     case login
+    case invite
 
     var id: String {
         switch self {
@@ -13,6 +14,7 @@ enum TradeSheet: Identifiable {
         case .apeToken(let t, _): "ape-\(t.mint)"
         case .deposit: "deposit"
         case .login: "login"
+        case .invite: "invite"
         }
     }
 }

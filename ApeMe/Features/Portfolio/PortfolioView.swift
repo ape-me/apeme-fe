@@ -51,19 +51,6 @@ struct PortfolioView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(18).background(Theme.surface, in: .rect(cornerRadius: 20)).padding(.top, 16)
-            Button { app.sheet = .login } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "person.crop.circle").font(.system(size: 16, weight: .medium)).frame(width: 40, height: 40).background(Theme.surface2, in: .circle)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Sign in").font(.rowTitle)
-                        Text("Apple or email · a wallet is made for you").font(.sub).foregroundStyle(Theme.muted).lineLimit(1)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)
-                }
-                .padding(.vertical, 8).frame(minHeight: 64).contentShape(.rect)
-            }
-            .buttonStyle(.plain).padding(.top, 12)
         }
     }
 

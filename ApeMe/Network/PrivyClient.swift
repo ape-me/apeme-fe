@@ -14,10 +14,21 @@ final class Auth {
     private let privy: any Privy
     private(set) var user: (any PrivyUser)?
     private(set) var address: String?
+    private(set) var me: Me?
+    /// Untouched `/v1/me` JSON, for confirming the token shape with the backend.
+    private(set) var meRaw: String?
     private(set) var ready = false
+
+    var needsInvite: Bool { me?.needsInvite ?? false }
 
     /// Sent as `privy-id-token` on every call to ape-be.
     var identityToken: String? { user?.identityToken }
+
+    /// Both tokens for the API layer. Access token is fetched fresh (the SDK refreshes it).
+    func tokens() async -> API.Tokens {
+        guard let user else { return API.Tokens() }
+        return API.Tokens(identity: user.identityToken, access: try? await user.getAccessToken())
+    }
 
     /// "you@x.com" or "Apple" — whatever the user signed in with.
     var accountLabel: String? {
@@ -34,7 +45,7 @@ final class Auth {
 
     private init() {
         privy = PrivySdk.initialize(config: PrivyConfig(appId: Self.appId, appClientId: Self.clientId))
-        Task { await API.shared.setTokenProvider { await MainActor.run { Auth.shared.identityToken } } }
+        Task { await API.shared.setTokenProvider { await Auth.shared.tokens() } }
         Task { await restore() }
     }
 
@@ -63,11 +74,34 @@ final class Auth {
         await user?.logout()
         user = nil
         address = nil
+        me = nil
+        meRaw = nil
     }
 
-    /// End-to-end check against ape-be. Returns the raw JSON from `/v1/me`.
-    func checkMe() async throws -> String {
-        try await API.shared.me()
+    // MARK: Account
+
+    /// `/v1/me` after login; decides whether the invite screen is needed.
+    @discardableResult
+    func refreshMe() async -> Me? {
+        var raw = ""
+        do {
+            let data = try await API.shared.me()
+            raw = String(decoding: data, as: UTF8.self)
+            meRaw = raw
+            me = try JSONDecoder().decode(Me.self, from: data)
+        } catch {
+            let t = await tokens()
+            meRaw = raw.isEmpty ? "ERROR \(error) · idToken=\(t.identity == nil ? "nil" : "present") accessToken=\(t.access == nil ? "nil" : "present")" : "DECODE \(error)\n\(raw)"
+        }
+        #if DEBUG
+        print("[apeme] /v1/me →", meRaw ?? "")
+        #endif
+        return me
+    }
+
+    func redeemInvite(_ code: String) async throws {
+        _ = try await API.shared.redeemInvite(code.trimmingCharacters(in: .whitespacesAndNewlines))
+        await refreshMe()
     }
 
     // MARK: Wallet
@@ -77,5 +111,6 @@ final class Auth {
         // No-op when a wallet already exists.
         let w = (try? await u.createSolanaWallet()) ?? u.embeddedSolanaWallets.first
         address = w?.address
+        await refreshMe()
     }
 }

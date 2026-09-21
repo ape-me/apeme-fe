@@ -57,7 +57,7 @@ struct FloorView: View {
     private var actions: some View {
         ActionRow(items: [
             ActionItem(id: "ape", label: "Ape king", symbol: "plus", tone: Theme.buy) { apeKing() },
-            ActionItem(id: "buy", label: "Buy stock", symbol: "arrow.left.arrow.right") { if let s = store.stock { app.sheet = .buyStock(s) } },
+            ActionItem(id: "buy", label: "Buy stock", symbol: "arrow.left.arrow.right") { if let s = store.stock { app.trade(.buyStock(s)) } },
             ActionItem(id: "launch", label: "Launch", symbol: "paperplane") { app.show("Launch flow lands with the Tuesday endpoint") },
             ActionItem(id: "share", label: "Share", symbol: "square.and.arrow.up") { app.copy(store.mint) },
         ])
@@ -69,7 +69,7 @@ struct FloorView: View {
         Task {
             do {
                 let t = try await API.shared.token(k.mint)
-                app.sheet = .apeToken(t.card, t.stock)
+                app.trade(.apeToken(t.card, t.stock))
             } catch { app.show("Could not load a quote") }
         }
     }

@@ -8,6 +8,8 @@ final class AppState {
     private let defaults = UserDefaults.standard
 
     var mode: Mode? { didSet { defaults.set(mode?.rawValue, forKey: "apeme.mode") } }
+    /// Seen the slides and tapped Get started. Separate from `mode` so replaying onboarding never logs you out.
+    var onboarded: Bool { didSet { defaults.set(onboarded, forKey: "apeme.onboarded") } }
     var demoWallet: Bool { didSet { defaults.set(demoWallet, forKey: "apeme.demo"); if !demoWallet { wallet = nil } } }
     var watch: [String] { didSet { defaults.set(watch, forKey: "apeme.watch") } }
     var tokenWatch: [String] { didSet { defaults.set(tokenWatch, forKey: "apeme.tokenWatch") } }
@@ -24,6 +26,7 @@ final class AppState {
 
     init() {
         mode = defaults.string(forKey: "apeme.mode").flatMap(Mode.init(rawValue:))
+        onboarded = defaults.bool(forKey: "apeme.onboarded")
         demoWallet = defaults.bool(forKey: "apeme.demo")
         watch = defaults.stringArray(forKey: "apeme.watch") ?? []
         tokenWatch = defaults.stringArray(forKey: "apeme.tokenWatch") ?? []
@@ -34,8 +37,15 @@ final class AppState {
     /// Privy wallet when signed in, the demo wallet when that's switched on, otherwise nothing.
     let auth = Auth.shared
     var signedIn: Bool { auth.user != nil }
-    var walletAddress: String? { auth.address ?? (demoWallet ? API.demoAddress : nil) }
+    var walletAddress: String? { auth.address }
     var hasWallet: Bool { walletAddress != nil }
+    /// Signed in but not yet let through the invite gate. Browsing works; trading opens the invite sheet.
+    var needsInvite: Bool { signedIn && auth.needsInvite }
+
+    /// Opens a trade sheet, or the invite sheet first when the account is still gated.
+    func trade(_ s: TradeSheet) {
+        sheet = needsInvite ? .invite : s
+    }
 
     // MARK: Navigation
 
@@ -69,6 +79,8 @@ final class AppState {
     func signOut() async {
         await auth.logout()
         wallet = nil
+        path.removeAll()
+        tab = .home
     }
 
     // MARK: Watchlists
