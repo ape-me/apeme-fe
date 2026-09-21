@@ -20,8 +20,6 @@ final class TokenStore {
     private(set) var tf: Timeframe = .m1
     var candles: [Candle] = []
     var chartLoading = true
-    var showCandles = false
-    var scrub: Candle?
     var scrubPoint: LineChart.Point?
     var tab: Tab = .trades
     var window: Window = .h24
@@ -96,8 +94,6 @@ final class TokenStore {
         guard let f = p.first, let l = p.last else { return Theme.green }
         return l.price >= f.price ? Theme.green : Theme.red
     }
-
-    func candle(at t: Int) -> Candle? { candles.first { $0.t == t } }
 
     func connect() {
         guard socket == nil else { return }

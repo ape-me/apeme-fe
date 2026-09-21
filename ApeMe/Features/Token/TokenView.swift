@@ -3,7 +3,6 @@ import SwiftUI
 /// Coinbase coin page, dark, green. Only reachable in Ape mode or via the bridge.
 struct TokenView: View {
     @Environment(AppState.self) private var app
-    @Environment(\.skin) private var skin
     @State private var store: TokenStore
     @State private var showMcap = false
 
@@ -71,8 +70,7 @@ struct TokenView: View {
 
             ohlc.padding(.horizontal, 20).padding(.top, 14)
             chart.padding(.top, 4)
-            RangePills(items: TokenRange.allCases, selected: store.range, label: \.rawValue, onSelect: { store.setRange($0) },
-                       trailing: AnyView(candleToggle))
+            RangePills(items: TokenRange.allCases, selected: store.range, label: \.rawValue) { store.setRange($0) }
                 .padding(.top, 10)
 
             statCard("Floor") {
@@ -131,13 +129,10 @@ struct TokenView: View {
     }
     private var t24: Double? { store.token?.change24h }
 
+    /// Scrub readout: price · time of the point under the finger.
     @ViewBuilder private var ohlc: some View {
-        HStack(spacing: 12) {
-            if let k = store.scrub {
-                let q = store.quoteUsd
-                ohlcItem("O", k.o * q); ohlcItem("H", k.h * q); ohlcItem("L", k.l * q); ohlcItem("C", k.c * q)
-                Text(Fmt.time(k.t))
-            } else if let p = store.scrubPoint {
+        HStack {
+            if let p = store.scrubPoint {
                 Text("\(Text(Fmt.usd(p.price)).foregroundStyle(Theme.ink)) · \(Fmt.dateTime(p.t))")
             }
         }
@@ -145,35 +140,14 @@ struct TokenView: View {
         .frame(minHeight: 16, alignment: .leading)
     }
 
-    private func ohlcItem(_ l: String, _ v: Double) -> some View {
-        Text("\(l) \(Text(Fmt.usd(v)).foregroundStyle(Theme.ink))")
-    }
-
     @ViewBuilder private var chart: some View {
-        if store.chartLoading && store.candles.isEmpty {
-            Skeleton(height: 200).padding(.horizontal, 20)
-        } else if store.showCandles {
-            CandleChart(candles: store.candles) { store.scrub = $0 }.padding(.horizontal, 20)
+        if store.chartLoading && store.linePoints.isEmpty {
+            Skeleton(height: 260).padding(.horizontal, 20)
         } else {
             LineChart(points: store.linePoints, tint: store.direction, live: true, height: 260,
-                      emptyTitle: "Live from now", emptySubtitle: "The first trade starts the chart.") { p in
-                store.scrubPoint = p
-                store.scrub = store.range == .live ? nil : p.flatMap { store.candle(at: $0.t) }
-            }
+                      emptyTitle: "Live from now", emptySubtitle: "The first trade starts the chart.") { store.scrubPoint = $0 }
             .animation(.easeOut(duration: 0.3), value: store.linePoints.last?.price)
         }
-    }
-
-    private var candleToggle: some View {
-        Button { store.showCandles.toggle() } label: {
-            Image(systemName: "chart.bar.xaxis")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(store.showCandles ? skin.accent : Theme.muted)
-                .frame(width: 36, height: 32)
-                .background(store.showCandles ? skin.accentTint : .clear, in: .capsule)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Candles")
     }
 
     private func statCard(_ label: String, @ViewBuilder value: () -> some View) -> some View {
