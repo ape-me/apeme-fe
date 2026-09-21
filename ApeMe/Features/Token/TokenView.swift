@@ -5,6 +5,7 @@ struct TokenView: View {
     @Environment(AppState.self) private var app
     @Environment(\.skin) private var skin
     @State private var store: TokenStore
+    @State private var showMcap = false
 
     init(mint: String) { _store = State(initialValue: TokenStore(mint: mint)) }
 
@@ -43,21 +44,28 @@ struct TokenView: View {
             }
             .padding(.horizontal, 20).padding(.top, 4)
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text("\(t.displaySymbol) price").font(.eyebrow).foregroundStyle(Theme.muted)
-                    if isKing { Image(systemName: "crown.fill").font(.system(size: 11)).foregroundStyle(Theme.amber) }
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text("\(t.displaySymbol) \(showMcap ? "market cap" : "price")").font(.eyebrow).foregroundStyle(Theme.muted)
+                        if isKing { Image(systemName: "crown.fill").font(.system(size: 11)).foregroundStyle(Theme.amber) }
+                    }
+                    Text(showMcap ? Fmt.big(t.mcapUsd) : Fmt.usd(store.priceUsd)).heroText().contentTransition(.numericText())
+                        .animation(.easeOut(duration: 0.3), value: store.priceUsd)
+                    rangeChange
                 }
-                Text(Fmt.usd(t.priceUsd)).heroText().contentTransition(.numericText())
-                    .animation(.easeOut(duration: 0.3), value: t.priceUsd)
-                HStack(spacing: 4) {
-                    Text(Fmt.arrow(t.change24h, 1)).foregroundStyle(Theme.change(t.change24h))
-                    Text("today").foregroundStyle(Theme.muted).fontWeight(.medium)
-                    Text("·").foregroundStyle(Theme.muted)
-                    Text(Fmt.arrow(t.change1h, 1)).foregroundStyle(Theme.change(t.change1h))
-                    Text("1h").foregroundStyle(Theme.muted).fontWeight(.medium)
+                Spacer(minLength: 8)
+                Button { withAnimation(.easeOut(duration: 0.2)) { showMcap.toggle() } } label: {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.up.chevron.down").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint)
+                            Text(showMcap ? Fmt.usd(store.priceUsd) : Fmt.big(t.mcapUsd)).h2Text().monospacedDigit()
+                        }
+                        Text(showMcap ? "Price" : "Market cap").font(.sub).foregroundStyle(Theme.muted)
+                    }
                 }
-                .font(.system(size: 13, weight: .semibold)).monospacedDigit().padding(.top, 2)
+                .buttonStyle(.plain)
+                .accessibilityLabel(showMcap ? "Show price" : "Show market cap")
             }
             .padding(.horizontal, 20).padding(.top, 14)
 
@@ -67,10 +75,11 @@ struct TokenView: View {
                        trailing: AnyView(candleToggle))
                 .padding(.top, 10)
 
-            HStack(spacing: 12) {
-                statCard("Market cap") { Text(Fmt.big(t.mcapUsd)).h2Text().monospacedDigit() }
-                statCard("Floor") {
+            statCard("Floor") {
+                HStack {
                     Button { app.push(.floor(t.quoteMint)) } label: { Text("$\(store.stockSymbol)").h2Text() }.buttonStyle(.plain)
+                    Spacer()
+                    Text("\(Fmt.usd(t.stock.priceUsd)) · \(Fmt.arrow(t.stock.change24h))").font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
                 }
             }
             .padding(.horizontal, 20).padding(.top, 22)
@@ -98,6 +107,30 @@ struct TokenView: View {
         .padding(.bottom, 24)
     }
 
+    /// Change over what's on the chart: first point → now, absolute and percent.
+    @ViewBuilder private var rangeChange: some View {
+        let pts = store.linePoints
+        if let f = pts.first, let l = pts.last, f.price > 0 {
+            let abs = l.price - f.price, pct = abs / f.price * 100
+            let up = abs >= 0
+            HStack(spacing: 4) {
+                Image(systemName: up ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill").font(.system(size: 9))
+                Text("\(Fmt.usd(Swift.abs(abs))) (\(String(format: "%.2f", Swift.abs(pct)))%)")
+                Text(store.range == .live ? "live" : store.range.rawValue.lowercased()).foregroundStyle(Theme.muted).fontWeight(.medium)
+            }
+            .font(.system(size: 13, weight: .semibold)).monospacedDigit()
+            .foregroundStyle(up ? Theme.green : Theme.red)
+            .padding(.top, 2)
+        } else {
+            HStack(spacing: 4) {
+                Text(Fmt.arrow(t24, 1)).foregroundStyle(Theme.change(t24))
+                Text("today").foregroundStyle(Theme.muted).fontWeight(.medium)
+            }
+            .font(.system(size: 13, weight: .semibold)).monospacedDigit().padding(.top, 2)
+        }
+    }
+    private var t24: Double? { store.token?.change24h }
+
     @ViewBuilder private var ohlc: some View {
         HStack(spacing: 12) {
             if let k = store.scrub {
@@ -122,7 +155,7 @@ struct TokenView: View {
         } else if store.showCandles {
             CandleChart(candles: store.candles) { store.scrub = $0 }.padding(.horizontal, 20)
         } else {
-            LineChart(points: store.linePoints, tint: store.direction,
+            LineChart(points: store.linePoints, tint: store.direction, live: true, height: 260,
                       emptyTitle: "Live from now", emptySubtitle: "The first trade starts the chart.") { p in
                 store.scrubPoint = p
                 store.scrub = store.range == .live ? nil : p.flatMap { store.candle(at: $0.t) }

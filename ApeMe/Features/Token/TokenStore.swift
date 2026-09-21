@@ -38,6 +38,8 @@ final class TokenStore {
     init(mint: String) { self.mint = mint }
 
     var quoteUsd: Double { token?.stock.quoteUsd ?? 0 }
+    /// The last trade is the truth once the tape is loaded; the header's price can be a few seconds older.
+    var priceUsd: Double? { trades.first.map { $0.priceUsd ?? $0.priceQuote * quoteUsd } ?? token?.priceUsd }
     var stockSymbol: String { token?.stock.symbol ?? "" }
 
     func load(app: AppState) async {

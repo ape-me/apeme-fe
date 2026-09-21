@@ -8,6 +8,9 @@ struct LineChart: View {
     var reference: Double? = nil
     /// Overrides the accent, e.g. green/red by direction on the token page.
     var tint: Color? = nil
+    /// Terminal look: line stops at 75% width, price tag, dashed current-price line, halo, smooth curve.
+    var live = false
+    var height: CGFloat = 200
     var emptyTitle = "No history for this range"
     var emptySubtitle = "Try another timeframe."
     var onScrub: (Point?) -> Void = { _ in }
@@ -20,12 +23,13 @@ struct LineChart: View {
     var body: some View {
         if points.isEmpty {
             EmptyState(title: emptyTitle, subtitle: emptySubtitle)
-                .frame(height: 200)
+                .frame(height: height)
         } else {
             GeometryReader { g in
                 // Draw whatever exists across the full width; one point becomes a flat line.
                 let series = points.count == 1 ? [points[0], Point(t: points[0].t + 1, price: points[0].price, mark: nil)] : points
-                let geo = Geometry(points: series, reference: reference, size: g.size)
+                let geo = Geometry(points: series, reference: reference, size: g.size, live: live)
+                let end = geo.xy(series.count - 1)
                 ZStack(alignment: .topLeading) {
                     AreaShape(geo: geo)
                         .fill(ImagePaint(image: Self.dot(color), scale: 1))
@@ -33,9 +37,23 @@ struct LineChart: View {
                     if let mark = geo.markPath {
                         mark.stroke(Theme.amber, style: StrokeStyle(lineWidth: 1.5, dash: [3, 5]))
                     }
-                    geo.linePath.stroke(color, style: StrokeStyle(lineWidth: 2, lineJoin: .round))
-                    Circle().fill(color).frame(width: 8, height: 8)
-                        .position(geo.xy(series.count - 1))
+                    if live {
+                        Path { p in p.move(to: CGPoint(x: 0, y: end.y)); p.addLine(to: CGPoint(x: g.size.width, y: end.y)) }
+                            .stroke(color.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                    }
+                    geo.linePath.stroke(color, style: StrokeStyle(lineWidth: live ? 3 : 2, lineCap: .round, lineJoin: .round))
+                    if live { Halo(color: color).position(end) }
+                    Circle().fill(color).frame(width: live ? 12 : 8, height: live ? 12 : 8)
+                        .position(end)
+                    if live {
+                        Text(Fmt.usd(series.last!.price))
+                            .font(.system(size: 13, weight: .semibold)).monospacedDigit()
+                            .foregroundStyle(Theme.ground)
+                            .padding(.horizontal, 10).padding(.vertical, 5)
+                            .background(color, in: .rect(cornerRadius: 8))
+                            .fixedSize()
+                            .position(x: min(g.size.width - 44, end.x + 52), y: end.y)
+                    }
                     if geo.refFar, let ref = reference {
                         farTag(ref, below: ref < geo.pmin)
                     }
@@ -53,7 +71,7 @@ struct LineChart: View {
                         .onEnded { _ in scrubIndex = nil; onScrub(nil) }
                 )
             }
-            .frame(height: 200)
+            .frame(height: height)
             .accessibilityLabel("Price chart")
         }
     }
@@ -104,9 +122,13 @@ struct LineChart: View {
         private let currentOnly: Bool
         private let reference: Double?
 
-        init(points: [Point], reference: Double?, size: CGSize) {
+        private let live: Bool
+        private var plotWidth: CGFloat { live ? size.width * 0.75 : size.width }
+
+        init(points: [Point], reference: Double?, size: CGSize, live: Bool = false) {
             self.points = points
             self.size = size
+            self.live = live
             let prices = points.map(\.price)
             pmin = prices.min() ?? 0
             let pmax = prices.max() ?? 1
@@ -129,18 +151,28 @@ struct LineChart: View {
             self.reference = reference
         }
 
-        func x(_ t: Int) -> CGFloat { CGFloat(Double(t - t0) / Double(max(1, t1 - t0))) * size.width }
+        func x(_ t: Int) -> CGFloat { CGFloat(Double(t - t0) / Double(max(1, t1 - t0))) * plotWidth }
         func y(_ v: Double) -> CGFloat {
-            let top = 10.0, bottom = size.height - 6
+            let top = live ? 28.0 : 10.0, bottom = size.height - (live ? 24.0 : 6.0)
             return bottom - CGFloat((v - lo) / (hi - lo)) * (bottom - top)
         }
         func xy(_ i: Int) -> CGPoint { CGPoint(x: x(points[i].t), y: y(points[i].price)) }
 
         var linePath: Path {
+            let pts = points.map { CGPoint(x: x($0.t), y: y($0.price)) }
             var p = Path()
-            for (i, pt) in points.enumerated() {
-                let c = CGPoint(x: x(pt.t), y: y(pt.price))
-                if i == 0 { p.move(to: c) } else { p.addLine(to: c) }
+            guard let first = pts.first else { return p }
+            p.move(to: first)
+            if !live {
+                for c in pts.dropFirst() { p.addLine(to: c) }
+                return p
+            }
+            // Catmull-Rom → cubic Bézier, so the tape reads as a curve rather than steps.
+            for i in 0..<(pts.count - 1) {
+                let p0 = pts[max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[min(pts.count - 1, i + 2)]
+                let c1 = CGPoint(x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6)
+                let c2 = CGPoint(x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6)
+                p.addCurve(to: p2, control1: c1, control2: c2)
             }
             return p
         }
@@ -162,8 +194,8 @@ struct LineChart: View {
             return nil
         }
         func nearest(x px: CGFloat) -> Int {
-            let clamped = min(max(0, px), size.width)
-            let t = Double(t0) + Double(clamped / size.width) * Double(t1 - t0)
+            let clamped = min(max(0, px), plotWidth)
+            let t = Double(t0) + Double(clamped / plotWidth) * Double(t1 - t0)
             var i = 0
             while i < points.count - 1 && Double(points[i + 1].t) <= t { i += 1 }
             if i < points.count - 1 && abs(Double(points[i + 1].t) - t) < abs(Double(points[i].t) - t) { i += 1 }
@@ -175,10 +207,26 @@ struct LineChart: View {
         let geo: Geometry
         func path(in rect: CGRect) -> Path {
             var p = geo.linePath
-            p.addLine(to: CGPoint(x: rect.width, y: rect.height))
+            let endX = geo.xy(geo.points.count - 1).x
+            p.addLine(to: CGPoint(x: endX, y: rect.height))
             p.addLine(to: CGPoint(x: 0, y: rect.height))
             p.closeSubpath()
             return p
+        }
+    }
+
+    /// Faint pulsing ring around the live dot.
+    struct Halo: View {
+        let color: Color
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+        @State private var on = false
+        var body: some View {
+            Circle()
+                .stroke(color.opacity(0.35), lineWidth: 2)
+                .frame(width: 28, height: 28)
+                .scaleEffect(on ? 1.6 : 1)
+                .opacity(on ? 0 : 1)
+                .onAppear { if !reduceMotion { withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) { on = true } } }
         }
     }
 }
