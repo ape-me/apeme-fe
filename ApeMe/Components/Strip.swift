@@ -67,22 +67,23 @@ struct RangePills<T: Hashable & Identifiable>: View {
     var trailing: AnyView? = nil
     @Environment(\.skin) private var skin
 
+    /// Space-evenly: the same gap between pills and at both edges.
     var body: some View {
-        HStack {
+        HStack(spacing: 0) {
+            Spacer(minLength: 0)
             ForEach(items) { it in
                 let on = it == selected
                 Button { onSelect(it) } label: {
                     Text(label(it))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(on ? skin.accent : Theme.muted)
-                        .frame(width: 44, height: 32)
+                        .frame(width: 52, height: 32)
                         .background(on ? skin.accentTint : .clear, in: .capsule)
                 }
                 .buttonStyle(.plain)
-                if it != items.last || trailing != nil { Spacer(minLength: 0) }
+                Spacer(minLength: 0)
             }
-            if let trailing { trailing }
+            if let trailing { trailing; Spacer(minLength: 0) }
         }
-        .padding(.horizontal, 8)
     }
 }

@@ -118,8 +118,8 @@ struct StockView: View {
 
     /// LIVE · 1H · 1D · 7D▾ · ALL. The ▾ pill is a menu for 7D / 30D and shows whichever is picked.
     private var ranges: some View {
-        HStack {
-            rangePill(.live); Spacer(); rangePill(.h1); Spacer(); rangePill(.d1); Spacer()
+        HStack(spacing: 0) {
+            Spacer(); rangePill(.live); Spacer(); rangePill(.h1); Spacer(); rangePill(.d1); Spacer()
             Menu {
                 ForEach(HistoryRange.long) { r in
                     Button(r.label) { store.longRange = r; store.setRange(r) }
@@ -135,9 +135,8 @@ struct StockView: View {
                 .frame(width: 56, height: 32)
                 .background(on ? skin.accentTint : .clear, in: .capsule)
             }
-            Spacer(); rangePill(.all)
+            Spacer(); rangePill(.all); Spacer()
         }
-        .padding(.horizontal, 8)
     }
 
     private func rangePill(_ r: HistoryRange) -> some View {
