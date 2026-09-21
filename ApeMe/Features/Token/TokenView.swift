@@ -82,10 +82,10 @@ struct TokenView: View {
             .padding(.horizontal, 20).padding(.top, 22)
 
             ActionRow(items: [
-                ActionItem(id: "ape", label: app.demoWallet ? "Ape" : "Deposit", symbol: "plus", accent: true) {
+                ActionItem(id: "ape", label: app.demoWallet ? "Ape" : "Deposit", symbol: "plus", tone: Theme.buy) {
                     app.sheet = app.demoWallet ? .apeToken(t.card, t.stock) : .deposit
                 },
-                ActionItem(id: "sell", label: "Sell", symbol: "minus") { app.show("Nothing to sell yet") },
+                ActionItem(id: "sell", label: "Sell", symbol: "minus", tone: Theme.sell) { app.show("Nothing to sell yet") },
                 ActionItem(id: "floor", label: "Floor", symbol: "arrow.left.arrow.right") { app.push(.floor(t.quoteMint)) },
                 ActionItem(id: "share", label: "Share", symbol: "square.and.arrow.up") { app.copy(t.mint) },
             ])

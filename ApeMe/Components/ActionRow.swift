@@ -6,6 +6,7 @@ struct ActionItem: Identifiable {
     let label: String
     let symbol: String
     var accent = false
+    var tone: Color? = nil
     let action: () -> Void
 }
 
@@ -19,10 +20,10 @@ struct ActionRow: View {
                 Button(action: item.action) {
                     VStack(spacing: 8) {
                         Image(systemName: item.symbol)
-                            .font(.system(size: 20, weight: .medium))
-                            .foregroundStyle(item.accent ? skin.accentInk : skin.accent)
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(item.tone != nil ? .white : item.accent ? skin.accentInk : skin.accent)
                             .frame(width: 52, height: 52)
-                            .background(item.accent ? skin.accent : Theme.surface, in: .rect(cornerRadius: 16))
+                            .background(item.tone ?? (item.accent ? skin.accent : Theme.surface), in: .rect(cornerRadius: 16))
                         Text(item.label)
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(Theme.ink)

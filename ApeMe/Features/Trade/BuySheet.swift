@@ -89,7 +89,7 @@ struct BuySheet: View {
                 }
             }
             BigButton(label: !app.demoWallet ? "Add money to continue" : value > 0 ? "Review order" : "Enter an amount",
-                      style: app.demoWallet && value <= 0 ? .off : .cta) {
+                      style: app.demoWallet && value <= 0 ? .off : .buy) {
                 if !app.demoWallet { dismiss(); app.sheet = .deposit; return }
                 if value > 0 { step = 1 }
             }
@@ -120,7 +120,7 @@ struct BuySheet: View {
             }
             Text("Prototype order. No funds move. " + (kind == .token ? "Community tokens are unverified and can lose all value." : "Orders route through Jupiter when the swap endpoint lands."))
                 .font(.system(size: 11)).foregroundStyle(Theme.muted)
-            BigButton(label: "Confirm", style: .cta) { step = 2 }
+            BigButton(label: "Confirm", style: .buy) { step = 2 }
         }
     }
 

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 52pt fully rounded buttons. `.primary` = accent, `.cta` = gradient, `.ghost` = surface.
 struct BigButton: View {
-    enum Style { case primary, cta, white, ghost, danger, off }
+    enum Style { case primary, cta, buy, sell, white, ghost, danger, off }
     let label: String
     var style: Style = .primary
     var small = false
@@ -13,7 +13,7 @@ struct BigButton: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(small ? .system(size: 14, weight: .semibold) : .button)
+                .font(small ? .system(size: 14, weight: .semibold) : .system(size: 17, weight: .semibold))
                 .tracking(-0.2)
                 .foregroundStyle(fg)
                 .padding(.horizontal, small ? 16 : 20)
@@ -27,6 +27,7 @@ struct BigButton: View {
     private var fg: Color {
         switch style {
         case .primary, .cta: skin.accentInk
+        case .buy, .sell: .white
         case .white: Theme.ground
         case .ghost: Theme.ink
         case .danger: Theme.red
@@ -37,6 +38,8 @@ struct BigButton: View {
         switch style {
         case .primary: AnyShapeStyle(skin.accent)
         case .cta: AnyShapeStyle(skin.cta)
+        case .buy: AnyShapeStyle(Theme.buyGradient)
+        case .sell: AnyShapeStyle(Theme.sellGradient)
         case .white: AnyShapeStyle(Color.white)
         case .ghost, .danger, .off: AnyShapeStyle(Theme.surface2)
         }

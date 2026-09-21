@@ -70,8 +70,8 @@ struct StockView: View {
             chart(s).padding(.top, 20)
             ranges.padding(.top, 14)
             HStack(spacing: 10) {
-                BigButton(label: "Buy", style: .primary) { app.sheet = .buyStock(s) }
-                BigButton(label: "Sell", style: .ghost) { app.show("Nothing to sell yet") }
+                BigButton(label: "Buy", style: .buy) { app.sheet = .buyStock(s) }
+                BigButton(label: "Sell", style: .sell) { app.show("Nothing to sell yet") }
             }
             .padding(.horizontal, 20).padding(.top, 18)
             HR().padding(.top, 26)

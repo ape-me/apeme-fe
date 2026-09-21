@@ -17,6 +17,14 @@ enum Theme {
     static let redT = Color(hex: 0x2a1517)
     static let greyT = Color(hex: 0x1e2126)
 
+    /// Trade buttons: Phantom's green and red, white text, same in both modes.
+    static let buy = Color(hex: 0x3fa86a)
+    static let buyHi = Color(hex: 0x53bd7c)
+    static let sell = Color(hex: 0xe4522f)
+    static let sellHi = Color(hex: 0xf06a45)
+    static var buyGradient: LinearGradient { LinearGradient(colors: [buyHi, buy], startPoint: .top, endPoint: .bottom) }
+    static var sellGradient: LinearGradient { LinearGradient(colors: [sellHi, sell], startPoint: .top, endPoint: .bottom) }
+
     /// Green / red for 24h change and P&L only.
     static func change(_ v: Double?) -> Color {
         guard let v else { return faint }

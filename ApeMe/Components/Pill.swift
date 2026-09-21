@@ -28,12 +28,12 @@ struct Pill: View {
     }
 
     private var fg: Color {
-        if filled { return skin.accentInk }
+        if filled { return .white }
         if on { return skin.accent }
         return size == .xsmall ? Theme.muted : Theme.ink
     }
     private var bg: Color {
-        if filled { return skin.accent }
+        if filled { return Theme.buy }
         if on { return skin.accentTint }
         return size == .xsmall ? .clear : Theme.surface2
     }

@@ -56,7 +56,7 @@ struct FloorView: View {
 
     private var actions: some View {
         ActionRow(items: [
-            ActionItem(id: "ape", label: "Ape king", symbol: "plus", accent: true) { apeKing() },
+            ActionItem(id: "ape", label: "Ape king", symbol: "plus", tone: Theme.buy) { apeKing() },
             ActionItem(id: "buy", label: "Buy stock", symbol: "arrow.left.arrow.right") { if let s = store.stock { app.sheet = .buyStock(s) } },
             ActionItem(id: "launch", label: "Launch", symbol: "paperplane") { app.show("Launch flow lands with the Tuesday endpoint") },
             ActionItem(id: "share", label: "Share", symbol: "square.and.arrow.up") { app.copy(store.mint) },
