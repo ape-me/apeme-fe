@@ -54,6 +54,27 @@ WS  wss://…/ws/:mint      trades for one token
 - Money semantics: `priceQuote` = **raw** stock units per meme (e.g. NVDAx per NIU). `priceUsd = priceQuote × stock.quoteUsd` (NOT `priceUsd`). xStocks/PreStocks carry a Token-2022 scaled-UI **multiplier** (dividends and splits raise it; OPENAI = 1.486): `stock.priceUsd` is per displayed unit (what wallets show), `stock.quoteUsd = priceUsd × multiplier` is per raw unit. Candles and trade `quote` are raw, so convert with `quoteUsd`; show a stock holding as `raw × multiplier`. `mcapUsd` is already computed. Trade `base`/`quote` are what the wallet paid/received (transfer tax included), same as explorers show. `taxBps` = the meme's transfer tax (100 = 1%). `phase` is `curve` (on the launch curve, `progressPct` toward graduation) or `graduated` (on an AMM). `marketOpen` = NYSE regular session.
 - Test ids: NVDAx `Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh`; busiest meme on it, NIU `GXL9wD1F5TzVXfZ33fKkBxeuNi7wKMUR25SDEBGEZ9mN`.
 
+## Accounts (live Mon 21 Sep, Privy)
+
+Login is Privy (Apple + Email). App ID `cmubdpllu01d00cl2p2q2n6h6`, iOS client ID `client-WY6dwtnFJ1tfTakEeB1yNpEKTvshPSvbYa6DP2h7Cohay`, bundle `fun.apeme.app`, URL scheme `apeme`.
+After login: `user.createSolanaWallet()` (no-op if exists). Send `user.getIdentityToken()` as header **`privy-id-token`** on every `/v1/me/*` call and every trade call. Reads stay public.
+
+| Route | Does |
+|---|---|
+| `GET /v1/me` | `{ userId, handle, avatarUrl, status: "invite_required" \| "active", wallets:[{address,chain,label,isDefault,hdIndex}], settings:{slippageBps,quickBuyUsd[],quickSellPct[],priority,confirmBeforeTrade,hideDust}, referral:{code,invitesLeft,earnedUsd}, createdAt }`. Creates the user on first call. |
+| `PATCH /v1/me` | `{ handle?, avatarUrl? }` → same shape. 409 `handle taken`. Handle = `[a-z0-9_]{3,20}`. |
+| `POST /v1/me/invite` | `{ code }` → `{ ok, status:"active" }`. 404 unknown, 410 used up/expired, 409 already active. Codes are case-insensitive. |
+| `GET /v1/me/referrals` | `{ code, link, invitesLeft, referred:[{userId,handle,joinedAt,volumeUsd}], earnedUsd, claimableUsd }` |
+| `GET/PATCH /v1/me/settings` | settings object; PATCH takes any subset. slippageBps 10–500, max 4 presets each, priority normal\|fast\|turbo. |
+| `GET /v1/me/wallets` | `{ wallets:[…] }`; `PATCH /v1/me/wallets/:address` `{ label?, isDefault?: true }` |
+| `GET /v1/me/watchlist` | `{ stocks:[Stock…] }`; `PUT` / `DELETE /v1/me/watchlist/:mint` |
+
+Errors: 401 `unauthorized` (bad/missing token), 403 `invite_required` on trade routes while status is invite_required, 503 `auth_not_configured` never in prod.
+Invite gate is ON. While `status == "invite_required"` the app must show the invite screen before trading; browsing works. Test codes are with Joey.
+Every user's `referral.code` is also an invite code (5 uses). Share link `https://apeme.fun/i/<code>`.
+
+Coming next: `POST /v1/swap/quote`, `POST /v1/swap/submit`, `GET /v1/tx/:sig` (USDC only, we pay gas), then referral claim.
+
 ## Apelist (landing-page waitlist, live)
 Base: `https://apme-be.iamjoey.workers.dev/api/apelist`. Turnstile **site key** (public): `0x4AAAAAAE7uvyin5VEgyZCu`, domains apeme.fun / www / localhost.
 - `POST /` `{email, turnstile, ref?}` → 201 `{ok:true}` new · 200 `{ok:true}` existing (treat the same) · 400 `{ok:false,error:"invalid_email"|"bot"}` · 429 `rate_limited` · 500 `server`
