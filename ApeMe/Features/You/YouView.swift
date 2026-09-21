@@ -33,17 +33,13 @@ struct YouView: View {
             .scrollIndicators(.hidden)
         }
         .background(Theme.ground)
-        .confirmationDialog("Show onboarding again?", isPresented: $confirmOnboarding, titleVisibility: .visible) {
-            Button("Show it") { app.onboarded = false; app.path.removeAll() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("You'll pick a mode again. Nothing else changes.")
+        .appDialog("Show onboarding again?", isPresented: $confirmOnboarding,
+                   message: "You'll pick a mode again. Nothing else changes.", confirm: "Show it") {
+            app.onboarded = false; app.path.removeAll()
         }
-        .confirmationDialog("Sign out?", isPresented: $confirmSignOut, titleVisibility: .visible) {
-            Button("Sign out", role: .destructive) { Task { await app.signOut() } }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Your wallet stays with your account. Sign back in any time.")
+        .appDialog("Sign out?", isPresented: $confirmSignOut,
+                   message: "Your wallet stays with your account. Sign back in any time.", confirm: "Sign out", destructive: true) {
+            Task { await app.signOut() }
         }
     }
 }

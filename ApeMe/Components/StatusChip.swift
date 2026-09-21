@@ -36,18 +36,60 @@ struct EmptyState<Content: View>: View {
     }
 }
 
+/// Small, quiet, centered above the tab bar. Reads as a confirmation, not an alert.
 struct ToastView: View {
     let text: String
     var body: some View {
         Text(text)
-            .font(.system(size: 14, weight: .medium))
-            .foregroundStyle(Theme.ground)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 13).padding(.horizontal, 16)
-            .background(.white, in: .rect(cornerRadius: 14))
-            .shadow(color: .black.opacity(0.5), radius: 15, y: 10)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 72)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(Theme.ink)
+            .padding(.horizontal, 14).frame(height: 36)
+            .background(Theme.surface2, in: .capsule)
+            .overlay(Capsule().stroke(Theme.line, lineWidth: 1))
+            .padding(.bottom, 76)
+    }
+}
+
+/// In-app confirmation: dimmed ground, centered card, one primary action.
+struct AppDialog: ViewModifier {
+    @Binding var isPresented: Bool
+    let title: String
+    let message: String
+    let confirm: String
+    var destructive = false
+    let action: () -> Void
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            if isPresented {
+                ZStack {
+                    Color.black.opacity(0.55).ignoresSafeArea()
+                        .onTapGesture { isPresented = false }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(title).font(.system(size: 20, weight: .semibold)).tracking(-0.4)
+                        Text(message).font(.system(size: 15)).foregroundStyle(Theme.muted).lineSpacing(2)
+                        HStack(spacing: 10) {
+                            BigButton(label: "Cancel", style: .ghost, small: true) { isPresented = false }
+                            BigButton(label: confirm, style: destructive ? .danger : .white, small: true) { isPresented = false; action() }
+                        }
+                        .padding(.top, 14)
+                    }
+                    .padding(20)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.surface, in: .rect(cornerRadius: 20))
+                    .padding(.horizontal, 28)
+                    .transition(.scale(scale: 0.96).combined(with: .opacity))
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: isPresented)
+    }
+}
+
+extension View {
+    func appDialog(_ title: String, isPresented: Binding<Bool>, message: String, confirm: String, destructive: Bool = false, action: @escaping () -> Void) -> some View {
+        modifier(AppDialog(isPresented: isPresented, title: title, message: message, confirm: confirm, destructive: destructive, action: action))
     }
 }
 

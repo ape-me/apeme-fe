@@ -45,7 +45,8 @@ struct LoginForm: View {
     @State private var email = ""
     @State private var code = ""
     @State private var codeSent = false
-    @State private var busy = false
+    private enum Action { case apple, email }
+    @State private var busy: Action? = nil
     @State private var error: String?
     @State private var detail: String?
     @FocusState private var focus: Field?
@@ -55,9 +56,10 @@ struct LoginForm: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("A wallet is created for you. No seed phrase.").font(.sub).foregroundStyle(Theme.muted)
 
-            Button { run { try await app.auth.loginWithApple() } } label: {
+            Button { run(.apple) { try await app.auth.loginWithApple() } } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: "apple.logo").font(.system(size: 17, weight: .semibold))
+                    if busy == .apple { ProgressView().tint(Theme.ground) }
+                    else { Image(systemName: "apple.logo").font(.system(size: 17, weight: .semibold)) }
                     Text("Continue with Apple").font(.system(size: 17, weight: .semibold)).tracking(-0.2)
                 }
                 .foregroundStyle(Theme.ground)
@@ -65,7 +67,7 @@ struct LoginForm: View {
                 .background(Color.white, in: .capsule)
             }
             .buttonStyle(PressScale())
-            .disabled(busy)
+            .disabled(busy != nil)
 
             HStack(spacing: 12) {
                 Rectangle().fill(Theme.line).frame(height: 1)
@@ -76,22 +78,22 @@ struct LoginForm: View {
             if codeSent {
                 field("6-digit code", text: $code, keyboard: .numberPad, focus: .code)
                 Text("Sent to \(email)").font(.sub).foregroundStyle(Theme.muted)
-                BigButton(label: busy ? "Signing in…" : "Sign in", style: .primary) {
-                    run(emailCode: true) { try await app.auth.loginWithCode(code.trimmingCharacters(in: .whitespaces), email: email) }
+                BigButton(label: busy == .email ? "Signing in…" : "Sign in", style: .primary) {
+                    run(.email, emailCode: true) { try await app.auth.loginWithCode(code.trimmingCharacters(in: .whitespaces), email: email) }
                 }
-                .disabled(code.count < 6 || busy).opacity(code.count < 6 ? 0.5 : 1)
+                .disabled(code.count < 6 || busy != nil).opacity(code.count < 6 ? 0.5 : 1)
                 Button("Use a different email") { codeSent = false; code = ""; focus = .email }
                     .font(.sub.weight(.semibold)).foregroundStyle(Theme.ink)
                     .frame(maxWidth: .infinity)
             } else {
                 field("Email", text: $email, keyboard: .emailAddress, focus: .email)
-                BigButton(label: busy ? "Sending…" : "Send code", style: .primary) {
-                    run(stay: true) {
+                BigButton(label: busy == .email ? "Sending…" : "Send code", style: .primary) {
+                    run(.email, stay: true) {
                         try await app.auth.sendCode(to: email.trimmingCharacters(in: .whitespaces))
                         codeSent = true; focus = .code
                     }
                 }
-                .disabled(!email.contains("@") || busy).opacity(email.contains("@") ? 1 : 0.5)
+                .disabled(!email.contains("@") || busy != nil).opacity(email.contains("@") ? 1 : 0.5)
             }
 
             if let error {
@@ -122,10 +124,10 @@ struct LoginForm: View {
     }
 
     /// Runs one auth step. On a completed login: load the wallet, hand back, and open the invite gate if needed.
-    private func run(stay: Bool = false, emailCode: Bool = false, _ work: @escaping () async throws -> Void) {
-        error = nil; detail = nil; busy = true
+    private func run(_ which: Action, stay: Bool = false, emailCode: Bool = false, _ work: @escaping () async throws -> Void) {
+        error = nil; detail = nil; busy = which
         Task {
-            defer { busy = false }
+            defer { busy = nil }
             do {
                 try await work()
                 if !stay {
