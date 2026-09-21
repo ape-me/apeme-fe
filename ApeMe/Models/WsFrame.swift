@@ -4,6 +4,16 @@ import Foundation
 enum WsFrame: Hashable {
     case trade(WsTrade)
     case token(mint: String, event: String)
+    case price(WsPrice)
+}
+
+/// Jupiter-sampled stock price on `stock:<mint>`, at most one per 5s, only when it moved.
+struct WsPrice: Codable, Hashable {
+    let mint: String
+    let ts: Int
+    let priceUsd: Double?
+    let markUsd: Double?
+    let change24h: Double?
 }
 
 struct WsTrade: Codable, Hashable {
@@ -37,6 +47,8 @@ struct RawWsFrame: Decodable {
             let mint = try c.decode(String.self, forKey: .mint)
             let event = (try? c.decode(String.self, forKey: .event)) ?? "created"
             frame = .token(mint: mint, event: event)
+        case "price":
+            frame = (try? WsPrice(from: decoder)).map(WsFrame.price)
         default:
             frame = nil
         }

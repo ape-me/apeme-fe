@@ -27,8 +27,12 @@ struct StockView: View {
             }
         }
         .background(Theme.ground)
-        .task { await store.load(app: app) }
-        .task { await store.poll(app: app) }
+        .task {
+            store.connect(app: app)
+            await store.load(app: app)
+        }
+        .task { await store.resync() }
+        .onDisappear { store.disconnect() }
     }
 
     private var topbar: some View {
@@ -74,10 +78,8 @@ struct StockView: View {
             HR().padding(.top, 26)
             if let mark = s.markUsd, let p = s.premiumPct { fairValue(s, mark, p) }
             stats(s)
-            HStack(spacing: 6) {
-                StatusChip(text: app.online ? "Live" : "Snapshot", live: app.online)
-            }
-            .padding(.horizontal, 20).padding(.top, 20)
+            StatusChip(text: store.status.rawValue, live: store.status == .live)
+                .padding(.horizontal, 20).padding(.top, 20)
         }
         .padding(.bottom, 24)
     }

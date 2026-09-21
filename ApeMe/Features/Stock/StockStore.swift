@@ -10,8 +10,11 @@ final class StockStore {
     var chartLoading = true
     var error: String?
     var scrub: LineChart.Point?
+    var status: LiveSocket.Status = .connecting
 
     private var rangeGen = 0
+    private var socket: LiveSocket?
+    private var listener: Task<Void, Never>?
 
     init(mint: String) { self.mint = mint }
 
@@ -49,13 +52,51 @@ final class StockStore {
         }
     }
 
-    /// No socket carries the stock's own price yet, so poll the edge every 5s while on screen.
-    func poll(app: AppState) async {
+    /// `stock:<mint>` pushes `{t:"price"}` when the price moves; the chart gets a point appended.
+    func connect(app: AppState) {
+        guard socket == nil else { return }
+        let s = LiveSocket(room: "stock:\(mint)")
+        socket = s
+        listener = Task { [weak self] in
+            for await ev in s.events {
+                guard let self else { return }
+                switch ev {
+                case .status(let st): status = st
+                case .frames(let frames):
+                    for case .price(let p) in frames where p.mint == mint { apply(p, app: app) }
+                }
+            }
+        }
+        s.start()
+    }
+
+    func disconnect() {
+        listener?.cancel(); listener = nil
+        socket?.stop(); socket = nil
+    }
+
+    /// Re-sync the series with the server every 30s so client-appended points never drift.
+    func resync() async {
         while !Task.isCancelled {
-            try? await Task.sleep(for: .seconds(5))
+            try? await Task.sleep(for: .seconds(30))
             if Task.isCancelled { break }
-            if let s = try? await API.shared.stock(mint, fresh: true) { stock = s; app.stocksByMint[mint] = s }
             if scrub == nil { await loadRange(fresh: true) }
+        }
+    }
+
+    private func apply(_ p: WsPrice, app: AppState) {
+        guard var s = stock, let price = p.priceUsd else { return }
+        s.priceUsd = price
+        if let c = p.change24h { s.change24h = c }
+        if let m = p.markUsd { s.markUsd = m; s.premiumPct = (price - m) / m * 100 }
+        stock = s
+        app.stocksByMint[mint] = s
+        guard scrub == nil else { return }
+        let bucket = p.ts - p.ts % range.bucket
+        if let last = points.last, last.t >= bucket {
+            points[points.count - 1] = LineChart.Point(t: last.t, price: price, mark: nil)
+        } else {
+            points.append(LineChart.Point(t: bucket, price: price, mark: nil))
         }
     }
 

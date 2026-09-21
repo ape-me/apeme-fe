@@ -9,14 +9,14 @@ struct Stock: Codable, Identifiable, Hashable {
     let category: String
     let tags: [String]?
     let logo: String?
-    let priceUsd: Double?
-    let change24h: Double?
+    var priceUsd: Double?
+    var change24h: Double?
     let memes: Int
     let marketOpen: Bool
     let multiplier: Double?
     let quoteUsd: Double?
-    let markUsd: Double?
-    let premiumPct: Double?
+    var markUsd: Double?
+    var premiumPct: Double?
     let liquidityUsd: Double?
     let stockVol24hUsd: Double?
     let buys24h: Int?
