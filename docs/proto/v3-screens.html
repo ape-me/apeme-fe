@@ -1,0 +1,282 @@
+/* ============ screens ============ */
+const SCREENS={};
+/* --- onboarding: 3 slides + the mode question --- */
+SCREENS.onboard={
+  html(){
+    const tk=(t,x,y,r,bg)=>`<span class="tk" style="left:${x}%;top:${y}%;transform:rotate(${r}deg);background:${bg}">${t}</span>`;
+    const orb=(x,y,s,bg)=>`<span class="orb" style="left:${x}%;top:${y}%;width:${s}px;height:${s}px;background:${bg}"></span>`;
+    return `<div class="onb">
+    <div class="slides" id="slides">
+      <section class="slide"><div class="art">${tk('OPENAI',6,18,-14,'#c8f58a')}${tk('ANTHROPIC',38,10,9,'#ffffff')}${tk('NEURALINK',58,34,-6,'#c8f58a')}${tk('NVDAx',10,48,17,'#ffffff')}${tk('AAPLx',44,58,-12,'#0f1319;color:#fff;border:1px solid #2a2e35')}${tk('POLYMARKET',24,76,7,'#c8f58a')}</div><div class="title">Own the stocks that aren't public yet.</div><div class="body">OpenAI, Anthropic, Neuralink — tokenized on Solana. Trade them 24/7 with as little as $1.</div></section>
+      <section class="slide"><div class="art" id="art2"></div><div class="title">See what people pay vs. what it's worth.</div><div class="body">Every pre-IPO stock has a fair value. The gap is the premium — and we show it on every card.</div></section>
+      <section class="slide"><div class="art" id="art3">${orb(14,26,52,'#d97757')}${orb(66,14,44,'#6db3ff')}${orb(72,58,60,'#5fe39a')}${orb(22,70,40,'#f5b640')}${orb(48,44,72,'#fff;display:flex;align-items:center;justify-content:center;color:#0a0b0d;font-weight:700;font-size:22px')}</div><div class="title">Every stock has a floor.</div><div class="body">Community tokens launch against each stock. Buy the stock, or ape the memes on its floor.</div></section>
+      <section class="slide" style="justify-content:center;gap:16px"><div><div class="eyebrow" style="margin-bottom:8px">One question</div><div class="title">Have you traded memecoins before?</div></div>
+        <button class="opt" data-m="invest"><b>No, I invest</b><span class="sub">Stocks first. Fair values, premiums, a calm view.</span></button>
+        <button class="opt" data-m="ape"><b>Yes, I ape</b><span class="sub">Floors first. New launches, kings, the live tape.</span></button>
+        <div class="sub">Switch any time in You.</div></section>
+    </div>
+    <div class="onbfoot"><div class="dots" id="dots"><i class="on"></i><i></i><i></i><i></i></div><button class="btn white" id="next" style="width:100%">Continue</button></div></div>`;
+  },
+  mount(el){
+    const slides=el.querySelector('#slides'), dots=[...el.querySelectorAll('#dots i')], next=el.querySelector('#next'); let idx=0, mode=null;
+    // slide 2 art: two-line mini chart
+    el.querySelector('#art2').innerHTML=`<svg viewBox="0 0 320 200" style="width:100%;height:100%"><defs><pattern id="ob" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="var(--accent)"/></pattern><linearGradient id="og" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient><mask id="om"><rect width="320" height="200" fill="url(#og)"/></mask></defs><path d="M0 130 C40 128 60 110 90 112 S140 96 170 92 S230 78 260 70 S300 66 320 58 L320 200 L0 200Z" fill="url(#ob)" mask="url(#om)"/><path d="M0 150 L320 138" stroke="var(--amber)" stroke-width="2" stroke-dasharray="4 6"/><path d="M0 130 C40 128 60 110 90 112 S140 96 170 92 S230 78 260 70 S300 66 320 58" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/><circle cx="320" cy="58" r="5" fill="var(--accent)"/><rect x="236" y="88" width="72" height="26" rx="13" fill="var(--amberT)"/><text x="272" y="106" text-anchor="middle" font-size="13" font-weight="700" fill="var(--amber)">+15% </text><text x="8" y="126" font-size="12" font-weight="600" fill="var(--accent)">What people pay</text><text x="8" y="168" font-size="12" font-weight="600" fill="var(--amber)">Fair value</text></svg>`;
+    const setIdx=i=>{ idx=i; dots.forEach((d,j)=>d.classList.toggle('on',j===i)); next.textContent=i<3?'Continue':'Get started'; next.classList.toggle('off',i===3&&!mode); };
+    slides.addEventListener('scroll',()=>{ const i=Math.round(slides.scrollLeft/slides.clientWidth); if(i!==idx) setIdx(i); },{passive:true});
+    el.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{ mode=b.dataset.m; el.querySelectorAll('[data-m]').forEach(x=>x.classList.toggle('on',x===b)); setIdx(3); });
+    next.onclick=()=>{ if(idx<3){ slides.scrollTo({left:slides.clientWidth*(idx+1),behavior:'smooth'}); } else if(mode){ state.mode=mode; LSW('apeme.mode',mode); if(auth.signedIn()){ state.onboarded=true; LSW('apeme.onboarded','1'); root('home'); } else push('login'); } };
+    setIdx(0);
+  }
+};
+/* --- login (full-screen gate) --- */
+SCREENS.login={
+  html(){ return `<div class="authpage"><div class="wordmark">ApeMe</div><div class="tag">The trading floor for tokenized stocks.</div>
+    <div class="form"><div class="sub">A wallet is created for you. No seed phrase.</div>
+      <button class="btn white" id="apple"><span style="display:inline-flex;align-items:center;gap:8px"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.1.9-4 2.4-1.7 2.9-.4 7.3 1.2 9.7.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.6-1-2.6-3.8zM14 5.4c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.2-.6 2.8-1.4z"/></svg>Continue with Apple</span></button>
+      <div class="orline"><i></i>or<i></i></div>
+      <div id="emailstep" style="display:flex;flex-direction:column;gap:16px"><input class="field" id="em" type="email" placeholder="Email" autocomplete="email"><button class="btn primary off" id="send">Send code</button></div>
+      <div id="codestep" style="display:none;flex-direction:column;gap:16px"><input class="field code" id="code" inputmode="numeric" maxlength="6" placeholder="6-digit code"><div class="sub" id="sentto"></div><button class="btn primary off" id="login">Sign in</button><button class="lnk" id="other" style="font-size:13px;font-weight:600;text-align:center">Use a different email</button></div>
+      <div class="errbox" id="err" hidden></div></div></div>`; },
+  mount(el){
+    const em=el.querySelector('#em'), send=el.querySelector('#send'), code=el.querySelector('#code'), login=el.querySelector('#login'), err=el.querySelector('#err');
+    const fail=m=>{ err.textContent=m; err.hidden=false; }; const clear=()=>{ err.hidden=true; };
+    em.oninput=()=>send.classList.toggle('off',!em.value.includes('@'));
+    code.oninput=()=>login.classList.toggle('off',code.value.length<6);
+    el.querySelector('#apple').onclick=()=>{ clear(); const b=el.querySelector('#apple'); b.textContent='Signing in…'; setTimeout(()=>auth.signIn({method:'apple',label:'Apple'}),900); };
+    send.onclick=()=>{ if(send.classList.contains('off')) return; clear(); send.textContent='Sending…'; setTimeout(()=>{ el.querySelector('#emailstep').style.display='none'; const c=el.querySelector('#codestep'); c.style.display='flex'; el.querySelector('#sentto').textContent='Sent to '+em.value; code.focus(); },700); };
+    login.onclick=()=>{ if(login.classList.contains('off')) return; clear(); if(code.value==='000000'){ fail("That code didn't match. Check it and try again."); return; } login.textContent='Signing in…'; setTimeout(()=>auth.signIn({method:'email',label:em.value}),800); };
+    el.querySelector('#other').onclick=()=>{ el.querySelector('#codestep').style.display='none'; el.querySelector('#emailstep').style.display='flex'; send.textContent='Send code'; code.value=''; clear(); };
+  }
+};
+/* --- invite wall (after sign-in while status is invite_required) --- */
+SCREENS.invite={
+  html(){ return `<div class="authpage"><div class="wordmark">Invite code</div><div class="tag">ApeMe is invite-only for now. Drop the code you were given.</div>
+    <div class="form"><input class="field code" id="ic" placeholder="Code" autocapitalize="characters" maxlength="10"><button class="btn white off" id="go">Unlock ApeMe</button><div class="errbox" id="err" hidden></div></div>
+    <div class="sub" style="text-align:center;margin-top:auto;padding-top:24px">Signed in as ${esc(state.user?.label||'')} · <button class="lnk" id="out" style="font-weight:600;color:var(--ink)">Sign out</button></div></div>`; },
+  mount(el){
+    const ic=el.querySelector('#ic'), go=el.querySelector('#go'), err=el.querySelector('#err');
+    ic.oninput=()=>{ ic.value=ic.value.toUpperCase(); go.classList.toggle('off',ic.value.length<4); };
+    go.onclick=async()=>{ if(go.classList.contains('off')) return; err.hidden=true; go.textContent='Checking…'; try{ await auth.redeem(ic.value); toast("You're in"); boot(); }catch(e){ go.textContent='Unlock ApeMe'; err.textContent={404:"That code doesn't exist.",410:"That code has been used up.",409:"You're already in."}[e.message]||"Couldn't check the code. Try again."; err.hidden=false; } };
+    el.querySelector('#out').onclick=()=>auth.signOut();
+  }
+};
+/* --- home --- */
+SCREENS.home={
+  html(p,skin){ const ape=skin==='ape'; return `<div class="scroll" id="hs">
+    <div class="pad" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:16px"><div class="h1">${ape?'Floors':'Home'}</div>${modeToggle()}</div>
+    <div id="strip" style="margin-top:10px"></div><div class="hr"></div>
+    <div class="tabs" id="hometabs" style="padding-inline:20px;margin-top:6px">${ape?'<button data-ht="preipo" class="on">Pre-IPO</button><button data-ht="new">New launches</button><button data-ht="kings">Kings</button>':'<button data-ht="preipo" class="on">Pre-IPO</button><button data-ht="movers">Movers</button><button data-ht="explore">Explore</button><button data-ht="watch">Watchlist</button>'}</div>
+    <div id="body"><div class="sec"><div class="skel" style="height:220px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div></div></div></div>`; },
+  async mount(el,p,skin){
+    const ape=skin==='ape', body=el.querySelector('#body'); bindMode(el);
+    if(ape) api('/ticker?memes=10&stonks=1',30000).then(t=>{ if(el.isConnected) bindStrip(el,(t.tokens||[]).filter(x=>x.kind==='meme').map(x=>({id:x.id,label:x.label,price:x.price,change24h:x.change24h})),true); }).catch(()=>{});
+    let pre,cols,mov; try{ [pre,cols,mov]=await Promise.all([api('/stocks?issuer=prestocks'),api('/collections',30000),api('/movers?limit=5',15000)]); }catch(e){ body.innerHTML='<div class="empty"><b>Markets are taking a moment</b><span class="sub">Pull to retry from the Home tab.</span></div>'; return; }
+    if(!el.isConnected) return; indexStocks(pre.stocks); cols.collections.forEach(c=>indexStocks(c.stocks||[])); updateDataStatus();
+    if(!ape) bindStrip(el,[...pre.stocks,...(mov.mostTraded||[]).slice(0,4)].map(x=>({id:x.mint,label:x.symbol,price:x.priceUsd,change24h:x.change24h})),false);
+    const bind=()=>{ bindRows(el); el.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>root(b.dataset.tab)); };
+    const featureCard=s=> ape
+      ? `<button class="feature" data-stock="${s.mint}"><div class="top">${logo(s,44)}<div style="flex:1;min-width:0"><div class="h3">${esc(s.symbol)} floor</div><div class="sub">${s.memes} memes · ${s.launched24h} launched today</div></div>${s.king?avatar(s.king,'m'):''}</div>
+      <div><div class="hero" style="font-size:34px;line-height:38px">${fmt.big(s.memeVol24hUsd)}</div><div class="sub" style="margin-top:4px">traded on the floor today · ${fmt.n(s.wallets24h)} apes</div></div>
+      <div class="sub" style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--line)"><span style="display:inline-flex;align-items:center;gap:6px">${s.king?`${I.crown} King: <b style="color:var(--ink)">${esc(s.king.symbol)}</b> · ${fmt.big(s.king.vol24hUsd)}`:'No king yet'}</span>${I.chev}</div></button>`
+      : `<button class="feature" data-stock="${s.mint}"><div class="top">${logo(s,44)}<div style="flex:1;min-width:0"><div class="h3">${esc(s.symbol)}</div><div class="sub">${esc(s.name)} · Pre-IPO</div></div>${premiumBadge(s)}</div>
+      <div><div class="hero" style="font-size:34px;line-height:38px">${fmt.usd(s.priceUsd)}</div><div class="${fmt.cls(s.change24h)}" style="font-size:13px;font-weight:600;margin-top:4px">${fmt.arrow(s.change24h)} <span class="muted" style="font-weight:500">today</span></div></div>
+      ${s.markUsd?`<div class="sub" style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--line)"><span>Fair value <b style="color:var(--ink)">${fmt.usd(s.markUsd)}</b> · trades <b class="${Math.abs(s.premiumPct)>=5?'amb':''}" style="color:${Math.abs(s.premiumPct)>=5?'':'var(--ink)'}">${Math.abs(s.premiumPct)<1?Math.abs(s.premiumPct).toFixed(1):Math.abs(s.premiumPct).toFixed(0)}% ${s.premiumPct>=0?'above':'below'}</b></span>${I.chev}</div>`:''}</button>`;
+    const tabs={
+      preipo(){ const list=ape?[...pre.stocks].sort((a,b)=>(b.heat||0)-(a.heat||0)):pre.stocks; return `<div class="sec" style="padding-inline:0"><div class="head pad"><div><div class="h2">${ape?'Pre-IPO floors':'Before the IPO'}</div><div class="sub">${ape?'Ranked by heat: launches, apes and volume':'Private companies, before the IPO'}</div></div></div><div class="pager" id="pager">${list.slice(0,3).map(featureCard).join('')}</div><div class="dots" id="pdots"><i class="on"></i><i></i><i></i></div><div class="hr"></div><div class="pad"><div class="card">${list.slice(3).map(s=>stockRow(s,skin)).join('')}</div></div></div>`; },
+      movers(){ let side='gainers'; const grid=()=>(mov[side]||[]).slice(0,4).map(s=>`<button class="mini" data-stock="${s.mint}"><div style="display:flex;align-items:center;gap:10px">${logo(s,32)}<span class="h3">${esc(s.symbol)}</span></div><div class="n muted">${esc(s.name)}</div><div><div class="mp">${fmt.usd(s.priceUsd)}</div><div class="${fmt.cls(s.change24h)}" style="font-size:13px;font-weight:600;margin-top:2px">${fmt.arrow(s.change24h)}</div></div></button>`).join('');
+        setTimeout(()=>{ el.querySelectorAll('[data-ms]').forEach(b=>b.onclick=()=>{ side=b.dataset.ms; el.querySelectorAll('[data-ms]').forEach(x=>x.classList.toggle('on',x===b)); el.querySelector('#movgrid').innerHTML=grid(); bind(); }); });
+        return `<div class="sec"><div class="head"><div class="h2">Biggest movers today</div><div class="seg"><button class="pill xs on" data-ms="gainers">Gainers</button><button class="pill xs" data-ms="losers">Losers</button></div></div><div class="grid2" id="movgrid">${grid()}</div>
+        <div class="head" style="margin-top:12px"><div class="h2">Most traded</div></div><div class="card">${(mov.mostTraded||[]).slice(0,5).map(s=>stockRow(s,skin)).join('')}</div></div>`; },
+      explore(){ const cs=cols.collections.filter(c=>c.id!=='preipo'); let id=cs[0]?.id; const rows=()=>{ const c=cs.find(x=>x.id===id); return c?`<div class="card">${(c.stocks||[]).slice(0,6).map(s=>stockRow(s,skin)).join('')}</div><button class="link" data-tab="markets" style="height:44px">See all in Markets ${I.chev}</button>`:''; };
+        setTimeout(()=>{ el.querySelectorAll('[data-col]').forEach(b=>b.onclick=()=>{ id=b.dataset.col; el.querySelectorAll('[data-col]').forEach(x=>x.classList.toggle('on',x===b)); el.querySelector('#colbody').innerHTML=rows(); bind(); }); });
+        return `<div class="sec" style="padding-inline:0"><div class="chips">${cs.map(c=>`<button class="pill sm ${c.id===id?'on':''}" data-col="${c.id}">${esc(c.title)}</button>`).join('')}</div><div class="pad" id="colbody">${rows()}</div></div>`; },
+      watch(){ const w=state.watch.map(m=>state.stocksByMint[m]).filter(Boolean); return `<div class="sec">${w.length?`<div class="card">${w.map(s=>stockRow(s,skin)).join('')}</div>`:`<div class="empty">${I.star(false)}<b>Nothing watched yet</b><span class="sub">Tap the star on any stock to keep it here.</span><button class="link" data-tab="markets">Explore markets ${I.chev}</button></div>`}</div>`; },
+      async new(){ body.innerHTML='<div class="sec"><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div></div>'; const d=await api('/tokens?column=new&limit=30'); if(!el.isConnected) return null;
+        ws('floor',m=>{ if(m.t==='trade') flash(el.querySelector(`[data-mint="${m.mint}"]`),m.side); else if(m.t==='token'&&m.event==='created') setTimeout(async()=>{ try{ const t=await api('/tokens/'+m.mint,0); const l=el.querySelector('#newlist'); if(l){ l.insertAdjacentHTML('afterbegin',tokenRow(t,state.stocksByMint[t.quoteMint]?.symbol)); bind(); flash(l.firstElementChild,'buy'); } }catch(e){} },1500); });
+        return `<div class="sec"><div class="head"><div><div class="h2">Just launched</div><div class="sub">New tokens across every floor</div></div><span class="cc" data-ws-status>Connecting</span></div><div class="card" id="newlist">${d.tokens.map(t=>tokenRow(t,state.stocksByMint[t.quoteMint]?.symbol)).join('')}</div></div>`; },
+      kings(){ const seen=new Set(); const kings=[...pre.stocks,...cols.collections.flatMap(c=>c.stocks||[])].filter(s=>s.king&&!seen.has(s.mint)&&seen.add(s.mint)).sort((a,b)=>b.king.vol24hUsd-a.king.vol24hUsd).slice(0,25);
+        return `<div class="sec"><div><div class="h2">Kings of the floor</div><div class="sub">The most traded token on each stock today</div></div><div class="card">${kings.map(s=>`<button class="row" data-token="${s.king.mint}">${avatar(s.king)}<div class="grow"><div class="t"><span class="sym">${esc(s.king.symbol)}</span>${I.crown}</div><div class="s">on ${esc(s.symbol)}</div></div><div class="r"><div class="px">${fmt.big(s.king.vol24hUsd)}</div><div class="ch muted">today</div></div></button>`).join('')}</div></div>`; }
+    };
+    const show=async(t)=>{ closeSockets(); const h=await tabs[t](); if(h==null||!el.isConnected) return; body.innerHTML=h; bind();
+      const pg=el.querySelector('#pager'); if(pg){ const ds=[...el.querySelectorAll('#pdots i')]; pg.addEventListener('scroll',()=>{ const i=Math.round(pg.scrollLeft/(pg.firstElementChild.offsetWidth+12)); ds.forEach((d,j)=>d.classList.toggle('on',j===i)); },{passive:true}); } };
+    el.querySelectorAll('[data-ht]').forEach(b=>b.onclick=()=>{ el.querySelectorAll('[data-ht]').forEach(x=>x.classList.toggle('on',x===b)); show(b.dataset.ht); });
+    await show('preipo');
+  }
+};
+/* --- markets --- */
+SCREENS.markets={
+  html(p,skin){ const ape=skin==='ape'; return `<div class="pad" style="padding-top:16px;display:flex;flex-direction:column;gap:14px"><div class="h1">${ape?'Floors':'Markets'}</div><label class="srch">${I.search}<input id="q" type="search" aria-label="Search" placeholder="${ape?'Search floors or paste a mint':'Search stocks'}"><button class="paste" id="paste">Paste</button></label></div>
+    <div class="chips" id="fchips" style="padding-block:12px 4px"></div><div class="scroll"><div class="pad" id="list"><div class="skel" style="height:64px"></div></div></div>`; },
+  async mount(el,p,skin){
+    let stocks=[]; try{ const [a,b]=await Promise.all([api('/stocks?issuer=prestocks'),api('/stocks?issuer=xstocks,backpack')]); stocks=[...a.stocks,...b.stocks]; }catch(e){ el.querySelector('#list').innerHTML=`<div class="errbar">Couldn't load markets.</div>`; return; }
+    indexStocks(stocks); const tags=[...new Set(stocks.flatMap(s=>s.tags||[]))]; const tagName={preipo:'Pre-IPO',ai:'AI',mag7:'Big Tech','crypto-stocks':'Crypto stocks',memestocks:'Meme stocks',prediction:'Bets & markets',defense:'Defense',health:'Health',etf:'ETFs'};
+    let f={issuer:'all',tag:null,sort:skin==='ape'?'heat':'change'}, q='';
+    const sortOpts=skin==='ape'?[['heat','Heat'],['volume','Meme volume'],['change','24h change']]:[['change','24h change'],['volume','Trading volume'],['premium','Premium to fair value']]; const sortName=Object.fromEntries(sortOpts);
+    const chips=()=>`<button class="pill sm" data-sortbtn>${I.filter}${sortName[f.sort]}</button>${[['all','All'],['prestocks','Pre-IPO'],['xstocks','xStocks'],['backpack','Backpack']].map(([k,l])=>`<button class="pill sm ${f.issuer===k?'on':''}" data-iss="${k}">${l}</button>`).join('')}${tags.map(t=>`<button class="pill sm ${f.tag===t?'on':''}" data-tag="${t}">${tagName[t]||t}</button>`).join('')}`;
+    const list=()=>{ let L=stocks.filter(s=>(f.issuer==='all'||s.issuer===f.issuer)&&(!f.tag||(s.tags||[]).includes(f.tag))&&(!q||s.symbol.toLowerCase().includes(q)||s.name.toLowerCase().includes(q)||s.mint.toLowerCase()===q));
+      L.sort((a,b)=>f.sort==='change'?(b.change24h||0)-(a.change24h||0):f.sort==='volume'?(skin==='ape'?(b.memeVol24hUsd||0)-(a.memeVol24hUsd||0):(b.stockVol24hUsd||0)-(a.stockVol24hUsd||0)):f.sort==='premium'?Math.abs(b.premiumPct||0)-Math.abs(a.premiumPct||0):(b.heat||0)-(a.heat||0));
+      return L.length?`<div class="card">${L.map(s=>stockRow(s,skin)).join('')}</div>`:`<div class="empty"><b>No matches</b><span class="sub">Try another symbol or clear the filters.</span></div>`; };
+    const draw=()=>{ el.querySelector('#fchips').innerHTML=chips(); el.querySelector('#list').innerHTML=list(); bindRows(el);
+      el.querySelectorAll('[data-iss]').forEach(b=>b.onclick=()=>{f.issuer=b.dataset.iss;draw();}); el.querySelectorAll('[data-tag]').forEach(b=>b.onclick=()=>{f.tag=f.tag===b.dataset.tag?null:b.dataset.tag;draw();});
+      el.querySelector('[data-sortbtn]').onclick=()=>openSheet(`<div class="grab"></div><div class="sheet-title"><div class="h2">Sort by</div><button class="iconbtn" data-close aria-label="Close">${I.x}</button></div><div class="card">${sortOpts.map(([k,l])=>`<button class="row" data-order="${k}" style="min-height:52px"><span style="flex:1;font-weight:500">${l}</span><span class="lnk">${f.sort===k?'✓':''}</span></button>`).join('')}</div>`,w=>w.querySelectorAll('[data-order]').forEach(b=>b.onclick=()=>{ f.sort=b.dataset.order; w.close(); draw(); })); };
+    el.querySelector('#q').oninput=e=>{ q=e.target.value.trim().toLowerCase(); el.querySelector('#list').innerHTML=list(); bindRows(el); };
+    el.querySelector('#paste').onclick=async()=>{ try{ const v=await navigator.clipboard.readText(); const i=el.querySelector('#q'); i.value=v; i.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){ toast('Tap the field and paste'); el.querySelector('#q').focus(); } };
+    draw();
+  }
+};
+/* --- stock (Cash order: name → price → chart → pills → Buy/Sell → details) --- */
+SCREENS.stock={
+  html(p){ const s=state.stocksByMint[p.mint]; const watched=state.watch.includes(p.mint); return `<div class="topbar"><button class="back" aria-label="Back" data-back>${I.back}</button><span style="flex:1"></span><button class="pill" id="watch">${I.star(watched)}${watched?'Watching':'Watch'}</button><button class="iconbtn" aria-label="Share" id="share">${I.share}</button></div>
+    <div class="compact" id="cmp"><button class="back" aria-label="Back" data-back>${I.back}</button><div class="mid">${esc(s?.symbol||'')}<small id="csub"></small></div><span style="width:40px"></span></div>
+    <div class="scroll" id="sc"><div id="body"><div class="pad"><div class="skel" style="width:40%;margin-top:12px"></div><div class="skel" style="height:44px;margin-top:10px"></div><div class="skel" style="height:200px;margin-top:20px"></div></div></div></div>`; },
+  async mount(el,p){
+    let s; try{ s=await api('/stocks/'+p.mint); state.stocksByMint[s.mint]=s; }catch(e){ el.querySelector('#body').innerHTML=`<div class="errbar">Couldn't load this stock.</div>`; return; }
+    const body=el.querySelector('#body'); let range='1d';
+    el.querySelector('#csub').innerHTML=`<span class="${fmt.cls(s.change24h)}">${fmt.arrow(s.change24h)}</span> today`;
+    const abs=s.change24h==null?null:s.priceUsd-s.priceUsd/(1+s.change24h/100);
+    body.innerHTML=`<div class="pad" style="padding-top:8px">
+      <div class="h2" style="font-weight:500">${esc(s.name)}</div>
+      <div class="hero" style="margin-top:6px" id="hp">${fmt.usd(s.priceUsd)}</div>
+      <div id="hc" class="${fmt.cls(s.change24h)}" style="font-size:13px;font-weight:600;margin-top:6px">${fmt.arrow(s.change24h)} <span class="muted" style="font-weight:500">${abs==null?'':(abs>=0?'+':'−')+'$'+Math.abs(abs).toFixed(2)+' · '}<span id="rl">today</span></span></div>
+      </div>
+      <div id="chart" style="margin-top:20px;height:200px"><div class="skel" style="height:200px;margin-inline:20px"></div></div>
+      <div class="ranges" style="margin-top:14px">${[['1h','1H'],['1d','1D'],['1w','1W'],['1m','1M']].map(([r,l])=>`<button data-r="${r}" class="${r===range?'on':''}">${l}</button>`).join('')}<button disabled>1Y</button><button disabled>ALL</button></div>
+      <div class="pad" style="margin-top:18px"><div class="btns"><button class="btn primary" id="buy">Buy</button><button class="btn ghost" id="sell">Sell</button></div></div>
+      <div class="hr" style="margin-top:26px"></div>
+      ${s.markUsd?(()=>{ const p=s.premiumPct||0, gap=s.priceUsd!=null?s.priceUsd-s.markUsd:null, neutral=Math.abs(p)<=0.25, what=s.issuer==='prestocks'?"PreStocks' mark from the last funding round":"the live Nasdaq price"; return `<div class="pad" style="margin-top:22px"><div class="sect">Fair value</div><div class="kcard">${kv('You pay',fmt.usd(s.priceUsd))}${kv("It's worth",fmt.usd(s.markUsd))}${kv(p>0?'Premium':p<0?'Discount':'Gap',`<span style="display:inline-flex;align-items:center;gap:8px">${gap!=null&&!neutral?fmt.usd(Math.abs(gap)):''}${premiumBadge(s)}</span>`)}<div class="sub" style="padding:12px 0">${neutral?`Trading at fair value — ${what}.`:`Buyers pay ${fmt.usd(Math.abs(gap))} ${p>0?'more':'less'} than ${what}.`}</div></div></div>`; })():''}
+      <div class="stack" style="padding-top:22px">
+        <div><div class="sect">Market stats</div><div class="kcard">${kv('Liquidity',fmt.big(s.liquidityUsd))}${kv('24h volume',fmt.big(s.stockVol24hUsd))}${kv('Buys · sells',`<span class="up">${fmt.n(s.buys24h)}</span> <span class="faint">/</span> <span class="dn">${fmt.n(s.sells24h)}</span>`)}${kv('Market',`<span style="display:inline-flex;align-items:center;gap:6px"><i class="dot ${s.marketOpen?'live':''}"></i>${s.marketOpen?'Open':'After hours · trades 24/7 here'}</span>`)}</div></div>
+        <div><div class="sect">Buys vs sells · 24h</div><div class="kcard pad">${splitBar(s.buys24h,s.sells24h,'buys','sells')}</div></div>
+        <div><div class="sect">About</div><div class="kcard">${kv('Issuer',esc(s.issuer))}${kv('Category',esc(s.category))}${kv('Mint address',`<button style="display:inline-flex;gap:6px;align-items:center;color:var(--ink);font-weight:600" id="cpm">${fmt.short(s.mint)} ${I.copy}</button>`)}</div></div>
+      </div>
+      <div class="pad" style="margin-top:20px"><span class="cc" data-data-status></span></div>`;
+    updateDataStatus();
+    const loadRange=async()=>{ const req=range; const chart=el.querySelector('#chart'); chart.innerHTML='<div class="skel" style="height:200px;margin-inline:20px"></div>'; try{ const h=await api(`/stocks/${s.mint}/history?range=${req}`,30000); if(range!==req||!el.isConnected) return; chart.innerHTML=lineChart(h.points,390,200,s.markUsd); el.querySelector('#rl').textContent={ '1h':'past hour','1d':'today','1w':'past week','1m':'past month' }[req];
+      const hp=el.querySelector('#hp'),hc=el.querySelector('#hc'),hc0=hc.innerHTML,hp0=hp.innerHTML; const first=h.points.find(p=>p.price!=null);
+      attachScrub(chart.firstElementChild,p=>{ hp.innerHTML=fmt.usd(p.price); const d=first?(p.price-first.price)/first.price*100:null; hc.className=fmt.cls(d); hc.style.cssText='font-size:13px;font-weight:600;margin-top:6px'; hc.innerHTML=`${fmt.arrow(d)} <span class="muted" style="font-weight:500">${new Date(p.t*1000).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}${p.mark?` · fair ${fmt.usd(p.mark)}`:''}</span>`; },()=>{ hp.innerHTML=hp0; hc.className=fmt.cls(s.change24h); hc.innerHTML=hc0; }); }catch(e){ if(range===req&&el.isConnected) chart.innerHTML=lineChart([]); } };
+    loadRange();
+    el.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{ range=b.dataset.r; el.querySelectorAll('[data-r]').forEach(x=>x.classList.toggle('on',x===b)); loadRange(); });
+    el.querySelector('#cpm').onclick=()=>copy(s.mint);
+    el.querySelector('#watch').onclick=()=>{ toggleWatch(s.mint); const f=state.watch.includes(s.mint); el.querySelector('#watch').innerHTML=`${I.star(f)}${f?'Watching':'Watch'}`; };
+    el.querySelector('#share').onclick=()=>copy(location.href);
+    el.querySelector('#buy').onclick=()=>buyFlow('stock',s,s); el.querySelector('#sell').onclick=()=>sellFlow(s.mint);
+    el.querySelector('#sc').addEventListener('scroll',e=>{ el.querySelector('#cmp').classList.toggle('on',e.target.scrollTop>120); },{passive:true});
+  }
+};
+/* --- floor (the stock's memes, dark, green) --- */
+SCREENS.floor={
+  html(p){ const s=state.stocksByMint[p.mint]; return `<div class="topbar"><button class="back" aria-label="Back" data-back>${I.back}</button><span style="flex:1"></span><span class="cc" data-ws-status>Connecting</span></div>
+    <div class="scroll"><div id="body">${s?`<div class="pad" style="padding-top:4px;display:flex;align-items:center;gap:12px">${logo(s,44)}<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span class="h2">${esc(s.symbol)} floor</span></div><div class="sub">${fmt.usd(s.priceUsd)} · <span class="${fmt.cls(s.change24h)}">${fmt.arrow(s.change24h)}</span> · ${s.memes} memes</div></div></div>`:''}<div class="pad"><div class="skel" style="height:120px;margin-top:16px"></div><div class="skel" style="height:64px;margin-top:12px"></div></div></div></div>`; },
+  async mount(el,p){
+    let s=state.stocksByMint[p.mint]; let sort='vol24h'; const body=el.querySelector('#body');
+    const load=async()=>{ const req=sort; let d; try{ d=await api(`/stocks/${p.mint}/tokens?sort=${req}&limit=40`); if(sort!==req||!el.isConnected) return; }catch(e){ body.innerHTML=`<div class="errbar">Couldn't load the floor.</div>`; return; }
+      s=d.stock||s; state.stocksByMint[s.mint]=s; const kingT=s.king?(d.tokens.find(t=>t.mint===s.king.mint)||null):null; d.tokens.forEach(t=>{ t._king=s.king&&t.mint===s.king.mint; });
+      body.innerHTML=`<div class="pad" style="padding-top:4px;display:flex;align-items:center;gap:12px">${logo(s,44)}<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span class="h2">${esc(s.symbol)} floor</span></div><div class="sub">${fmt.usd(s.priceUsd)} · <span class="${fmt.cls(s.change24h)}">${fmt.arrow(s.change24h)}</span> · ${s.memes} memes · ${fmt.big(s.memeVol24hUsd)} today</div></div></div>
+      <div class="pad" style="margin-top:18px">${actionRow([{id:'ape',label:'Ape king',icon:I.plus,acc:true},{id:'buy',label:'Buy stock',icon:I.swap},{id:'launch',label:'Launch',icon:I.rocket},{id:'share',label:'Share',icon:I.share}])}</div>
+      ${s.king?`<div class="pad" style="margin-top:24px"><div class="eyebrow" style="color:var(--amber);display:flex;align-items:center;gap:6px;font-weight:600">${I.crownL}King of the floor</div>
+        <button class="feature" data-token="${s.king.mint}" style="margin-top:10px;width:100%;gap:10px"><div class="top">${avatar(s.king,'l')}<div style="flex:1;min-width:0"><div class="h2" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.king.symbol)}</div><div class="sub">${fmt.big(s.king.vol24hUsd)} traded today${kingT?` · MC ${fmt.big(kingT.mcapUsd)}`:''}</div></div>${kingT?`<div style="text-align:right"><div class="px ${fmt.cls(kingT.change24h)}" style="font-weight:600">${fmt.arrow(kingT.change24h,1)}</div><div class="sub">24h</div></div>`:''}</div></button></div>`:''}
+      <div class="hr" style="margin-top:24px"></div>
+      <div class="pad" style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:8px"><div class="chips" style="padding:0;flex:1">${[['vol24h','Volume'],['new','New'],['mcap','Mcap'],['progress','Graduating']].map(([k,l])=>`<button class="pill sm ${k===sort?'on':''}" data-s="${k}">${l}</button>`).join('')}</div></div>
+      <div class="pad"><div class="card" id="flist" style="margin-top:6px">${d.tokens.length?d.tokens.map(t=>tokenRow(t)).join(''):`<div class="empty"><b>No tokens yet</b><span class="sub">Nobody has launched on this floor.</span></div>`}</div></div>
+      <div class="pad" style="margin-top:16px"><span class="cc" data-data-status></span></div>`;
+      bindRows(el); updateDataStatus(); const st=el.querySelector('[data-ws-status]'); if(st&&el.dataset.wsState) st.innerHTML=`<i class="dot ${el.dataset.wsLive==='true'?'live':''}"></i>${el.dataset.wsState}`;
+      el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ sort=b.dataset.s; load(); });
+      el.querySelector('[data-act="ape"]').onclick=async()=>{ if(!s.king){ toast('No king yet on this floor'); return; } try{ const t=kingT||await api('/tokens/'+s.king.mint); buyFlow('token',t,s); }catch(e){ toast('Could not load a quote'); } };
+      el.querySelector('[data-act="buy"]').onclick=()=>buyFlow('stock',s,s); el.querySelector('[data-act="launch"]').onclick=()=>toast('Launch flow lands with the Tuesday endpoint'); el.querySelector('[data-act="share"]').onclick=()=>copy(s.mint);
+    };
+    await load(); if(!el.isConnected) return;
+    ws('stock:'+p.mint,m=>{ if(m.t==='trade') flash(el.querySelector(`[data-mint="${m.mint}"]`),m.side); else if(m.t==='token'&&m.event==='created') setTimeout(async()=>{ try{ const t=await api('/tokens/'+m.mint,0); const l=el.querySelector('#flist'); if(l){ l.insertAdjacentHTML('afterbegin',tokenRow(t)); bindRows(l); flash(l.firstElementChild,'buy'); toast(`${t.symbol} just launched on ${s.symbol}`); } }catch(e){} },1500); });
+  }
+};
+/* --- token (Coinbase coin page) --- */
+SCREENS.token={
+  html(p){ const w=state.tokenWatch.includes(p.mint); return `<div class="topbar"><button class="back" aria-label="Back" data-back>${I.back}</button><span style="flex:1"></span><span class="cc" data-ws-status>Connecting</span></div>
+    <div class="scroll" id="tsc"><div id="body"><div class="pad"><div class="skel" style="height:44px;margin-top:12px"></div><div class="skel" style="height:200px;margin-top:16px"></div></div></div></div>`; },
+  async mount(el,p){
+    let t; try{ t=await api('/tokens/'+p.mint,3000); }catch(e){ el.querySelector('#body').innerHTML=`<div class="errbar">Couldn't load this token.</div>`; return; }
+    const st=t.stock||{}; const body=el.querySelector('#body'); let tf='1m', tab='trades', win='24h'; const isKing=state.stocksByMint[t.quoteMint]?.king?.mint===t.mint;
+    const hq=(v,lo,hi,inv)=>{ if(v==null) return ''; if(inv) return v>hi?'red':v<lo?'green':''; return v>hi?'red':''; };
+    body.innerHTML=`<div class="pad" style="display:flex;align-items:center;justify-content:space-between;padding-top:4px">${avatar(t,'m')}<button class="pill" id="tw">${I.star(state.tokenWatch.includes(t.mint))}${state.tokenWatch.includes(t.mint)?'Watching':'Watch'}</button></div>
+      <div class="pad" style="margin-top:14px"><div class="eyebrow" style="display:flex;align-items:center;gap:6px">${esc(t.symbol)} price ${isKing?I.crown:''}</div><div class="hero" style="margin-top:4px">${fmt.usd(t.priceUsd)}</div><div class="${fmt.cls(t.change24h)}" style="font-size:13px;font-weight:600;margin-top:6px">${fmt.arrow(t.change24h,1)} <span class="muted" style="font-weight:500">today</span> · <span class="${fmt.cls(t.change1h)}">${fmt.arrow(t.change1h,1)}</span> <span class="muted" style="font-weight:500">1h</span></div></div>
+      <div class="ohlc" id="ohlc" style="margin-top:14px"></div>
+      <div id="cchart" style="margin-top:4px;height:200px"><div class="skel" style="height:200px;margin-inline:20px"></div></div>
+      <div class="ranges" style="margin-top:10px">${['1m','5m','15m','1h','4h','1d'].map(x=>`<button data-tf="${x}" class="${x===tf?'on':''}">${x}</button>`).join('')}<button id="ctype" aria-label="Candles" style="width:36px">${I.candle}</button></div>
+      <div class="pad" style="margin-top:22px;display:flex;gap:12px"><div class="kcard pad" style="flex:1;padding:14px 16px"><div class="eyebrow">Market cap</div><div class="h2" style="margin-top:2px">${fmt.big(t.mcapUsd)}</div></div><div class="kcard pad" style="flex:1;padding:14px 16px"><div class="eyebrow">Floor</div><button id="tostock" class="h2" style="margin-top:2px;display:block">$${esc(st.symbol||'')}</button></div></div>
+      <div class="pad" style="margin-top:20px">${actionRow([{id:'ape',label:state.demoWallet?'Ape':'Deposit',icon:I.plus,acc:true},{id:'sell',label:'Sell',icon:I.minus},{id:'stock',label:'Floor',icon:I.swap},{id:'share',label:'Share',icon:I.share}])}</div>
+      <div class="hr" style="margin-top:24px"></div>
+      <div class="tabs fill" id="ttabs" style="margin-top:4px;padding-inline:20px"><button data-t="trades" class="on">Trades</button><button data-t="holders">Holders</button><button data-t="about">About</button></div>
+      <div id="tbody"></div>`;
+    const go=()=>push('floor',{mint:t.quoteMint}); el.querySelector('#tostock').onclick=go; el.querySelector('[data-act="stock"]').onclick=go;
+    el.querySelector('[data-act="ape"]').onclick=()=>buyFlow('token',t,st); el.querySelector('[data-act="sell"]').onclick=()=>sellFlow(t.mint); el.querySelector('[data-act="share"]').onclick=()=>copy(t.mint);
+    el.querySelector('#tw').onclick=()=>{ const i=state.tokenWatch.indexOf(t.mint); if(i<0) state.tokenWatch.push(t.mint); else state.tokenWatch.splice(i,1); LSW('apeme.tokenWatch',JSON.stringify(state.tokenWatch)); const f=i<0; el.querySelector('#tw').innerHTML=`${I.star(f)}${f?'Watching':'Watch'}`; toast(f?'Added to watchlist':'Removed from watchlist'); };
+    let candles=false;
+    const loadC=async()=>{ const req=tf; const c=el.querySelector('#cchart'); const o=el.querySelector('#ohlc'); o.innerHTML=''; c.innerHTML='<div class="skel" style="height:200px;margin-inline:20px"></div>'; try{ const d=await api(`/tokens/${t.mint}/candles?tf=${req}&limit=120`,10000); if(tf!==req||!el.isConnected) return; const q=st.quoteUsd||0; const all=d.candles||[];
+      const show=k=>{ o.innerHTML=`<span>O <b>${fmt.usd(k.o*q)}</b></span><span>H <b>${fmt.usd(k.h*q)}</b></span><span>L <b>${fmt.usd(k.l*q)}</b></span><span>C <b>${fmt.usd(k.c*q)}</b></span><span>${new Date(k.t*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span>`; };
+      if(candles){ c.innerHTML=candleChart(all); const cs=candleChart.last?.cs||[]; if(cs.length){ c.style.touchAction='pan-y'; const mv=e=>{ const r=c.getBoundingClientRect(); const x=Math.min(Math.max(0,e.clientX-r.left),r.width); show(cs[Math.min(cs.length-1,Math.floor(x/r.width*cs.length))]); }; c.onpointermove=mv; c.onpointerdown=mv; c.onpointerleave=()=>{ o.innerHTML=''; }; } }
+      else { c.onpointermove=c.onpointerdown=c.onpointerleave=null; c.innerHTML=lineChart(all.map(k=>({t:k.t,price:k.c*q})),390,200,null); const byT=new Map(all.map(k=>[k.t,k])); attachScrub(c.firstElementChild,p=>{ const k=byT.get(p.t); if(k) show(k); },()=>{ o.innerHTML=''; }); } }catch(e){ if(tf===req&&el.isConnected) c.innerHTML=candleChart([]); } };
+    el.querySelector('#ctype').onclick=()=>{ candles=!candles; el.querySelector('#ctype').classList.toggle('on',candles); loadC(); };
+    loadC(); el.querySelectorAll('[data-tf]').forEach(b=>b.onclick=()=>{ tf=b.dataset.tf; el.querySelectorAll('[data-tf]').forEach(x=>x.classList.toggle('on',x===b)); loadC(); });
+    const tradeRow=x=>{ const buy=x.side==='buy'; return `<div class="trow" data-sig="${esc(x.sig)}"><span class="ic ${buy?'b':'s'}">${buy?'B':'S'}</span><div class="grow"><div class="k">${buy?'Bought':'Sold'} ${fmt.big(x.base,'')} ${esc(t.symbol)}</div><div class="v">${fmt.short(x.wallet)} · ${fmt.ago(x.ts)} ago</div></div><div class="r"><div class="k">${fmt.big(x.base*x.priceUsd)}</div><div class="v">${fmt.usd(x.priceUsd)}</div></div></div>`; };
+    const tb=el.querySelector('#tbody');
+    const renderTab=async()=>{
+      if(tab==='trades'){ tb.innerHTML=`<div class="stack"><div><div class="sect">Recent trades<span class="cc" data-ws-status>Live</span></div><div class="kcard" style="padding:0" id="tape"><div class="skel" style="height:60px;margin:12px"></div></div></div></div>`;
+        try{ const d=await api(`/tokens/${t.mint}/trades?limit=40`,3000); if(tab!=='trades'||!el.isConnected) return; el.querySelector('#tape').innerHTML=d.trades.length?d.trades.map(tradeRow).join(''):`<div class="empty"><b>No trades yet</b></div>`; }catch(e){ if(tab==='trades'&&el.isConnected) el.querySelector('#tape').innerHTML=`<div class="errbar">Couldn't load trades.</div>`; } }
+      else if(tab==='holders'){ const col=(v,lo,hi,inv)=>{ const c=hq(v,lo,hi,inv); return c==='red'?'dn':c==='green'?'up':''; };
+        tb.innerHTML=`<div class="stack">
+        <div><div class="sect">Holders</div><div class="kcard">${kv('Holders',t.holders!=null?fmt.n(t.holders):'—')}${kv('Top 10 hold',t.top10Pct!=null?`<span class="${col(t.top10Pct,0,20)}">${t.top10Pct.toFixed(1)}%</span>`:'—')}${kv('Dev holds',t.devPct!=null?`<span class="${col(t.devPct,5,20,true)}">${t.devPct.toFixed(1)}%</span>`:'—')}${kv('Snipers',t.snipersPct!=null?`<span class="${col(t.snipersPct,0,10)}">${t.snipersPct.toFixed(1)}%</span>`:'—')}${kv('Transfer tax',(t.taxBps/100).toFixed(1)+'%')}${kv('DexScreener',t.dexPaid?'<span class="up">Paid</span>':'Not paid')}</div>
+        ${t.holders==null?`<div class="sub" style="margin-top:10px">Holder breakdown is exact for tokens indexed since launch. This one predates the index.</div>`:''}</div>
+        <div><div class="sect">What to watch</div><div class="kcard">${kv('Top 10 over 20%','<span class="dn">Concentrated</span>')}${kv('Dev under 5%','<span class="up">Healthy</span>')}${kv('Snipers over 10%','<span class="dn">Risky</span>')}</div></div></div>`; }
+      else { const W={'5m':[t.buys5m,t.sells5m,t.vol5mUsd],'1h':[t.buys1h,t.sells1h,t.vol1hUsd],'24h':[t.buys24h,t.sells24h,t.vol24hUsd]}; const [b,sl,v]=W[win];
+        tb.innerHTML=`<div class="stack">
+        <div><div class="sect">About ${esc(t.symbol)}</div><div class="kcard pad"><div style="font-size:15px;line-height:21px">${esc(t.name)} is a community token launched on the <b>${esc(st.symbol||'')}</b> floor via ${esc(t.launchpad)}. ${t.phase==='graduated'?'It has graduated to an open market.':`It is ${Math.round(t.progressPct||0)}% of the way to graduating.`}</div><div class="sub" style="margin-top:10px;display:flex;align-items:center;gap:6px">${I.warn} Unverified. Anyone can launch a token; it can lose all value.</div></div></div>
+        <div><div class="sect">Transactions<div class="seg">${['5m','1h','24h'].map(x=>`<button class="pill xs ${x===win?'on':''}" data-w="${x}">${x}</button>`).join('')}</div></div><div class="kcard pad" style="display:flex;flex-direction:column;gap:14px">${splitBar(b,sl,'buys','sells')}<div class="split"><div class="lbl"><span><b>${fmt.big(v)}</b> <span class="muted">volume</span></span><span><b>${fmt.n((b||0)+(sl||0))}</b> <span class="muted">trades</span></span></div></div></div></div>
+        <div><div class="sect">Market stats</div><div class="kcard">${kv('Market cap',fmt.big(t.mcapUsd))}${kv('All-time high',fmt.big(t.athMcapUsd))}${kv('24h volume',fmt.big(t.vol24hUsd))}${kv('Price in '+esc(st.symbol||'stock'),t.priceQuote?fmt.usd(t.priceQuote*(st.multiplier||1)).replace('$',''):'—')}${kv('Supply',fmt.supply(t.supply,t.decimals))}${kv('Created',fmt.ago(t.createdAt)+' ago')}${kv('Launchpad',esc(t.launchpad))}${kv('Phase',esc(t.phase)+(t.phase!=='graduated'?` · ${Math.round(t.progressPct||0)}%`:''))}</div></div>
+        <div><div class="sect">Resources</div><div class="kcard">${kv('Floor',`<span class="lnk">$${esc(st.symbol||'')} ↗</span>`)}${kv('Mint address',`<button style="display:inline-flex;gap:6px;align-items:center;color:var(--ink);font-weight:600" id="cpt">${fmt.short(t.mint)} ${I.copy}</button>`)}${t.website?kv('Website',`<a href="${esc(t.website)}" target="_blank" rel="noopener" class="lnk">Open ↗</a>`):''}${t.twitter?kv('X',`<a href="${esc(t.twitter)}" target="_blank" rel="noopener" class="lnk">Open ↗</a>`):''}</div></div></div>`;
+        el.querySelectorAll('[data-w]').forEach(bb=>bb.onclick=()=>{ win=bb.dataset.w; renderTab(); }); const c=el.querySelector('#cpt'); if(c) c.onclick=()=>copy(t.mint); }
+    };
+    el.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{ tab=b.dataset.t; el.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('on',x===b)); renderTab(); });
+    renderTab(); if(!el.isConnected) return;
+    ws(t.mint,m=>{ if(m.t!=='trade') return; const tape=el.querySelector('#tape'); if(tape&&tab==='trades'){ tape.insertAdjacentHTML('afterbegin',tradeRow(m)); flash(tape.firstElementChild,m.side); if(tape.children.length>60) tape.lastElementChild.remove(); } });
+  }
+};
+/* --- portfolio (Cash "My investments") --- */
+SCREENS.portfolio={
+  html(){ return `<div class="pad" style="padding-top:16px;display:flex;align-items:center;justify-content:space-between"><div class="h1">Portfolio</div><button class="pill" id="pdep">${I.plus}Add money</button></div><div class="scroll"><div id="body" class="pad"><div class="skel" style="height:44px;margin-top:12px"></div></div></div>`; },
+  async mount(el,p,skin){
+    el.querySelector('#pdep').onclick=depositSheet; const body=el.querySelector('#body'); const ape=skin==='ape';
+    if(!auth.address()){ body.innerHTML=`<div style="margin-top:10px"><div class="hero faint">$0<span class="cents">.00</span></div><div class="sub" style="margin-top:4px">No holdings yet</div></div>
+      <div style="height:120px;margin-top:20px;border-radius:16px;background-color:var(--surface);background-image:radial-gradient(var(--line) 1px, transparent 1px);background-size:10px 10px;display:flex;align-items:center;justify-content:center" class="sub">Your chart starts with your first buy</div>
+      <div class="feature" style="margin-top:16px"><div class="h3">${ape?'Get your first meme with Apple Pay':'Buy your first stock with Apple Pay'}</div><div class="sub">$0 fee on your first purchase</div><button class="btn white sm" id="first" style="align-self:flex-start;margin-top:4px">${ape?'Ape the king':'Start with OPENAI'}</button></div>
+`;
+      el.querySelector('#first').onclick=depositSheet; return; }
+    let w; try{ w=await api('/wallet/'+auth.address()+'?activity=30',5000); state._wallet=w; }catch(e){ body.innerHTML=`<div class="errbar">Couldn't load the wallet.</div>`; return; }
+    const holdRow=h=>`<button class="row m" ${h.kind==='meme'?`data-token="${h.mint}"`:h.kind==='stock'?`data-stock="${h.mint}"`:''}>${h.kind==='meme'?avatar(h):logo({symbol:h.symbol,logo:h.image})}<div class="grow"><div class="t"><span class="sym">${esc(h.symbol)}</span>${h.quoteSymbol?`<span class="faint" style="font-size:11px;font-weight:500">on ${esc(h.quoteSymbol)}</span>`:''}</div><div class="s mono">${h.amount>=1000?fmt.big(h.amount,''):h.amount.toFixed(4)} · ${fmt.usd(h.priceUsd)}</div></div><div class="r"><div class="px">${fmt.usd(h.valueUsd)}</div><div class="ch ${h.pnlPct==null?'faint':fmt.cls(h.pnlPct)}">${h.pnlPct==null?'—':fmt.arrow(h.pnlPct,1)}</div></div></button>`;
+    const groups=ape?[['meme','Memes'],['sol','Cash']]:[['stock','Stocks'],['sol','Cash']]; const act=ape?w.activity:w.activity.filter(a=>!a.stockSymbol||state.stocksByMint[a.mint]);
+    const pnlLine=()=>{ const p=w.pnlUsd, pct=(p!=null&&w.costUsd>0)?p/w.costUsd*100:null; const v=p==null?'—':(state._pnlPct&&pct!=null)?fmt.arrow(pct,1):(p>=0?'↑ ':'↓ ')+fmt.usd(Math.abs(p)); return `<button class="sub mono" id="pnl" style="margin-top:4px;display:block"><span class="${fmt.cls(p)}">${v}</span> all time</button>`; };
+    body.innerHTML=`<div style="margin-top:10px"><div class="hero">${fmt.cents(w.totalUsd)}</div>${pnlLine()}</div>
+      ${groups.map(([k,l])=>{ const hs=w.holdings.filter(h=>h.kind===k); return hs.length?`<div style="margin-top:22px"><div class="h2">${l}</div><div class="card" style="margin-top:4px">${hs.map(holdRow).join('')}</div></div>`:''; }).join('')}
+      ${w.holdings.some(h=>h.costUsd==null)?`<div class="sub" style="margin-top:8px">— means bought outside ApeMe, so there's no cost basis.</div>`:''}
+      <div style="margin-top:22px"><div class="h2">Activity</div><div class="card" style="margin-top:4px">${act.length?act.slice(0,20).map(a=>`<button class="row m" data-token="${a.mint}">${avatar(a)}<div class="grow"><div class="t"><span class="badge ${a.side==='buy'?'green':'red'}">${a.side==='buy'?'Buy':'Sell'}</span><span class="sym">${esc(a.symbol)}</span></div><div class="s">on ${esc(a.stockSymbol)} · ${fmt.ago(a.ts)} ago</div></div><div class="r"><div class="px">${fmt.usd(a.usd)}</div></div></button>`).join(''):`<div class="empty"><b>No activity yet</b></div>`}</div></div>`;
+    if(!ape) el.querySelectorAll('[data-token]').forEach(b=>{ b.removeAttribute('data-token'); }); bindRows(el);
+    const wirePnl=()=>{ el.querySelector('#pnl').onclick=()=>{ state._pnlPct=!state._pnlPct; el.querySelector('#pnl').outerHTML=pnlLine(); wirePnl(); }; }; wirePnl();
+  }
+};
+/* --- you --- */
+SCREENS.you={
+  html(p,skin){ const ape=skin==='ape'; const addr=auth.address(); return `<div class="pad" style="padding-top:16px"><div class="h1">You</div></div><div class="scroll"><div class="pad" style="padding-top:8px"><div class="card">
+      <button class="row" data-modeswitch><span class="iconbtn">${ape?'🔥':'📈'}</span><div class="grow"><div class="t">Ape mode</div><div class="s">${ape?'Floors, kings and the live tape':'Off · stocks and fair values'}</div></div><span class="switch ${ape?'on':''}"></span></button>
+      ${addr?`<button class="row" id="addr"><span class="iconbtn">${I.copy}</span><div class="grow"><div class="t">Wallet address</div><div class="s mono">${fmt.short(addr)}</div></div>${I.chev}</button>`:''}
+      <button class="row" id="reset"><span class="iconbtn">↺</span><div class="grow"><div class="t">Show onboarding again</div><div class="s">Three slides and the mode question</div></div>${I.chev}</button>
+      <button class="row" id="out"><span class="iconbtn">⇥</span><div class="grow"><div class="t">Sign out</div><div class="s">${esc(state.user?.label||'Signed in')}</div></div>${I.chev}</button></div></div></div>`; },
+  mount(el){ bindMode(el);
+    el.querySelector('#addr')?.addEventListener('click',()=>copy(auth.address()));
+    el.querySelector('#reset').onclick=()=>dialog('Show onboarding again?','You\'ll pick a mode again. Nothing else changes.',[{label:'Cancel'},{label:'Show it',cls:'white',onClick(){ state.onboarded=false; LSW('apeme.onboarded','0'); boot(); }}]);
+    el.querySelector('#out').onclick=()=>dialog('Sign out?','Your wallet stays with your account. Sign back in any time.',[{label:'Cancel'},{label:'Sign out',cls:'danger',onClick(){ auth.signOut(); }}]);
+  }
+};
+/*__BLOCK_ACCOUNT__*/
+/* ============ boot ============ */
+boot();
+</script>
+</body>
+</html>

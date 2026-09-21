@@ -1,0 +1,8 @@
+async function copy(value){try{await navigator.clipboard.writeText(value);toast('Copied to clipboard')}catch(e){openSheet(`<div class="grab"></div><div class="sheet-title"><div class="h2">Copy address</div><button class="iconbtn" data-close aria-label="Close">${I.x}</button></div><input aria-label="Address" readonly value="${esc(value)}" style="width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:14px;font-size:12px"><div class="sub">Select and copy the address above.</div>`,w=>w.querySelector('input').select())}}
+function openSheet(html,mount){
+ const top=phone.querySelector('.screen');if(!top)return;top.querySelector('.sheetwrap')?.remove();const previous=document.activeElement;
+ const w=document.createElement('div');w.className='sheetwrap';w.innerHTML=`<div class="bd"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${html.includes('Deposit')?'Deposit options':'Trade details'}" tabindex="-1">${html}</div>`;top.appendChild(w);
+ w.close=()=>{if(w.classList.contains('closing'))return;w.classList.add('closing');setTimeout(()=>{w.remove();if(previous?.isConnected)previous.focus()},150)};
+ w.querySelector('.bd').onclick=w.close;w.addEventListener('click',e=>{if(e.target.closest('[data-close]'))w.close()});
+ w.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();w.close()}if(e.key==='Tab'){const list=[...w.querySelectorAll('button:not([disabled]),input,a[href]')];const first=list[0],last=list.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()}}});mount?.(w);(w.querySelector('button,input')||w.querySelector('.sheet'))?.focus();return w;
+}
