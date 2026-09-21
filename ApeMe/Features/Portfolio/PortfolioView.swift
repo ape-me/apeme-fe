@@ -62,7 +62,7 @@ struct PortfolioView: View {
                     Text("◎").frame(width: 40, height: 40).background(Theme.surface2, in: .circle)
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Use the demo wallet").font(.rowTitle)
-                        Text("A real wallet from the tape, with holdings and activity").font(.sub).foregroundStyle(Theme.muted)
+                        Text("A real wallet from the tape, with holdings and activity").font(.sub).foregroundStyle(Theme.muted).lineLimit(1)
                     }
                     Spacer()
                     Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)
@@ -138,7 +138,7 @@ struct HoldingRow: View {
 
     var body: some View {
         Button {
-            if holding.kind == "meme" { app.push(.token(holding.mint)) }
+            if holding.kind == "meme", app.isApe { app.push(.token(holding.mint)) }
             else if holding.kind == "stock" { app.openStock(holding.mint) }
         } label: {
             HStack(spacing: 12) {
@@ -162,7 +162,6 @@ struct HoldingRow: View {
             .padding(.vertical, 8).frame(minHeight: 60).contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .disabled(holding.kind == "sol" || (holding.kind == "meme" && !app.isApe))
     }
 }
 

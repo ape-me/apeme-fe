@@ -31,6 +31,7 @@ struct BuySheet: View {
             }
         }
         .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 18)
+        .frame(maxHeight: .infinity, alignment: .top)
         .presentationDetents([.large])
         .presentationBackground(Theme.surface)
         .presentationDragIndicator(.visible)

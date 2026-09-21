@@ -3,6 +3,8 @@ import Foundation
 /// Number formatting. Mirrors the prototype's `fmt` helpers exactly; they are the spec.
 enum Fmt {
     private static let subs: [Character] = ["₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"]
+    /// The prototype formats with en-US; the app must not vary by device locale.
+    static let locale = Locale(identifier: "en_US")
 
     /// `$1,141.21` · `$0.0143` · `$0.0₅234`. Never scientific notation.
     static func usd(_ n: Double?) -> String {
@@ -82,14 +84,15 @@ enum Fmt {
     }
 
     static func time(_ ts: Int) -> String {
-        Date(timeIntervalSince1970: TimeInterval(ts)).formatted(.dateTime.hour().minute())
+        Date(timeIntervalSince1970: TimeInterval(ts)).formatted(.dateTime.hour().minute().locale(locale))
     }
     static func dateTime(_ ts: Int) -> String {
-        Date(timeIntervalSince1970: TimeInterval(ts)).formatted(.dateTime.month(.abbreviated).day().hour().minute())
+        Date(timeIntervalSince1970: TimeInterval(ts)).formatted(.dateTime.month(.abbreviated).day().hour().minute().locale(locale))
     }
 
     private static func group(_ v: Double, _ decimals: Int) -> String {
         let f = NumberFormatter()
+        f.locale = locale
         f.numberStyle = .decimal
         f.minimumFractionDigits = decimals
         f.maximumFractionDigits = decimals
@@ -97,6 +100,7 @@ enum Fmt {
     }
     private static func trimmed(_ v: Double, _ max: Int) -> String {
         let f = NumberFormatter()
+        f.locale = locale
         f.numberStyle = .decimal
         f.maximumFractionDigits = max
         return f.string(from: NSNumber(value: v)) ?? String(v)

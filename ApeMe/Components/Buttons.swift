@@ -16,6 +16,7 @@ struct BigButton: View {
                 .font(small ? .system(size: 14, weight: .semibold) : .button)
                 .tracking(-0.2)
                 .foregroundStyle(fg)
+                .padding(.horizontal, small ? 16 : 20)
                 .frame(maxWidth: .infinity)
                 .frame(height: small ? 40 : 52)
                 .background(AnyShapeStyle(background), in: .capsule)
