@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 import Observation
 
 @Observable @MainActor
@@ -99,6 +99,12 @@ final class StockStore {
         } else {
             points.append(LineChart.Point(t: bucket, price: price, mark: nil))
         }
+    }
+
+    /// Green when the visible series ends at or above where it started, else red.
+    var direction: Color {
+        guard let f = points.first, let l = points.last else { return Theme.green }
+        return l.price >= f.price ? Theme.green : Theme.red
     }
 
     /// Change from the first point of the loaded range to the scrubbed point.

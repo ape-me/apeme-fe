@@ -129,7 +129,7 @@ struct StockView: View {
         if store.chartLoading && store.points.isEmpty {
             Skeleton(height: live ? 260 : 200).padding(.horizontal, 20)
         } else {
-            LineChart(points: store.points, live: live, height: live ? 260 : 200) { store.scrub = $0 }
+            LineChart(points: store.points, tint: store.direction, live: live, height: live ? 260 : 200) { store.scrub = $0 }
                 .animation(.easeOut(duration: 0.3), value: store.points.last?.price)
         }
     }
