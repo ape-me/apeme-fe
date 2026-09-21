@@ -12,6 +12,7 @@ actor API {
     private let decoder = JSONDecoder()
     private let cache = ResponseCache()
     private var inflight: [String: Task<Data, Error>] = [:]
+    private var tokenProvider: (@Sendable () async -> String?)?
 
     init() {
         let cfg = URLSessionConfiguration.default
@@ -68,6 +69,13 @@ actor API {
         try await fetch("/ticker?memes=\(memes)&stonks=\(stonks)", ttl: 30)
     }
 
+    /// Who am I, per ape-be. Needs a signed-in user; the identity token goes in the header.
+    func me() async throws -> String {
+        String(decoding: try await load("/me"), as: UTF8.self)
+    }
+
+    func setTokenProvider(_ p: @escaping @Sendable () async -> String?) { tokenProvider = p }
+
     // MARK: Cached copy for instant first paint
 
     func cached<T: Decodable>(_ path: String, as: T.Type = T.self) async -> T? {
@@ -100,9 +108,11 @@ actor API {
         if let t = inflight[path] { return try await t.value }
         let task = Task<Data, Error> {
             let url = URL(string: API.base.absoluteString + path)!
+            var req = URLRequest(url: url)
+            if let token = await tokenProvider?() { req.setValue(token, forHTTPHeaderField: "privy-id-token") }
             let data: Data
             let resp: URLResponse
-            do { (data, resp) = try await session.data(from: url) } catch { throw APIError.transport(error) }
+            do { (data, resp) = try await session.data(for: req) } catch { throw APIError.transport(error) }
             let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
             guard (200..<300).contains(code) else {
                 let msg = (try? decoder.decode(ErrorBody.self, from: data))?.error ?? "request failed"

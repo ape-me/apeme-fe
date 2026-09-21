@@ -18,6 +18,7 @@ struct RootView: View {
             case .buyStock(let s): BuySheet(kind: .stock, stock: s, token: nil, stockRef: nil)
             case .apeToken(let t, let ref): BuySheet(kind: .token, stock: nil, token: t, stockRef: ref)
             case .deposit: DepositSheet()
+            case .login: LoginSheet()
             }
         }
         .overlay(alignment: .bottom) {

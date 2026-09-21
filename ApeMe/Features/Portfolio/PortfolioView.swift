@@ -15,7 +15,7 @@ struct PortfolioView: View {
             .padding(.horizontal, 20).padding(.top, 16)
             ScrollView {
                 Group {
-                    if !app.demoWallet { empty }
+                    if !app.hasWallet { empty }
                     else if let w = app.wallet { wallet(w) }
                     else if let error { ErrorBar(text: error) }
                     else { Skeleton(height: 44).padding(.top, 12) }
@@ -25,8 +25,8 @@ struct PortfolioView: View {
             .scrollIndicators(.hidden)
         }
         .background(Theme.ground)
-        .task(id: app.demoWallet) {
-            guard app.demoWallet else { return }
+        .task(id: app.walletAddress) {
+            guard app.hasWallet else { return }
             await app.loadWallet()
             if app.wallet == nil { error = "Couldn't load the wallet." }
         }
@@ -51,12 +51,12 @@ struct PortfolioView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(18).background(Theme.surface, in: .rect(cornerRadius: 20)).padding(.top, 16)
-            Button { app.demoWallet = true } label: {
+            Button { app.sheet = .login } label: {
                 HStack(spacing: 12) {
-                    Text("◎").frame(width: 40, height: 40).background(Theme.surface2, in: .circle)
+                    Image(systemName: "person.crop.circle").font(.system(size: 16, weight: .medium)).frame(width: 40, height: 40).background(Theme.surface2, in: .circle)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Use the demo wallet").font(.rowTitle)
-                        Text("A real wallet from the tape, with holdings and activity").font(.sub).foregroundStyle(Theme.muted).lineLimit(1)
+                        Text("Sign in").font(.rowTitle)
+                        Text("Apple or email · a wallet is made for you").font(.sub).foregroundStyle(Theme.muted).lineLimit(1)
                     }
                     Spacer()
                     Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)

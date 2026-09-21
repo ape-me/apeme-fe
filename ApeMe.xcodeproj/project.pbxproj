@@ -284,7 +284,7 @@
 			repositoryURL = "https://github.com/privy-io/privy-ios";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 0.3.4;
+				minimumVersion = 2.16.2;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

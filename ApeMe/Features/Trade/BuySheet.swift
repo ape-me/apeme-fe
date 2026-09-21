@@ -35,7 +35,7 @@ struct BuySheet: View {
         .presentationDetents([.large])
         .presentationBackground(Theme.surface)
         .presentationDragIndicator(.visible)
-        .task { if app.demoWallet, app.wallet == nil { await app.loadWallet() } }
+        .task { if app.hasWallet, app.wallet == nil { await app.loadWallet() } }
     }
 
     // MARK: Step 1
@@ -78,7 +78,7 @@ struct BuySheet: View {
                     .buttonStyle(.plain)
                 }
             }
-            KV("Pay with", app.demoWallet ? "Demo wallet · \(Fmt.usd(available))" : "Add money first")
+            KV("Pay with", app.signedIn ? "Wallet · \(Fmt.usd(available))" : app.demoWallet ? "Demo wallet · \(Fmt.usd(available))" : "Add money first")
             Numpad { key in
                 switch key {
                 case "⌫": amount = String(amount.dropLast())
@@ -88,9 +88,9 @@ struct BuySheet: View {
                     if amount.count < 8, !amount.contains(".") || decimals < 2 { amount = amount == "0" ? key : amount + key }
                 }
             }
-            BigButton(label: !app.demoWallet ? "Add money to continue" : value > 0 ? "Review order" : "Enter an amount",
-                      style: app.demoWallet && value <= 0 ? .off : .buy) {
-                if !app.demoWallet { dismiss(); app.sheet = .deposit; return }
+            BigButton(label: !app.hasWallet ? "Add money to continue" : value > 0 ? "Review order" : "Enter an amount",
+                      style: app.hasWallet && value <= 0 ? .off : .buy) {
+                if !app.hasWallet { dismiss(); app.sheet = .deposit; return }
                 if value > 0 { step = 1 }
             }
         }

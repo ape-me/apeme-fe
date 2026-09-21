@@ -30,7 +30,12 @@ final class AppState {
     }
 
     var isApe: Bool { mode == .ape }
-    var walletAddress: String { API.demoAddress }
+
+    /// Privy wallet when signed in, the demo wallet when that's switched on, otherwise nothing.
+    let auth = Auth.shared
+    var signedIn: Bool { auth.user != nil }
+    var walletAddress: String? { auth.address ?? (demoWallet ? API.demoAddress : nil) }
+    var hasWallet: Bool { walletAddress != nil }
 
     // MARK: Navigation
 
@@ -57,8 +62,13 @@ final class AppState {
     }
 
     func loadWallet() async {
-        guard demoWallet else { return }
-        if let w = try? await API.shared.wallet(walletAddress, activity: 30) { wallet = w }
+        guard let address = walletAddress else { wallet = nil; return }
+        if let w = try? await API.shared.wallet(address, activity: 30) { wallet = w }
+    }
+
+    func signOut() async {
+        await auth.logout()
+        wallet = nil
     }
 
     // MARK: Watchlists
