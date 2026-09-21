@@ -222,17 +222,17 @@ private func zip2<A, B>(_ a: A?, _ b: B?) -> (A, B)? {
     return (a, b)
 }
 
-/// Premium to fair value. Chip + the two numbers + a -10…+10% gauge. Hidden when there is no mark.
+/// Premium to fair value. Two stats, a chip, and a gauge that fills from centre to the needle.
 struct FairValueBlock: View {
     let stock: Stock
     let mark: Double
     let premium: Double
 
-    private var tone: Color {
-        abs(premium) <= 0.25 ? Theme.muted : premium < 0 ? Theme.green : Theme.red
-    }
-    private var toneTint: Color {
-        abs(premium) <= 0.25 ? Theme.greyT : premium < 0 ? Theme.greenT : Theme.redT
+    private var neutral: Bool { abs(premium) <= 0.25 }
+    private var tone: Color { neutral ? Theme.muted : premium < 0 ? Theme.green : Theme.red }
+    private var toneTint: Color { neutral ? Theme.greyT : premium < 0 ? Theme.greenT : Theme.redT }
+    private var chip: String {
+        neutral ? "At fair value" : "\(String(format: "%.1f", abs(premium)))% \(premium < 0 ? "under" : "over") fair value"
     }
     private var caption: String {
         if stock.isPreIPO {
@@ -244,47 +244,65 @@ struct FairValueBlock: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Fair value").h2Text()
-            VStack(alignment: .leading, spacing: 12) {
-                Text("\(Fmt.pct(premium, 1)) vs fair value")
-                    .font(.system(size: 13, weight: .semibold)).monospacedDigit()
-                    .foregroundStyle(tone)
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(toneTint, in: .capsule)
-                HStack {
-                    Text("\(Text(Fmt.usd(mark)).foregroundStyle(Theme.ink)) fair")
+        VStack(alignment: .leading, spacing: 0) {
+            SectionTitle("Fair value")
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(alignment: .top) {
+                    stat("FAIR VALUE", Fmt.usd(mark), Theme.amber)
                     Spacer()
-                    Text("\(Text(Fmt.usd(stock.priceUsd)).foregroundStyle(Theme.ink)) now")
+                    stat("TRADING AT", Fmt.usd(stock.priceUsd), Theme.ink, trailing: true)
                 }
-                .font(.system(size: 15, weight: .semibold)).monospacedDigit().foregroundStyle(Theme.muted)
                 gauge
-                Text(caption).font(.sub).foregroundStyle(Theme.muted)
+                HStack(spacing: 10) {
+                    Text(chip)
+                        .font(.system(size: 13, weight: .semibold)).monospacedDigit()
+                        .foregroundStyle(tone)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(toneTint, in: .capsule)
+                    Spacer()
+                }
+                Text(caption).font(.sub).foregroundStyle(Theme.muted).lineSpacing(2)
             }
+            .padding(16)
+            .background(Theme.surface, in: .rect(cornerRadius: 16))
         }
         .padding(.horizontal, 20).padding(.top, 22)
     }
 
-    /// Under = left of centre, over = right. Clamped at ±10%.
+    private func stat(_ label: String, _ value: String, _ color: Color, trailing: Bool = false) -> some View {
+        VStack(alignment: trailing ? .trailing : .leading, spacing: 4) {
+            Text(label).font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundStyle(Theme.faint)
+            Text(value).font(.system(size: 22, weight: .semibold)).tracking(-0.6).monospacedDigit().foregroundStyle(color)
+        }
+    }
+
+    /// −10% … +10%, zero in the centre. The fill runs from centre to the needle: left = under, right = over.
     private var gauge: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             GeometryReader { g in
+                let w = g.size.width
                 let frac = 0.5 + min(10, max(-10, premium)) / 20
-                let x = g.size.width * frac
+                let x = w * frac
+                let mid = w / 2
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.surface2).frame(height: 6)
-                    Rectangle().fill(Theme.faint).frame(width: 1, height: 14).position(x: g.size.width / 2, y: 3)
-                    Capsule().fill(tone).frame(width: 3, height: 16).position(x: x, y: 3)
+                    Capsule().fill(Theme.surface2).frame(height: 8)
+                    Capsule().fill(tone.opacity(0.9))
+                        .frame(width: max(4, abs(x - mid)), height: 8)
+                        .offset(x: min(x, mid))
+                    Rectangle().fill(Theme.faint).frame(width: 2, height: 16).position(x: mid, y: 4)
+                    Circle().fill(tone).frame(width: 16, height: 16)
+                        .overlay(Circle().stroke(Theme.surface, lineWidth: 3))
+                        .position(x: x, y: 4)
                 }
             }
             .frame(height: 16)
             HStack {
-                Text("−10% under").frame(maxWidth: .infinity, alignment: .leading)
-                Text("0").frame(maxWidth: .infinity)
-                Text("+10% over").frame(maxWidth: .infinity, alignment: .trailing)
+                Text("−10%").frame(maxWidth: .infinity, alignment: .leading)
+                Text("fair").frame(maxWidth: .infinity)
+                Text("+10%").frame(maxWidth: .infinity, alignment: .trailing)
             }
             .font(.system(size: 11, weight: .medium)).monospacedDigit().foregroundStyle(Theme.faint)
         }
-        .padding(.top, 4)
+        .padding(.top, 2)
     }
 }
