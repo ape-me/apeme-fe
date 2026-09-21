@@ -81,27 +81,47 @@ struct StockView: View {
         .padding(.bottom, 24)
     }
 
+    /// Apple Stocks header: logo + bold symbol with the name beside it, hairline, bold price + change, issuer · USD.
     private func hero(_ s: Stock) -> some View {
         let scrubbing = store.scrub != nil
         let price = store.scrub?.price ?? s.priceUsd
         let change = scrubbing ? store.scrubChange : s.change24h
-        let abs: Double? = zip2(s.change24h, s.priceUsd).map { ch, p in p - p / (1 + ch / 100) }
-        return VStack(alignment: .leading, spacing: 6) {
-            Text(s.name).font(.system(size: 18, weight: .medium)).tracking(-0.45)
-            Text(Fmt.usd(price)).heroText().contentTransition(.numericText())
-                .animation(.easeOut(duration: 0.3), value: price)
-            HStack(spacing: 4) {
-                Text(Fmt.arrow(change)).foregroundStyle(Theme.change(change))
-                if let sp = store.scrub {
-                    Text(Fmt.dateTime(sp.t) + (sp.mark.map { " · fair \(Fmt.usd($0))" } ?? "")).foregroundStyle(Theme.muted).fontWeight(.medium)
-                } else {
-                    if let abs { Text((abs >= 0 ? "+" : "−") + "$" + String(format: "%.2f", Swift.abs(abs)) + " ·").foregroundStyle(Theme.muted).fontWeight(.medium) }
-                    Text(store.range.caption).foregroundStyle(Theme.muted).fontWeight(.medium)
-                }
+        let abs: Double? = scrubbing
+            ? zip2(store.scrub?.price, store.points.first?.price).map { $0 - $1 }
+            : zip2(s.change24h, s.priceUsd).map { ch, p in p - p / (1 + ch / 100) }
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Logo(url: s.logoURL, symbol: s.symbol, size: 40)
+                    .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
+                Text(s.symbol).font(.system(size: 34, weight: .bold)).tracking(-1).lineLimit(1).minimumScaleFactor(0.7)
+                Text(s.name).font(.system(size: 17)).foregroundStyle(Theme.muted).lineLimit(1)
+                Spacer(minLength: 0)
             }
-            .font(.system(size: 13, weight: .semibold)).monospacedDigit()
+            .padding(.bottom, 14)
+            Rectangle().fill(Theme.line).frame(height: 1)
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(Fmt.usd(price)).font(.system(size: 24, weight: .bold)).monospacedDigit().contentTransition(.numericText())
+                    .animation(.easeOut(duration: 0.3), value: price)
+                Text(changeText(change, abs)).font(.system(size: 17, weight: .semibold)).monospacedDigit()
+                    .foregroundStyle(Theme.change(change))
+            }
+            .padding(.top, 14)
+            Text(scrubbing ? Fmt.dateTime(store.scrub!.t) : "\(issuerLabel(s.issuer)) · USD · \(store.range.caption)")
+                .font(.system(size: 17)).foregroundStyle(Theme.muted)
+                .padding(.top, 4)
         }
         .padding(.horizontal, 20).padding(.top, 8)
+    }
+
+    private func changeText(_ pct: Double?, _ abs: Double?) -> String {
+        guard let pct else { return "—" }
+        var t = Fmt.pct(pct)
+        if let abs { t = (abs >= 0 ? "+" : "−") + "$" + String(format: "%.2f", Swift.abs(abs)) + "  " + t }
+        return t
+    }
+
+    private func issuerLabel(_ i: String) -> String {
+        switch i { case "prestocks": "PreStocks"; case "xstocks": "xStocks"; case "backpack": "Backpack"; default: i }
     }
 
     @ViewBuilder private func chart(_ s: Stock) -> some View {
