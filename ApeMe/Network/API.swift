@@ -64,8 +64,8 @@ actor API {
     func movers(limit: Int = 5) async throws -> MoversResponse {
         try await fetch("/movers?limit=\(limit)", ttl: 15)
     }
-    func wallet(_ address: String, activity: Int = 30) async throws -> Wallet {
-        try await fetch("/wallet/\(address)?activity=\(activity)", ttl: 5)
+    func wallet(_ address: String, activity: Int = 30, fresh: Bool = false) async throws -> Wallet {
+        try await fetch("/wallet/\(address)?activity=\(activity)", ttl: fresh ? 0 : 3)
     }
     func ticker(memes: Int = 10, stonks: Int = 1) async throws -> TickerResponse {
         try await fetch("/ticker?memes=\(memes)&stonks=\(stonks)", ttl: 30)
@@ -80,6 +80,46 @@ actor API {
 
     func redeemInvite(_ code: String) async throws -> InviteResponse {
         try decoder.decode(InviteResponse.self, from: try await send("POST", "/me/invite", body: ["code": code]))
+    }
+    func patchMe(handle: String? = nil, avatarUrl: String? = nil) async throws -> Me {
+        var b: [String: Any] = [:]
+        if let handle { b["handle"] = handle }
+        if let avatarUrl { b["avatarUrl"] = avatarUrl }
+        return try decoder.decode(Me.self, from: try await send("PATCH", "/me", body: b))
+    }
+
+    // Wallets
+    func myWallets() async throws -> WalletsResponse { try decoder.decode(WalletsResponse.self, from: try await send("GET", "/me/wallets")) }
+    func patchWallet(_ address: String, label: String? = nil, isDefault: Bool? = nil) async throws -> WalletsResponse {
+        var b: [String: Any] = [:]
+        if let label { b["label"] = label }
+        if let isDefault { b["isDefault"] = isDefault }
+        return try decoder.decode(WalletsResponse.self, from: try await send("PATCH", "/me/wallets/\(address)", body: b))
+    }
+
+    // Settings
+    func settings() async throws -> Me.Settings { try decoder.decode(Me.Settings.self, from: try await send("GET", "/me/settings")) }
+    func patchSettings(_ patch: [String: Any]) async throws -> Me.Settings { try decoder.decode(Me.Settings.self, from: try await send("PATCH", "/me/settings", body: patch)) }
+
+    // Referrals
+    func referrals() async throws -> Referrals { try decoder.decode(Referrals.self, from: try await send("GET", "/me/referrals")) }
+    func claimReferrals() async throws -> ClaimResponse { try decoder.decode(ClaimResponse.self, from: try await send("POST", "/me/referrals/claim", body: [:])) }
+
+    // Watchlist
+    func watchlist() async throws -> StocksResponse { try decoder.decode(StocksResponse.self, from: try await send("GET", "/me/watchlist")) }
+    func watch(_ mint: String, on: Bool) async throws { _ = try await send(on ? "PUT" : "DELETE", "/me/watchlist/\(mint)") }
+
+    // MARK: Trading
+
+    func quote(inputMint: String, outputMint: String, amountRaw: String, taker: String, priority: String) async throws -> Quote {
+        try decoder.decode(Quote.self, from: try await send("POST", "/swap/quote", body: [
+            "inputMint": inputMint, "outputMint": outputMint, "amount": amountRaw, "taker": taker, "priority": priority]))
+    }
+    func submit(requestId: String, signedTransaction: String) async throws -> SubmitResponse {
+        try decoder.decode(SubmitResponse.self, from: try await send("POST", "/swap/submit", body: ["requestId": requestId, "signedTransaction": signedTransaction]))
+    }
+    func tx(_ signature: String) async throws -> TxStatus {
+        try decoder.decode(TxStatus.self, from: try await send("GET", "/tx/\(signature)"))
     }
 
     /// Uncached request with an optional JSON body. Used for everything under /me and for trades.

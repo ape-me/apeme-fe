@@ -1,181 +1,195 @@
 import SwiftUI
 
+/// Wallet tab: cash first, then positions and activity for the active account.
 struct PortfolioView: View {
     @Environment(AppState.self) private var app
+    @Environment(\.skin) private var skin
     @State private var error: String?
-    @State private var showPct = false
+    @State private var showAccounts = false
+    @State private var poller: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Portfolio").h1Text()
+                Button { showAccounts = true } label: {
+                    HStack(spacing: 6) {
+                        Text(accountLabel).h1Text()
+                        Image(systemName: "chevron.down").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.muted)
+                    }
+                }
+                .buttonStyle(.plain)
                 Spacer()
-                Pill(label: "Add money", icon: "plus") { app.sheet = .deposit }
+                Pill(label: "Deposit", icon: "plus") { app.sheet = .deposit }
             }
             .padding(.horizontal, 20).padding(.top, 16)
             ScrollView {
                 Group {
-                    if !app.hasWallet { empty }
-                    else if let w = app.wallet { wallet(w) }
+                    if let w = app.wallet { content(w) }
                     else if let error { ErrorBar(text: error) }
                     else { Skeleton(height: 44).padding(.top, 12) }
                 }
                 .padding(.horizontal, 20).padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
+            .refreshable { await app.loadWallet(fresh: true) }
         }
         .background(Theme.ground)
         .task(id: app.walletAddress) {
-            guard app.hasWallet else { return }
-            await app.loadWallet()
+            await app.loadWallet(fresh: true)
             if app.wallet == nil { error = "Couldn't load the wallet." }
         }
+        .onChange(of: app.wallet?.pendingSwaps ?? 0, initial: true) { _, pending in
+            poller?.cancel()
+            guard pending > 0 else { return }
+            poller = Task {
+                while !Task.isCancelled, (app.wallet?.pendingSwaps ?? 0) > 0 {
+                    try? await Task.sleep(for: .seconds(3))
+                    await app.loadWallet(fresh: true)
+                }
+            }
+        }
+        .onDisappear { poller?.cancel() }
+        .sheet(isPresented: $showAccounts) { AccountsSheet() }
+    }
+
+    private var accountLabel: String {
+        app.auth.me?.wallets?.first { $0.address == app.walletAddress }?.label ?? "Wallet"
+    }
+
+    @ViewBuilder private func content(_ w: Wallet) -> some View {
+        if w.isEmpty { empty } else { filled(w) }
     }
 
     private var empty: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("\(Text("$0"))\(Text(".00").fontWeight(.medium))").heroText().foregroundStyle(Theme.faint).padding(.top, 10)
-            Text("No holdings yet").font(.sub).foregroundStyle(Theme.muted).padding(.top, 4)
-            Text("Your chart starts with your first buy")
-                .font(.sub).foregroundStyle(Theme.muted)
-                .frame(maxWidth: .infinity).frame(height: 120)
-                .background(DotGrid())
-                .background(Theme.surface)
-                .clipShape(.rect(cornerRadius: 16))
-                .padding(.top, 20)
+            CentsText(value: 0).foregroundStyle(Theme.faint).padding(.top, 10)
+            Text("No cash yet").font(.sub).foregroundStyle(Theme.muted).padding(.top, 4)
             VStack(alignment: .leading, spacing: 14) {
-                Text(app.isApe ? "Get your first meme with Apple Pay" : "Buy your first stock with Apple Pay").h3Text()
-                Text("$0 fee on your first purchase").font(.sub).foregroundStyle(Theme.muted)
-                BigButton(label: app.isApe ? "Ape the king" : "Start with OPENAI", style: .white, small: true) { app.sheet = .deposit }
-                    .fixedSize(horizontal: true, vertical: false)
+                Text("Deposit USDC to start").h3Text()
+                Text("Send USDC on Solana from any wallet or exchange. Trades are gas-free.").font(.sub).foregroundStyle(Theme.muted)
+                BigButton(label: "Deposit", style: .white, small: true) { app.sheet = .deposit }.fixedSize(horizontal: true, vertical: false)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(18).background(Theme.surface, in: .rect(cornerRadius: 20)).padding(.top, 16)
+            .padding(18).background(Theme.surface, in: .rect(cornerRadius: 20)).padding(.top, 20)
         }
     }
 
-    private func wallet(_ w: Wallet) -> some View {
-        let groups: [(String, String)] = app.isApe ? [("meme", "Memes"), ("sol", "Cash")] : [("stock", "Stocks"), ("sol", "Cash")]
-        let activity = app.isApe ? w.activity : w.activity.filter { $0.stockSymbol == nil || app.stocksByMint[$0.mint] != nil }
+    private func filled(_ w: Wallet) -> some View {
+        let hideDust = app.auth.settings.hideDust ?? false
+        let positions = w.positions.filter { !hideDust || ($0.valueUsd ?? 0) >= 0.01 }
         return VStack(alignment: .leading, spacing: 0) {
-            CentsText(value: w.totalUsd).padding(.top, 10)
-            pnlLine(w).padding(.top, 4)
-
-            ForEach(groups, id: \.0) { kind, title in
-                let hs = w.holdings.filter { $0.kind == kind }
-                if !hs.isEmpty {
-                    Text(title).h2Text().padding(.top, 22)
-                    VStack(spacing: 0) { ForEach(hs) { HoldingRow(holding: $0) } }.padding(.top, 4)
+            CentsText(value: w.cashUsd ?? 0).padding(.top, 10)
+            HStack(spacing: 4) {
+                Text("Portfolio \(Fmt.usd(w.totalUsd))").foregroundStyle(Theme.muted)
+                if let p = w.pnlUsd, p != 0 {
+                    Text("·").foregroundStyle(Theme.faint)
+                    Text((p >= 0 ? "↑ " : "↓ ") + Fmt.usd(abs(p))).foregroundStyle(Theme.change(p))
+                }
+                if (w.pendingSwaps ?? 0) > 0 {
+                    Text("·").foregroundStyle(Theme.faint)
+                    Text("\(w.pendingSwaps ?? 0) pending").foregroundStyle(Theme.muted)
                 }
             }
-            if w.holdings.contains(where: { $0.costUsd == nil }) {
-                Text("— means bought outside ApeMe, so there's no cost basis.").font(.sub).foregroundStyle(Theme.muted).padding(.top, 8)
+            .font(.sub).monospacedDigit().padding(.top, 4)
+            HStack(spacing: 8) {
+                Pill(label: "Deposit", icon: "plus") { app.sheet = .deposit }
+                Pill(label: "Withdraw · soon", size: .regular) {}.opacity(0.5)
             }
-            Text("Activity").h2Text().padding(.top, 22)
+            .padding(.top, 16)
+
+            if !positions.isEmpty {
+                Text("Positions").h2Text().padding(.top, 26)
+                VStack(spacing: 0) { ForEach(positions) { PositionRow(holding: $0) } }.padding(.top, 4)
+            }
+            if let sol = w.sol, (sol.valueUsd ?? 0) > 0 {
+                HStack { Text("SOL").font(.sub).foregroundStyle(Theme.muted); Spacer(); Text(Fmt.usd(sol.valueUsd)).font(.sub).monospacedDigit().foregroundStyle(Theme.muted) }.padding(.top, 8)
+            }
+            Text("Activity").h2Text().padding(.top, 26)
             VStack(spacing: 0) {
-                if activity.isEmpty { EmptyState(title: "No activity yet") }
-                ForEach(activity.prefix(20)) { ActivityRow(activity: $0) }
+                if w.activity.isEmpty { EmptyState(title: "Nothing yet.") }
+                ForEach(w.activity.prefix(30)) { ActivityRow(activity: $0) }
             }
             .padding(.top, 4)
         }
     }
-
-    /// One P&L figure: `↑ $10.90` or `↑ 3.1%`. Tap flips between them.
-    private func pnlLine(_ w: Wallet) -> some View {
-        let pnl = w.pnlUsd
-        let pct: Double? = {
-            guard let pnl, let cost = w.costUsd, cost > 0 else { return nil }
-            return pnl / cost * 100
-        }()
-        let value: String = {
-            guard let pnl else { return "—" }
-            if showPct, let pct { return Fmt.arrow(pct, 1) }
-            return (pnl >= 0 ? "↑ " : "↓ ") + Fmt.usd(abs(pnl))
-        }()
-        return Button {
-            withAnimation(.easeOut(duration: 0.15)) { showPct.toggle() }
-        } label: {
-            HStack(spacing: 4) {
-                Text(value).foregroundStyle(Theme.change(pnl))
-                Text("all time").foregroundStyle(Theme.muted)
-            }
-            .font(.sub).monospacedDigit()
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .disabled(pnl == nil)
-    }
 }
 
-struct HoldingRow: View {
+struct PositionRow: View {
     let holding: Holding
     @Environment(AppState.self) private var app
 
     var body: some View {
-        Button {
-            if holding.kind == "meme", app.isApe { app.push(.token(holding.mint)) }
-            else if holding.kind == "stock" { app.openStock(holding.mint) }
-        } label: {
-            HStack(spacing: 12) {
-                if holding.kind == "meme" { Avatar(url: holding.imageURL, symbol: holding.symbol) }
-                else { Logo(url: holding.imageURL, symbol: holding.symbol) }
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 7) {
-                        Text(holding.symbol).font(.rowTitle)
-                        if let q = holding.quoteSymbol { Text("on \(q)").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.faint) }
+        HStack(spacing: 12) {
+            Button {
+                if holding.kind == "meme" { if app.isApe { app.push(.token(holding.mint)) } }
+                else { app.openStock(holding.mint) }
+            } label: {
+                HStack(spacing: 12) {
+                    if holding.kind == "meme" { Avatar(url: holding.imageURL, symbol: holding.symbol) }
+                    else { Logo(url: holding.imageURL, symbol: holding.symbol) }
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 7) {
+                            Text(holding.symbol).font(.rowTitle)
+                            if let q = holding.quoteSymbol { Text("on \(q)").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.faint) }
+                        }
+                        Text("\(Fmt.qty(holding.amount, symbol: "")) · \(Fmt.usd(holding.priceUsd))").font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
                     }
-                    Text("\(holding.amount >= 1000 ? Fmt.big(holding.amount, "") : String(format: "%.4f", holding.amount)) · \(Fmt.usd(holding.priceUsd))")
-                        .font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text(Fmt.usd(holding.valueUsd)).font(.rowPrice).monospacedDigit()
+                        Text(holding.pnlPct.map { Fmt.arrow($0, 1) } ?? Fmt.arrow(holding.change24h, 1)).font(.rowChange).monospacedDigit()
+                            .foregroundStyle(Theme.change(holding.pnlPct ?? holding.change24h))
+                    }
                 }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 3) {
-                    Text(Fmt.usd(holding.valueUsd)).font(.rowPrice).monospacedDigit()
-                    Text(holding.pnlPct.map { Fmt.arrow($0, 1) } ?? "—").font(.rowChange).monospacedDigit()
-                        .foregroundStyle(holding.pnlPct == nil ? Theme.faint : Theme.change(holding.pnlPct))
-                }
+                .contentShape(.rect)
             }
-            .padding(.vertical, 8).frame(minHeight: 60).contentShape(.rect)
+            .buttonStyle(.plain)
+            Pill(label: "Sell", size: .small) { app.sheet = .sell(holding) }
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, 8).frame(minHeight: 60)
     }
 }
 
 struct ActivityRow: View {
     let activity: Activity
-    @Environment(AppState.self) private var app
+    @Environment(\.openURL) private var openURL
+
+    private var title: String {
+        let a = activity
+        switch a.kind {
+        case "buy": return "Bought \(Fmt.qty(a.amount ?? 0, symbol: a.symbol)) · \(Fmt.usd(a.usd))"
+        case "sell": return "Sold \(Fmt.qty(a.amount ?? 0, symbol: a.symbol)) · \(Fmt.usd(a.usd))"
+        case "deposit": return "Received \(Fmt.usd(a.usd)) \(a.symbol)"
+        case "withdraw": return "Sent \(Fmt.usd(a.usd)) \(a.symbol)"
+        default: return "\(a.kind.capitalized) \(a.symbol)"
+        }
+    }
+    private var sub: String {
+        var parts: [String] = [Fmt.ago(activity.ts) + " ago"]
+        if let s = activity.stockSymbol, activity.kind == "buy" || activity.kind == "sell" { parts.insert("on \(s)", at: 0) }
+        if let f = activity.feeUsd { parts.append("fee \(Fmt.usd(f))") }
+        if let from = activity.from, activity.kind == "deposit" { parts.append("from \(Fmt.short(from))") }
+        return parts.joined(separator: " · ")
+    }
 
     var body: some View {
-        Button { if app.isApe { app.push(.token(activity.mint)) } } label: {
+        Button { if let u = activity.solscanURL { openURL(u) } } label: {
             HStack(spacing: 12) {
                 Avatar(url: activity.imageURL, symbol: activity.symbol)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 7) {
-                        Badge(text: activity.side == .buy ? "Buy" : "Sell", style: activity.side == .buy ? .green : .red)
-                        Text(activity.symbol).font(.rowTitle)
+                        Text(title).font(.rowTitle).lineLimit(1)
+                        if activity.status == "pending" { Badge(text: "Pending", style: .grey) }
+                        if activity.status == "failed" { Badge(text: "Failed", style: .red) }
                     }
-                    Text("on \(activity.stockSymbol ?? "—") · \(Fmt.ago(activity.ts)) ago").font(.sub).foregroundStyle(Theme.muted)
+                    Text(activity.status == "failed" ? (activity.error ?? "Failed") : sub).font(.sub).foregroundStyle(activity.status == "failed" ? Theme.red : Theme.muted).lineLimit(1)
                 }
                 Spacer()
-                Text(Fmt.usd(activity.usd)).font(.rowPrice).monospacedDigit()
+                if activity.status == "pending" { ProgressView().tint(Theme.muted) }
+                else if activity.sig != nil { Image(systemName: "arrow.up.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint) }
             }
             .padding(.vertical, 8).frame(minHeight: 60).contentShape(.rect)
         }
         .buttonStyle(.plain)
-    }
-}
-
-private struct DotGrid: View {
-    var body: some View {
-        Canvas { ctx, size in
-            var y = 5.0
-            while y < size.height {
-                var x = 5.0
-                while x < size.width {
-                    ctx.fill(Path(ellipseIn: CGRect(x: x, y: y, width: 1.5, height: 1.5)), with: .color(Theme.line))
-                    x += 10
-                }
-                y += 10
-            }
-        }
     }
 }

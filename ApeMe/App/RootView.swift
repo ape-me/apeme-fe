@@ -17,15 +17,16 @@ struct RootView: View {
             } else if !app.onboarded || app.mode == nil {
                 OnboardingView()              // replay from You
             } else {
-                MainShell()
+                MainShell().task(id: app.auth.me?.userId) { await app.syncWatchlist() }
             }
         }
         .animation(.easeOut(duration: 0.25), value: app.signedIn)
         .background(Theme.ground)
         .sheet(item: $app.sheet) { sheet in
             switch sheet {
-            case .buyStock(let s): BuySheet(kind: .stock, stock: s, token: nil, stockRef: nil)
-            case .apeToken(let t, let ref): BuySheet(kind: .token, stock: nil, token: t, stockRef: ref)
+            case .buyStock(let s): TradeSheetView(side: .buy, asset: .stock(s))
+            case .apeToken(let t, let ref): TradeSheetView(side: .buy, asset: .token(t, ref))
+            case .sell(let h): TradeSheetView(side: .sell, asset: .holding(h))
             case .deposit: DepositSheet()
             case .login: LoginSheet()
             }
@@ -67,6 +68,8 @@ struct MainShell: View {
                         case .stock(let mint): StockView(mint: mint)
                         case .floor(let mint): FloorView(mint: mint)
                         case .token(let mint): TokenView(mint: mint)
+                        case .settings: SettingsView()
+                        case .referrals: ReferralsView()
                         }
                     }
                     .toolbar(.hidden, for: .navigationBar)

@@ -13,8 +13,11 @@ final class Auth {
 
     private let privy: any Privy
     private(set) var user: (any PrivyUser)?
-    private(set) var address: String?
+    /// All embedded Solana wallets, in Privy order (hdIndex). `address` is the active one.
+    private(set) var wallets: [any EmbeddedSolanaWallet] = []
+    private(set) var address: String? { didSet { UserDefaults.standard.set(address, forKey: "apeme.activeAddress") } }
     private(set) var me: Me?
+    var settings: Me.Settings { me?.settings ?? .defaults }
     /// True once `/v1/me` has been tried at least once for this session (success or not).
     private(set) var meTried = false
     /// Untouched `/v1/me` JSON, for confirming the token shape with the backend.
@@ -82,6 +85,7 @@ final class Auth {
     func logout() async {
         await user?.logout()
         user = nil
+        wallets = []
         address = nil
         me = nil
         meRaw = nil
@@ -120,8 +124,30 @@ final class Auth {
     private func signedIn(_ u: any PrivyUser) async {
         user = u
         // No-op when a wallet already exists.
-        let w = (try? await u.createSolanaWallet()) ?? u.embeddedSolanaWallets.first
-        address = w?.address
+        if u.embeddedSolanaWallets.isEmpty { _ = try? await u.createSolanaWallet() }
+        wallets = u.embeddedSolanaWallets
+        let saved = UserDefaults.standard.string(forKey: "apeme.activeAddress")
+        address = wallets.first { $0.address == saved }?.address ?? wallets.first?.address
         await refreshMe()
+    }
+
+    /// The Privy wallet object for the active account; `provider` signs.
+    var activeWallet: (any EmbeddedSolanaWallet)? { wallets.first { $0.address == address } }
+
+    func switchAccount(_ addr: String) { if wallets.contains(where: { $0.address == addr }) { address = addr } }
+
+    /// "+ New account": another HD wallet on the same user. `allowAdditional` is the SDK's flag.
+    func createAdditionalWallet() async throws -> String {
+        guard let user else { throw APIError.http(401, "unauthorized") }
+        let w = try await user.createSolanaWallet(allowAdditional: true)
+        wallets = user.embeddedSolanaWallets
+        await refreshMe()
+        return w.address
+    }
+
+    func applyMe(_ m: Me) { me = m }
+    func applySettings(_ s: Me.Settings) {
+        guard let m = me else { return }
+        me = Me(userId: m.userId, handle: m.handle, avatarUrl: m.avatarUrl, status: m.status, wallets: m.wallets, settings: s, referral: m.referral, createdAt: m.createdAt)
     }
 }

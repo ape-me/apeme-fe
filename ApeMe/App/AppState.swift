@@ -68,10 +68,11 @@ final class AppState {
         for s in stocks { stocksByMint[s.mint] = s }
     }
 
-    func loadWallet() async {
+    func loadWallet(fresh: Bool = true) async {
         guard let address = walletAddress else { wallet = nil; return }
-        if let w = try? await API.shared.wallet(address, activity: 30) { wallet = w }
+        if let w = try? await API.shared.wallet(address, activity: 30, fresh: fresh) { wallet = w }
     }
+    var cashUsd: Double { wallet?.cashUsd ?? 0 }
 
     func signOut() async {
         await auth.logout()
@@ -84,8 +85,16 @@ final class AppState {
 
     func isWatching(_ mint: String) -> Bool { watch.contains(mint) }
     func toggleWatch(_ mint: String) {
-        if let i = watch.firstIndex(of: mint) { watch.remove(at: i); show("Removed from watchlist") }
-        else { watch.append(mint); show("Watching") }
+        let on: Bool
+        if let i = watch.firstIndex(of: mint) { watch.remove(at: i); on = false; show("Removed from watchlist") }
+        else { watch.append(mint); on = true; show("Watching") }
+        Task { try? await API.shared.watch(mint, on: on) }
+    }
+    /// Server copy wins after sign-in.
+    func syncWatchlist() async {
+        guard signedIn, let r = try? await API.shared.watchlist() else { return }
+        index(r.stocks)
+        watch = r.stocks.map(\.mint)
     }
     func isWatchingToken(_ mint: String) -> Bool { tokenWatch.contains(mint) }
     func toggleTokenWatch(_ mint: String) {

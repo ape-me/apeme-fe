@@ -1,46 +1,65 @@
 import SwiftUI
+import CoreImage.CIFilterBuiltins
 
-/// Add money: Apple Pay first, then bridge, then send SOL.
+/// Deposit: the active account's address as QR + copy. Polls the wallet every 5 s and closes on arrival.
 struct DepositSheet: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
+    @State private var baseline: Double?
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("Add money").h2Text()
+                Text("Deposit USDC").h2Text()
                 Spacer()
                 IconButton(symbol: "xmark", label: "Close") { dismiss() }
             }
-            VStack(spacing: 0) {
-                row("Pay", "Apple Pay", "Card on file, no wallet needed", tag: "New") { dismiss(); app.show("Apple Pay opens here in the app") }
-                row("↗", "From another chain", "Ethereum, Base, Arbitrum and 10+ more") { dismiss(); app.show("Bridge opens here in the app") }
-                row("↓", "Send SOL or USDC", "Address and QR code") { dismiss(); app.copy(API.demoAddress) }
+            if let addr = app.walletAddress {
+                qr(addr).frame(width: 200, height: 200).frame(maxWidth: .infinity)
+                    .padding(16).background(Color.white, in: .rect(cornerRadius: 20)).frame(maxWidth: .infinity)
+                Button { app.copy(addr) } label: {
+                    HStack(spacing: 10) {
+                        Text(addr).font(.system(size: 13, weight: .medium, design: .monospaced)).foregroundStyle(Theme.ink).lineLimit(2).multilineTextAlignment(.leading)
+                        Spacer()
+                        Image(systemName: "doc.on.doc").font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ink)
+                    }
+                    .padding(14).background(Theme.surface2, in: .rect(cornerRadius: 14))
+                }
+                .buttonStyle(.plain)
+                BigButton(label: "Copy address", style: .white) { app.copy(addr) }
             }
-            Text("Funding connects through Privy in the shipped app.").font(.system(size: 11)).foregroundStyle(Theme.muted)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Send USDC on the Solana network to this address. Other networks or tokens may be lost.").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ink)
+                Text("Works from Phantom, Coinbase, Binance, any Solana wallet.").font(.sub).foregroundStyle(Theme.muted)
+            }
+            HStack(spacing: 8) { ProgressView().tint(Theme.muted); Text("Watching for your deposit…").font(.sub).foregroundStyle(Theme.muted) }
         }
         .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 18)
-        .presentationDetents([.height(340)])
+        .frame(maxHeight: .infinity, alignment: .top)
+        .presentationDetents([.large])
         .presentationBackground(Theme.surface)
         .presentationDragIndicator(.visible)
+        .task {
+            await app.loadWallet(fresh: true)
+            baseline = app.cashUsd
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(5))
+                await app.loadWallet(fresh: true)
+                if let b = baseline, app.cashUsd > b + 0.005 {
+                    app.show("Received \(Fmt.usd(app.cashUsd - b))")
+                    dismiss(); return
+                }
+            }
+        }
     }
 
-    private func row(_ icon: String, _ title: String, _ sub: String, tag: String? = nil, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Text(icon).font(.system(size: 12, weight: .bold)).frame(width: 40, height: 40).background(Theme.surface2, in: .circle)
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 7) {
-                        Text(title).font(.rowTitle)
-                        if let tag { Badge(text: tag, style: .accent) }
-                    }
-                    Text(sub).font(.sub).foregroundStyle(Theme.muted)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)
-            }
-            .padding(.vertical, 8).frame(minHeight: 64).contentShape(.rect)
+    private func qr(_ text: String) -> Image {
+        let f = CIFilter.qrCodeGenerator()
+        f.message = Data(text.utf8); f.correctionLevel = "M"
+        let ctx = CIContext()
+        if let out = f.outputImage?.transformed(by: CGAffineTransform(scaleX: 10, y: 10)), let cg = ctx.createCGImage(out, from: out.extent) {
+            return Image(decorative: cg, scale: 1).interpolation(.none)
         }
-        .buttonStyle(.plain)
+        return Image(systemName: "qrcode")
     }
 }

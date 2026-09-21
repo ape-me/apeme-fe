@@ -4,6 +4,8 @@ enum Route: Hashable {
     case stock(String)
     case floor(String)
     case token(String)
+    case settings
+    case referrals
 }
 
 enum Tab: String, CaseIterable, Identifiable {
@@ -11,8 +13,8 @@ enum Tab: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var symbol: String {
         switch self {
-        case .home: "house"; case .markets: "chart.bar"; case .portfolio: "clock"; case .you: "person"
+        case .home: "house"; case .markets: "chart.bar"; case .portfolio: "creditcard"; case .you: "person"
         }
     }
-    var label: String { rawValue.capitalized }
+    var label: String { self == .portfolio ? "Wallet" : rawValue.capitalized }
 }
