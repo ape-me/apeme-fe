@@ -3,11 +3,6 @@ import Observation
 
 @Observable @MainActor
 final class MarketsStore {
-    enum Issuer: String, CaseIterable, Identifiable {
-        case all, prestocks, xstocks, backpack
-        var id: String { rawValue }
-        var label: String { switch self { case .all: "All"; case .prestocks: "Pre-IPO"; case .xstocks: "xStocks"; case .backpack: "Backpack" } }
-    }
     enum Sort: String, CaseIterable, Identifiable {
         case change, volume, premium, heat
         var id: String { rawValue }
@@ -23,20 +18,15 @@ final class MarketsStore {
     }
 
     var stocks: [Stock] = []
+    var collections: [StockCollection] = []
     var error: String?
     var query = ""
-    var issuer: Issuer = .all
     var tag: String?
     var sort: Sort = .change
 
-    var tags: [String] {
-        var seen = Set<String>()
-        return stocks.flatMap { $0.tags ?? [] }.filter { seen.insert($0).inserted }
-    }
-
-    static func tagName(_ t: String) -> String {
-        [ "preipo": "Pre-IPO", "ai": "AI", "mag7": "Big Tech", "crypto-stocks": "Crypto stocks", "memestocks": "Meme stocks",
-          "prediction": "Bets & markets", "defense": "Defense", "health": "Health", "etf": "ETFs" ][t] ?? t
+    /// Chips come from /collections, in the backend's order. "Meme" is not a word Invest mode uses.
+    func chipTitle(_ c: StockCollection, ape: Bool) -> String {
+        c.id == "memestocks" && !ape ? "Retail favorites" : c.title
     }
 
     func load(app: AppState) async {
@@ -45,11 +35,14 @@ final class MarketsStore {
             let b: StocksResponse? = await API.shared.cached("/stocks?issuer=xstocks,backpack")
             if let a, let b { stocks = a.stocks + b.stocks }
         }
+        if collections.isEmpty, let c: CollectionsResponse = await API.shared.cached("/collections") { collections = c.collections }
         do {
             async let a = API.shared.stocks(issuer: "prestocks")
             async let b = API.shared.stocks(issuer: "xstocks,backpack")
-            let (ra, rb) = try await (a, b)
+            async let c = API.shared.collections()
+            let (ra, rb, rc) = try await (a, b, c)
             stocks = ra.stocks + rb.stocks
+            collections = rc.collections
             app.index(stocks)
             error = nil
         } catch {
@@ -60,8 +53,7 @@ final class MarketsStore {
     func filtered(ape: Bool) -> [Stock] {
         let q = query.lowercased()
         var l = stocks.filter { s in
-            (issuer == .all || s.issuer == issuer.rawValue)
-            && (tag == nil || (s.tags ?? []).contains(tag!))
+            (tag == nil || (s.tags ?? []).contains(tag!))
             && (q.isEmpty || s.symbol.lowercased().contains(q) || s.name.lowercased().contains(q) || s.mint.lowercased() == q)
         }
         l.sort { a, b in

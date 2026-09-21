@@ -44,11 +44,9 @@ struct MarketsView: View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
                 Pill(label: store.sort.label(ape: app.isApe), size: .small, icon: "line.3.horizontal.decrease") { showSort = true }
-                ForEach(MarketsStore.Issuer.allCases) { i in
-                    Pill(label: i.label, on: store.issuer == i, size: .small) { store.issuer = i }
-                }
-                ForEach(store.tags, id: \.self) { t in
-                    Pill(label: MarketsStore.tagName(t), on: store.tag == t, size: .small) { store.tag = store.tag == t ? nil : t }
+                Pill(label: "All", on: store.tag == nil, size: .small) { store.tag = nil }
+                ForEach(store.collections) { c in
+                    Pill(label: store.chipTitle(c, ape: app.isApe), on: store.tag == c.id, size: .small) { store.tag = c.id }
                 }
             }
             .padding(.horizontal, 20)
