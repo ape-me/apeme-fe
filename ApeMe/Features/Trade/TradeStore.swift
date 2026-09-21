@@ -49,17 +49,19 @@ final class TradeStore {
         debounce = Task {
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
-            await fetchQuote(raw: raw, taker: taker, key: key)
+            await fetchQuote(raw: raw, taker: taker, key: key, cashUsd: cashUsd)
         }
     }
 
-    private func fetchQuote(raw: String, taker: String, key: String) async {
+    private func fetchQuote(raw: String, taker: String, key: String, cashUsd: Double) async {
         do {
             let q = try await API.shared.quote(inputMint: side == .buy ? "usdc" : mint,
                                                outputMint: side == .buy ? mint : "usdc",
                                                amountRaw: raw, taker: taker, priority: priority)
             guard lastRequest == key else { return }
-            quote = q; requestId = q.requestId; phase = .ready
+            quote = q; requestId = q.requestId
+            // Fee + one-time rent come out of cash on top of the amount.
+            if side == .buy, (q.inUsd ?? 0) + (q.totalChargeUsd ?? q.fee?.usd ?? 0) > cashUsd { phase = .insufficient } else { phase = .ready }
         } catch {
             guard lastRequest == key else { return }
             phase = .failed; self.error = Self.message(error)

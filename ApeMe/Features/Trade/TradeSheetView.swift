@@ -158,6 +158,9 @@ struct TradeSheetView: View {
                 Spacer()
                 priorityChip
             }
+            if let rent = q?.rent?.usd, rent > 0 {
+                Text("One-time network fee \(Fmt.usd(rent)) to hold \(asset.symbol)").font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
+            }
             if let p = q?.premiumPct, p > 5, side == .buy {
                 Text("You're paying \(String(format: "%.1f", p))% over the \(asset.isPreIPO ? "fair value" : "Nasdaq price").")
                     .font(.sub).foregroundStyle(Theme.amber).frame(maxWidth: .infinity, alignment: .leading)
@@ -216,6 +219,8 @@ struct TradeSheetView: View {
                 KV("You get", "≈ " + store.youGet)
                 if asset.isStock, let m = store.quote?.markUsd { KV(asset.isPreIPO ? "Fair value" : "Nasdaq", Fmt.usd(m)) }
                 KV("Fee", Fmt.usd(store.quote?.fee?.usd ?? 0))
+                if let rent = store.quote?.rent?.usd, rent > 0 { KV("One-time network fee", Fmt.usd(rent)) }
+                if side == .buy, let t = store.quote?.totalChargeUsd, t > 0 { KV("Total from cash", Fmt.usd((store.quote?.inUsd ?? 0) + t)) }
                 KV("Gas", "Free · ApeMe pays")
                 KV("Slippage", "\(Double(store.quote?.slippageBps ?? 100) / 100)%")
                 KV("Account", Fmt.short(app.walletAddress))
