@@ -44,6 +44,18 @@ final class AppState {
 
     func trade(_ s: TradeSheet) { sheet = s }
 
+    /// Sell whatever the active account holds of this mint; refreshes the wallet first if needed.
+    func sell(_ mint: String) {
+        Task {
+            if wallet == nil { await loadWallet(fresh: true) }
+            if let h = wallet?.holdings.first(where: { $0.mint == mint && ($0.kind == "stock" || $0.kind == "meme") }), h.amount > 0 {
+                sheet = .sell(h)
+            } else {
+                show("You don't hold any yet")
+            }
+        }
+    }
+
     // MARK: Navigation
 
     func root(_ t: Tab) {

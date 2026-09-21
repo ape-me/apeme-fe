@@ -71,7 +71,7 @@ struct StockView: View {
             ranges.padding(.top, 14)
             HStack(spacing: 10) {
                 BigButton(label: "Buy", style: .buy) { app.trade(.buyStock(s)) }
-                BigButton(label: "Sell", style: .sell) { app.show("Nothing to sell yet") }
+                BigButton(label: "Sell", style: .sell) { app.sell(store.mint) }
             }
             .padding(.horizontal, 20).padding(.top, 18)
             HR().padding(.top, 26)

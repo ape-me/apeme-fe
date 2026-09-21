@@ -85,7 +85,7 @@ struct TokenView: View {
                 ActionItem(id: "ape", label: app.hasWallet ? "Ape" : "Deposit", symbol: "plus", tone: Theme.buy) {
                     if app.hasWallet { app.trade(.apeToken(t.card, t.stock)) } else { app.sheet = .deposit }
                 },
-                ActionItem(id: "sell", label: "Sell", symbol: "minus", tone: Theme.sell) { app.show("Nothing to sell yet") },
+                ActionItem(id: "sell", label: "Sell", symbol: "minus", tone: Theme.sell) { app.sell(t.card.mint) },
                 ActionItem(id: "floor", label: "Floor", symbol: "arrow.left.arrow.right") { app.push(.floor(t.quoteMint)) },
                 ActionItem(id: "share", label: "Share", symbol: "square.and.arrow.up") { app.copy(t.mint) },
             ])
