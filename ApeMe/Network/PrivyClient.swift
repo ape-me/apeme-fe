@@ -15,6 +15,8 @@ final class Auth {
     private(set) var user: (any PrivyUser)?
     private(set) var address: String?
     private(set) var me: Me?
+    /// True once `/v1/me` has been tried at least once for this session (success or not).
+    private(set) var meTried = false
     /// Untouched `/v1/me` JSON, for confirming the token shape with the backend.
     private(set) var meRaw: String?
     private(set) var ready = false
@@ -76,6 +78,7 @@ final class Auth {
         address = nil
         me = nil
         meRaw = nil
+        meTried = false
     }
 
     // MARK: Account
@@ -83,6 +86,7 @@ final class Auth {
     /// `/v1/me` after login; decides whether the invite screen is needed.
     @discardableResult
     func refreshMe() async -> Me? {
+        defer { meTried = true }
         var raw = ""
         do {
             let data = try await API.shared.me()

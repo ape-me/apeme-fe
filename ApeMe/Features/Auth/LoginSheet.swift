@@ -132,10 +132,6 @@ struct LoginForm: View {
                     app.onboarded = true
                     await app.loadWallet()
                     onDone()
-                    if app.needsInvite {
-                        try? await Task.sleep(for: .milliseconds(400))
-                        app.sheet = .invite
-                    }
                 }
             } catch {
                 self.error = Self.message(for: error, emailCode: emailCode)

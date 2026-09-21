@@ -20,9 +20,6 @@ struct YouView: View {
                     }
                     SettingRow(symbol: "arrow.counterclockwise", title: "Show onboarding again", sub: "Three slides and the mode question") { confirmOnboarding = true }
                     if app.signedIn {
-                        if app.needsInvite {
-                            SettingRow(symbol: "ticket", title: "Enter invite code", sub: "Needed before your first trade") { app.sheet = .invite }
-                        }
                         SettingRow(symbol: "rectangle.portrait.and.arrow.right", title: "Sign out", sub: app.auth.accountLabel ?? "Signed in") { confirmSignOut = true }
                         #if DEBUG
                         SettingRow(symbol: "ladybug", title: "Copy /v1/me response", sub: app.auth.me.map { "status: \($0.status)" } ?? app.auth.meRaw.map { String($0.prefix(60)) } ?? "not loaded yet") {

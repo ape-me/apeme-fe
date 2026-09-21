@@ -10,6 +10,10 @@ struct RootView: View {
                 Color.clear
             } else if !app.signedIn {
                 SignedOutFlow()               // slides → Get started → Sign in, every launch until login succeeds
+            } else if app.auth.me == nil {
+                AccountLoadingView(failed: app.auth.meTried)
+            } else if app.needsInvite {
+                InviteView()                  // wall: nothing behind it until /v1/me says active
             } else if !app.onboarded || app.mode == nil {
                 OnboardingView()              // replay from You
             } else {
@@ -24,7 +28,6 @@ struct RootView: View {
             case .apeToken(let t, let ref): BuySheet(kind: .token, stock: nil, token: t, stockRef: ref)
             case .deposit: DepositSheet()
             case .login: LoginSheet()
-            case .invite: InviteSheet()
             }
         }
         .overlay(alignment: .bottom) {

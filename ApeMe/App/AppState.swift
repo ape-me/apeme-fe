@@ -42,10 +42,7 @@ final class AppState {
     /// Signed in but not yet let through the invite gate. Browsing works; trading opens the invite sheet.
     var needsInvite: Bool { signedIn && auth.needsInvite }
 
-    /// Opens a trade sheet, or the invite sheet first when the account is still gated.
-    func trade(_ s: TradeSheet) {
-        sheet = needsInvite ? .invite : s
-    }
+    func trade(_ s: TradeSheet) { sheet = s }
 
     // MARK: Navigation
 
