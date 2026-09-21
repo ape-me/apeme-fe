@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 import Observation
 
 @Observable @MainActor
@@ -16,11 +16,13 @@ final class TokenStore {
     let mint: String
     var token: TokenHeader?
     var error: String?
-    var tf: Timeframe = .m1
+    var range: TokenRange = .live
+    private(set) var tf: Timeframe = .m1
     var candles: [Candle] = []
     var chartLoading = true
     var showCandles = false
     var scrub: Candle?
+    var scrubPoint: LineChart.Point?
     var tab: Tab = .trades
     var window: Window = .h24
     var trades: [Trade] = []
@@ -51,18 +53,21 @@ final class TokenStore {
         _ = await (c, t)
     }
 
-    func setTf(_ t: Timeframe) {
-        guard t != tf else { return }
-        tf = t
+    func setRange(_ r: TokenRange) {
+        guard r != range else { return }
+        range = r
         Task { await loadChart() }
     }
 
     func loadChart() async {
         chartGen += 1
         let g = chartGen
+        let age = Int(Date.now.timeIntervalSince1970) - (token?.createdAt ?? 0)
+        let spec = range.candles(age: age)
+        tf = spec.tf
         chartLoading = true
         defer { if g == chartGen { chartLoading = false } }
-        if let d = try? await API.shared.candles(mint, tf: tf, limit: 120), g == chartGen {
+        if let d = try? await API.shared.candles(mint, tf: spec.tf, limit: spec.limit), g == chartGen {
             candles = d.candles
         } else if g == chartGen {
             candles = []
@@ -71,12 +76,23 @@ final class TokenStore {
 
     func loadTrades() async {
         tradesLoading = trades.isEmpty
-        if let d = try? await API.shared.trades(mint, limit: 40) { merge(d.trades) }
+        if let d = try? await API.shared.trades(mint, limit: 100) { merge(d.trades) }
         tradesLoading = false
     }
 
+    /// LIVE = one point per trade, oldest → newest. Other ranges = candle closes. All in USD.
     var linePoints: [LineChart.Point] {
-        candles.map { LineChart.Point(t: $0.t, price: $0.c * quoteUsd, mark: nil) }
+        if range == .live {
+            return trades.reversed().map { LineChart.Point(t: $0.ts, price: $0.priceUsd ?? $0.priceQuote * quoteUsd, mark: nil) }
+        }
+        return candles.map { LineChart.Point(t: $0.t, price: $0.c * quoteUsd, mark: nil) }
+    }
+
+    /// Green when the visible series ends at or above where it started, else red.
+    var direction: Color {
+        let p = linePoints
+        guard let f = p.first, let l = p.last else { return Theme.green }
+        return l.price >= f.price ? Theme.green : Theme.red
     }
 
     func candle(at t: Int) -> Candle? { candles.first { $0.t == t } }
@@ -110,13 +126,13 @@ final class TokenStore {
         var all = trades
         for t in incoming where seen.insert(t.sig).inserted { all.append(t) }
         all.sort { $0.ts != $1.ts ? $0.ts > $1.ts : $0.slot > $1.slot }
-        trades = Array(all.prefix(60))
+        trades = Array(all.prefix(100))
     }
 
     private func apply(_ t: Trade) {
         guard !trades.contains(where: { $0.sig == t.sig }) else { return }
         trades.insert(t, at: 0)
-        if trades.count > 60 { trades.removeLast() }
+        if trades.count > 100 { trades.removeLast() }
         stamp += 1
         tapeFlash[t.sig] = Flash(side: t.side, stamp: stamp)
 

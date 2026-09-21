@@ -8,7 +8,7 @@ struct CandleChart: View {
     @State private var scrubIndex: Int? = nil
 
     var body: some View {
-        if candles.count < 2 {
+        if candles.isEmpty {
             EmptyState(title: "Live from now", subtitle: "No history before we started watching this floor.") {
                 EmptyView()
             }

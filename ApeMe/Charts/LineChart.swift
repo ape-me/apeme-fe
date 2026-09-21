@@ -6,28 +6,36 @@ struct LineChart: View {
 
     let points: [Point]
     var reference: Double? = nil
+    /// Overrides the accent, e.g. green/red by direction on the token page.
+    var tint: Color? = nil
+    var emptyTitle = "No history for this range"
+    var emptySubtitle = "Try another timeframe."
     var onScrub: (Point?) -> Void = { _ in }
 
     @Environment(\.skin) private var skin
     @State private var scrubIndex: Int? = nil
 
+    private var color: Color { tint ?? skin.accent }
+
     var body: some View {
-        if points.count < 2 {
-            EmptyState(title: "No history for this range", subtitle: "Try another timeframe.")
+        if points.isEmpty {
+            EmptyState(title: emptyTitle, subtitle: emptySubtitle)
                 .frame(height: 200)
         } else {
             GeometryReader { g in
-                let geo = Geometry(points: points, reference: reference, size: g.size)
+                // Draw whatever exists across the full width; one point becomes a flat line.
+                let series = points.count == 1 ? [points[0], Point(t: points[0].t + 1, price: points[0].price, mark: nil)] : points
+                let geo = Geometry(points: series, reference: reference, size: g.size)
                 ZStack(alignment: .topLeading) {
                     AreaShape(geo: geo)
-                        .fill(ImagePaint(image: Self.dot(skin.accent), scale: 1))
+                        .fill(ImagePaint(image: Self.dot(color), scale: 1))
                         .mask { LinearGradient(colors: [.white.opacity(0.55), .clear], startPoint: .top, endPoint: .bottom) }
                     if let mark = geo.markPath {
                         mark.stroke(Theme.amber, style: StrokeStyle(lineWidth: 1.5, dash: [3, 5]))
                     }
-                    geo.linePath.stroke(skin.accent, style: StrokeStyle(lineWidth: 2, lineJoin: .round))
-                    Circle().fill(skin.accent).frame(width: 8, height: 8)
-                        .position(geo.xy(points.count - 1))
+                    geo.linePath.stroke(color, style: StrokeStyle(lineWidth: 2, lineJoin: .round))
+                    Circle().fill(color).frame(width: 8, height: 8)
+                        .position(geo.xy(series.count - 1))
                     if geo.refFar, let ref = reference {
                         farTag(ref, below: ref < geo.pmin)
                     }
@@ -39,7 +47,7 @@ struct LineChart: View {
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { v in
-                            let i = geo.nearest(x: v.location.x)
+                            let i = min(points.count - 1, geo.nearest(x: v.location.x))
                             if i != scrubIndex { scrubIndex = i; onScrub(points[i]) }
                         }
                         .onEnded { _ in scrubIndex = nil; onScrub(nil) }
@@ -55,7 +63,7 @@ struct LineChart: View {
         return ZStack(alignment: .topLeading) {
             Rectangle().fill(Theme.muted).frame(width: 1).position(x: p.x, y: geo.size.height / 2)
                 .frame(height: geo.size.height)
-            Circle().fill(skin.accent).frame(width: 12, height: 12)
+            Circle().fill(color).frame(width: 12, height: 12)
                 .overlay(Circle().stroke(Theme.ground, lineWidth: 2))
                 .position(p)
             Text(Fmt.dateTime(points[i].t))

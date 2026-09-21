@@ -63,7 +63,7 @@ struct TokenView: View {
 
             ohlc.padding(.horizontal, 20).padding(.top, 14)
             chart.padding(.top, 4)
-            RangePills(items: Timeframe.allCases, selected: store.tf, label: \.rawValue, onSelect: { store.setTf($0) },
+            RangePills(items: TokenRange.allCases, selected: store.range, label: \.rawValue, onSelect: { store.setRange($0) },
                        trailing: AnyView(candleToggle))
                 .padding(.top, 10)
 
@@ -104,6 +104,8 @@ struct TokenView: View {
                 let q = store.quoteUsd
                 ohlcItem("O", k.o * q); ohlcItem("H", k.h * q); ohlcItem("L", k.l * q); ohlcItem("C", k.c * q)
                 Text(Fmt.time(k.t))
+            } else if let p = store.scrubPoint {
+                Text("\(Text(Fmt.usd(p.price)).foregroundStyle(Theme.ink)) · \(Fmt.dateTime(p.t))")
             }
         }
         .font(.system(size: 11, weight: .semibold)).monospacedDigit().foregroundStyle(Theme.muted)
@@ -120,7 +122,12 @@ struct TokenView: View {
         } else if store.showCandles {
             CandleChart(candles: store.candles) { store.scrub = $0 }.padding(.horizontal, 20)
         } else {
-            LineChart(points: store.linePoints) { p in store.scrub = p.flatMap { store.candle(at: $0.t) } }
+            LineChart(points: store.linePoints, tint: store.direction,
+                      emptyTitle: "Live from now", emptySubtitle: "The first trade starts the chart.") { p in
+                store.scrubPoint = p
+                store.scrub = store.range == .live ? nil : p.flatMap { store.candle(at: $0.t) }
+            }
+            .animation(.easeOut(duration: 0.3), value: store.linePoints.last?.price)
         }
     }
 
