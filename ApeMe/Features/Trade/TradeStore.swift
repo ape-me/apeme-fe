@@ -72,6 +72,10 @@ final class TradeStore {
         switch side {
         case .sell: return Fmt.usd(q.outUsd)
         case .buy:
+            // Exact from the quote; fall back to $ ÷ price if the fields are missing.
+            if let d = q.outDecimals, let raw = Double(q.outAmount) {
+                return Fmt.qty(raw / pow(10, Double(d)) * (q.multiplier ?? 1), symbol: symbol)
+            }
             guard let out = q.outUsd, let p = priceUsd, p > 0 else { return "—" }
             return Fmt.qty(out / p, symbol: symbol)
         }

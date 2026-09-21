@@ -21,6 +21,9 @@ struct Quote: Codable, Hashable {
     let gas: Gas?
     let premiumPct: Double?
     let markUsd: Double?
+    let inDecimals: Int?
+    let outDecimals: Int?
+    let multiplier: Double?
     let transaction: String
     let signers: Signers?
     let expiresAt: Int?

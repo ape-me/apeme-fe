@@ -10,6 +10,7 @@ struct Stock: Codable, Identifiable, Hashable {
     let tags: [String]?
     let logo: String?
     var priceUsd: Double?
+    var decimals: Int?
     var change24h: Double?
     let memes: Int
     let marketOpen: Bool
