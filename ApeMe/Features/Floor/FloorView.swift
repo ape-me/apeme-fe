@@ -12,7 +12,6 @@ struct FloorView: View {
             HStack(spacing: 10) {
                 BackButton()
                 Spacer()
-                StatusChip(text: store.status.rawValue, live: store.status == .live)
             }
             .padding(.horizontal, 12).padding(.top, 6).frame(minHeight: 56)
             ScrollView {
@@ -28,8 +27,6 @@ struct FloorView: View {
                         HR().padding(.top, 24)
                         sortPills
                         list
-                        StatusChip(text: app.online ? "Live" : "Snapshot", live: app.online)
-                            .padding(.horizontal, 20).padding(.top, 16)
                     }
                 }
                 .padding(.bottom, 24)

@@ -36,11 +36,8 @@ struct YouView: View {
                             app.watch = []; app.tokenWatch = []
                         }
                     }
-                    VStack(spacing: 4) {
-                        StatusChip(text: app.online ? "Live" : "Snapshot", live: app.online)
-                        Text("v0.1 · orders and funding are previews").font(.sub).foregroundStyle(Theme.muted)
-                    }
-                    .frame(maxWidth: .infinity)
+                    Text("v0.1 · orders and funding are previews").font(.sub).foregroundStyle(Theme.muted)
+                        .frame(maxWidth: .infinity)
                 }
                 .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 24)
             }

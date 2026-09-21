@@ -229,8 +229,6 @@ struct NewLaunchesSection: View {
                     Text("Just launched").h2Text()
                     Text("New tokens across every floor").font(.sub).foregroundStyle(Theme.muted)
                 }
-                Spacer()
-                StatusChip(text: store.socketStatus.rawValue, live: store.socketStatus == .live)
             }
             if store.newTokens.isEmpty {
                 Skeleton(height: 64); Skeleton(height: 64)

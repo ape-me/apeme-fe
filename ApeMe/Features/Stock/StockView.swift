@@ -75,10 +75,8 @@ struct StockView: View {
             }
             .padding(.horizontal, 20).padding(.top, 18)
             HR().padding(.top, 26)
-            if let mark = s.markUsd, let p = s.premiumPct { fairValue(s, mark, p) }
+            if let mark = s.markUsd, let p = s.premiumPct { FairValueBlock(stock: s, mark: mark, premium: p) }
             stats(s)
-            StatusChip(text: store.status.rawValue, live: store.status == .live)
-                .padding(.horizontal, 20).padding(.top, 20)
         }
         .padding(.bottom, 24)
     }
@@ -151,38 +149,6 @@ struct StockView: View {
         .buttonStyle(.plain)
     }
 
-    private func fairValue(_ s: Stock, _ mark: Double, _ p: Double) -> some View {
-        let w = min(96, max(8, abs(p) * 4))
-        return VStack(alignment: .leading, spacing: 14) {
-            Text("Fair value").h2Text()
-            VStack(spacing: 10) {
-                GeometryReader { g in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Theme.surface2)
-                        Capsule().fill(Theme.amberT).frame(width: g.size.width * min(100, max(8, abs(p) * 4)) / 100)
-                        Circle().fill(Theme.amber).frame(width: 12, height: 12).overlay(Circle().stroke(Theme.ground, lineWidth: 2))
-                        Circle().fill(skin.accent).frame(width: 12, height: 12).overlay(Circle().stroke(Theme.ground, lineWidth: 2))
-                            .offset(x: g.size.width * w / 100)
-                    }
-                }
-                .frame(height: 6)
-                HStack {
-                    Text("\(Fmt.usd(mark)) fair").foregroundStyle(Theme.amber)
-                    Spacer()
-                    PremiumBadge(pct: p)
-                    Spacer()
-                    Text("\(Fmt.usd(s.priceUsd)) now")
-                }
-                .font(.system(size: 13, weight: .semibold)).monospacedDigit()
-                Text(s.isPreIPO
-                     ? "PreStocks publishes a fair value from the company's last round. The token trades above or below it; the gap is the premium."
-                     : "Fair value is the real exchange price. The token tracks it closely.")
-                .font(.sub).foregroundStyle(Theme.muted)
-            }
-        }
-        .padding(.horizontal, 20).padding(.top, 22)
-    }
-
     private func stats(_ s: Stock) -> some View {
         VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 0) {
@@ -194,12 +160,7 @@ struct StockView: View {
                     KV("Buys · sells") {
                         Text("\(Text(Fmt.n(s.buys24h)).foregroundStyle(Theme.green)) \(Text("/").foregroundStyle(Theme.faint)) \(Text(Fmt.n(s.sells24h)).foregroundStyle(Theme.red))")
                     }
-                    KV("Market") {
-                        HStack(spacing: 6) {
-                            Circle().fill(s.marketOpen ? Theme.green : Theme.faint).frame(width: 6, height: 6)
-                            Text(s.marketOpen ? "Open" : "After hours · trades 24/7 here")
-                        }
-                    }
+                    KV("Market", s.marketOpen ? "Open" : "After hours · trades 24/7 here")
                 }
             }
             VStack(alignment: .leading, spacing: 0) {
@@ -239,4 +200,71 @@ struct CopyButton: View {
 private func zip2<A, B>(_ a: A?, _ b: B?) -> (A, B)? {
     guard let a, let b else { return nil }
     return (a, b)
+}
+
+/// Premium to fair value. Chip + the two numbers + a -10…+10% gauge. Hidden when there is no mark.
+struct FairValueBlock: View {
+    let stock: Stock
+    let mark: Double
+    let premium: Double
+
+    private var tone: Color {
+        abs(premium) <= 0.25 ? Theme.muted : premium < 0 ? Theme.green : Theme.red
+    }
+    private var toneTint: Color {
+        abs(premium) <= 0.25 ? Theme.greyT : premium < 0 ? Theme.greenT : Theme.redT
+    }
+    private var caption: String {
+        if stock.isPreIPO {
+            return "Fair value is PreStocks' mark from the company's last funding round. Above it means buyers are paying a premium."
+        }
+        var base = stock.symbol
+        if base.count > 1, base.last?.lowercased() == "x" { base.removeLast() }
+        return "Fair value is the live Nasdaq price for \(base). The token usually trades within 1% of it."
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Fair value").h2Text()
+            VStack(alignment: .leading, spacing: 12) {
+                Text("\(Fmt.pct(premium, 1)) vs fair value")
+                    .font(.system(size: 13, weight: .semibold)).monospacedDigit()
+                    .foregroundStyle(tone)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(toneTint, in: .capsule)
+                HStack {
+                    Text("\(Text(Fmt.usd(mark)).foregroundStyle(Theme.ink)) fair")
+                    Spacer()
+                    Text("\(Text(Fmt.usd(stock.priceUsd)).foregroundStyle(Theme.ink)) now")
+                }
+                .font(.system(size: 15, weight: .semibold)).monospacedDigit().foregroundStyle(Theme.muted)
+                gauge
+                Text(caption).font(.sub).foregroundStyle(Theme.muted)
+            }
+        }
+        .padding(.horizontal, 20).padding(.top, 22)
+    }
+
+    /// Under = left of centre, over = right. Clamped at ±10%.
+    private var gauge: some View {
+        VStack(spacing: 6) {
+            GeometryReader { g in
+                let frac = 0.5 + min(10, max(-10, premium)) / 20
+                let x = g.size.width * frac
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.surface2).frame(height: 6)
+                    Rectangle().fill(Theme.faint).frame(width: 1, height: 14).position(x: g.size.width / 2, y: 3)
+                    Capsule().fill(tone).frame(width: 3, height: 16).position(x: x, y: 3)
+                }
+            }
+            .frame(height: 16)
+            HStack {
+                Text("−10% under").frame(maxWidth: .infinity, alignment: .leading)
+                Text("0").frame(maxWidth: .infinity)
+                Text("+10% over").frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .font(.system(size: 11, weight: .medium)).monospacedDigit().foregroundStyle(Theme.faint)
+        }
+        .padding(.top, 4)
+    }
 }

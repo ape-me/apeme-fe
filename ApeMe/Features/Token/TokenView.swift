@@ -13,7 +13,6 @@ struct TokenView: View {
             HStack(spacing: 10) {
                 BackButton()
                 Spacer()
-                StatusChip(text: store.status.rawValue, live: store.status == .live)
             }
             .padding(.horizontal, 12).padding(.top, 6).frame(minHeight: 56)
             ScrollView {
@@ -167,7 +166,7 @@ struct TradesTab: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionTitle("Recent trades") { StatusChip(text: store.status.rawValue, live: store.status == .live) }
+            SectionTitle("Recent trades")
             VStack(spacing: 0) {
                 if store.tradesLoading && store.trades.isEmpty {
                     Skeleton(height: 60).padding(12)

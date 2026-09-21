@@ -1,20 +1,5 @@
 import SwiftUI
 
-/// `● Live` / `○ Connecting` — the socket state on floors and token pages.
-struct StatusChip: View {
-    let text: String
-    let live: Bool
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Circle().fill(live ? Theme.green : Theme.faint).frame(width: 6, height: 6)
-            Text(text)
-        }
-        .font(.system(size: 12, weight: .medium))
-        .foregroundStyle(Theme.muted)
-    }
-}
-
 struct Skeleton: View {
     var height: CGFloat = 14
     @State private var dim = false
