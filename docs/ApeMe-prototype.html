@@ -809,8 +809,7 @@ function depositSheet(){
     <div class="sub" style="text-align:center">Your USDC address</div>
     <button id="addr" style="display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;border-radius:14px;background:var(--surface2);width:100%"><span class="mono" style="font-size:13px;font-weight:500;word-break:break-all;line-height:18px;text-align:left">${addr}</span><span class="muted" style="flex-shrink:0">${I.copy}</span></button>
     <div class="sub" style="text-align:center;padding:0 12px">Send USDC on the Solana network to this address. Other networks or tokens may be lost.</div>
-    <div class="btns"><button class="btn ghost" id="cp">Copy address</button><button class="btn ghost" id="sh">${ICO.share} Share</button></div>
-    <div class="cc" style="justify-content:center"><span class="spin"></span> Watching for your deposit…</div>`,w=>{ w.querySelector('#addr').onclick=()=>copy(addr); w.querySelector('#cp').onclick=()=>copy(addr); w.querySelector('#sh').onclick=()=>toast('Share sheet opens'); });
+    <div class="btns"><button class="btn ghost" id="cp">Copy address</button><button class="btn ghost" id="sh">${ICO.share} Share</button></div>`,w=>{ w.querySelector('#addr').onclick=()=>copy(addr); w.querySelector('#cp').onclick=()=>copy(addr); w.querySelector('#sh').onclick=()=>toast('Share sheet opens'); });
   w.querySelector('.sheet').classList.add('tall');
   setTimeout(()=>{ if(!w.isConnected) return; const wal=acct.wallet(addr); wal.holdings[0].valueUsd=+(wal.holdings[0].valueUsd+20).toFixed(2); wal.holdings[0].amount=wal.holdings[0].valueUsd; wal.activity.unshift({sig:'2bQ'+Math.random().toString(36).slice(2,10)+'…',ts:Math.floor(Date.now()/1000),type:'deposit',status:'confirmed',source:'chain',symbol:'USDC',image:USDC_LOGO,usd:20,from:'7ov6HkP2rQm8Lz3bWx1nYc5dVe9sFt4aGj6uNi0pR8oEh'}); w.close(); toast('Received $20.00'); if(state.tab==='portfolio'&&state.stack.length===1) render(false); },8000);
 }
