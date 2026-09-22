@@ -86,6 +86,41 @@ final class AppState {
     }
     var cashUsd: Double { wallet?.cashUsd ?? 0 }
 
+    // MARK: Live P&L (Wallet tab on screen)
+
+    private var liveSockets: [String: LiveSocket] = [:]
+    private var liveListeners: [Task<Void, Never>] = []
+
+    /// One room per held mint: `stock:<mint>` for stocks (price frames), `<mint>` for memes (trade frames).
+    func startWalletLive() {
+        stopWalletLive()
+        guard let w = wallet else { return }
+        for h in w.positions {
+            let room = h.kind == "stock" ? "stock:\(h.mint)" : h.mint
+            let s = LiveSocket(room: room)
+            liveSockets[h.mint] = s
+            let mint = h.mint
+            liveListeners.append(Task { [weak self] in
+                for await ev in s.events {
+                    guard let self, case .frames(let frames) = ev else { continue }
+                    for f in frames {
+                        switch f {
+                        case .price(let p) where p.mint == mint: if let px = p.priceUsd { wallet?.apply(price: px, to: mint) }
+                        case .trade(let t) where t.mint == mint: if let px = t.priceUsd { wallet?.apply(price: px, to: mint) }
+                        default: break
+                        }
+                    }
+                }
+            })
+            s.start()
+        }
+    }
+
+    func stopWalletLive() {
+        liveListeners.forEach { $0.cancel() }; liveListeners = []
+        liveSockets.values.forEach { $0.stop() }; liveSockets = [:]
+    }
+
     func signOut() async {
         await auth.logout()
         wallet = nil

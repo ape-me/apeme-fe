@@ -6,6 +6,7 @@ struct PortfolioView: View {
 
     @Environment(AppState.self) private var app
     @Environment(\.skin) private var skin
+    @Environment(\.scenePhase) private var scenePhase
     @State private var error: String?
     @State private var showAccounts = false
     @State private var tab: Tab = .positions
@@ -40,7 +41,9 @@ struct PortfolioView: View {
                 }
             }
         }
-        .onDisappear { poller?.cancel() }
+        .onChange(of: app.wallet?.positions.map(\.mint) ?? [], initial: true) { _, _ in app.startWalletLive() }
+        .onChange(of: scenePhase) { _, p in if p == .active { Task { await app.loadWallet(fresh: true) } } }
+        .onDisappear { poller?.cancel(); app.stopWalletLive() }
         .sheet(isPresented: $showAccounts) { AccountsSheet() }
     }
 
@@ -75,8 +78,9 @@ struct PortfolioView: View {
     @ViewBuilder private func content(_ w: Wallet) -> some View {
         let hideDust = app.auth.settings.hideDust ?? false
         let positions = w.positions.filter { !hideDust || ($0.valueUsd ?? 0) >= 0.01 }
-        let invested = (w.totalUsd ?? 0) - (w.cashUsd ?? 0) - (w.solUsd ?? 0)
-        let pct: Double? = { guard let p = w.pnlUsd, let c = w.costUsd, c > 0 else { return nil }; return p / c * 100 }()
+        let invested = w.positionsUsd
+        let cost = w.investedUsd
+        let pct: Double? = { guard let p = w.pnlUsd, cost > 0 else { return nil }; return p / cost * 100 }()
         VStack(alignment: .leading, spacing: 0) {
             Text("Portfolio value").font(.sub).foregroundStyle(Theme.muted).padding(.top, 8)
             CentsText(value: max(0, invested)).padding(.top, 2)
@@ -88,7 +92,7 @@ struct PortfolioView: View {
                             .padding(.horizontal, 7).frame(height: 22).background(p >= 0 ? Theme.greenT : Theme.redT, in: .capsule)
                     }
                     Text("·").foregroundStyle(Theme.faint)
-                    Text("Invested \(Fmt.usd(w.costUsd))").foregroundStyle(Theme.muted).fontWeight(.medium)
+                    Text("Invested \(Fmt.usd(cost))").foregroundStyle(Theme.muted).fontWeight(.medium)
                 } else {
                     Text("Nothing invested yet").foregroundStyle(Theme.muted).fontWeight(.medium)
                 }
@@ -151,8 +155,8 @@ struct PositionRow: View {
                 Spacer()
                 VStack(alignment: .trailing, spacing: 3) {
                     Text(Fmt.usd(holding.valueUsd)).font(.rowPrice).monospacedDigit()
-                    if let p = holding.pnlUsd { Text((p >= 0 ? "+" : "−") + Fmt.usd(abs(p))).font(.rowChange).monospacedDigit().foregroundStyle(Theme.change(p)) }
-                    else { Text(Fmt.arrow(holding.change24h, 1)).font(.rowChange).monospacedDigit().foregroundStyle(Theme.change(holding.change24h)) }
+                    // No cost basis (deposited from outside) → no P&L, not a fake $0.
+                    if holding.costUsd != nil, let p = holding.pnlUsd { Text((p >= 0 ? "+" : "−") + Fmt.usd(abs(p))).font(.rowChange).monospacedDigit().foregroundStyle(Theme.change(p)) }
                 }
             }
             .padding(.vertical, 8).frame(minHeight: 60).contentShape(.rect)

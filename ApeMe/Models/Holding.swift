@@ -12,12 +12,12 @@ struct Holding: Codable, Identifiable, Hashable {
     /// Raw on-chain units as a string; what `/v1/swap/quote` takes when selling. Never derive from `amount`.
     let raw: String?
     let decimals: Int?
-    let priceUsd: Double?
-    let valueUsd: Double?
+    var priceUsd: Double?
+    var valueUsd: Double?
     let change24h: Double?
     let costUsd: Double?
-    let pnlUsd: Double?
-    let pnlPct: Double?
+    var pnlUsd: Double?
+    var pnlPct: Double?
 
     var imageURL: URL? { image.flatMap { $0.isEmpty ? nil : URL(string: $0) } }
 }
