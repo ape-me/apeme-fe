@@ -46,9 +46,9 @@ struct TradeSheetView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             switch store.phase {
-            case .confirmed: done
+            case .confirmed: ScrollView { done }.scrollIndicators(.hidden)
             case .requoted: requoted
-            default: if reviewing { review } else { form }
+            default: if reviewing { ScrollView { review }.scrollIndicators(.hidden) } else { form }
             }
         }
         .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 18)
@@ -173,8 +173,14 @@ struct TradeSheetView: View {
 
     @ViewBuilder private var errorBox: some View {
         if let e = store.error, store.phase == .failed {
-            Text(e).font(.sub).foregroundStyle(Theme.red).frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 14).padding(.vertical, 12).background(Theme.redT, in: .rect(cornerRadius: 12))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(e).font(.sub).foregroundStyle(Theme.red)
+                #if DEBUG
+                if let r = store.requestId { Text("req \(r)").font(.system(size: 10)).foregroundStyle(Theme.faint).textSelection(.enabled) }
+                #endif
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14).padding(.vertical, 12).background(Theme.redT, in: .rect(cornerRadius: 12))
         }
     }
 
@@ -253,7 +259,7 @@ struct TradeSheetView: View {
                 details(q)
             }
             errorBox
-            Spacer(minLength: 0)
+            Spacer(minLength: 16)
             switch store.phase {
             case .signing: BigButton(label: "Signing…", style: .off) {}
             case .submitting: BigButton(label: "Submitting…", style: .off) {}
@@ -323,7 +329,7 @@ struct TradeSheetView: View {
             }
             .frame(maxWidth: .infinity).padding(.top, 14)
             if let q = store.quote { details(q) }
-            Spacer(minLength: 0)
+            Spacer(minLength: 16)
             BigButton(label: "Done", style: .white) { dismiss() }
             if let sig = store.signature, let url = URL(string: "https://solscan.io/tx/\(sig)") {
                 Link(destination: url) { Text("View on Solscan ↗").font(.sub.weight(.semibold)).foregroundStyle(Theme.muted) }
