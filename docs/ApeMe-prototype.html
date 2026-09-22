@@ -1158,11 +1158,12 @@ function newsBadges(i){
 const newsImg=i=>i.articleImage||i.image;
 
 /* [logo] SYM ▲1.14% · Source · 2h ago [MATERIAL][BEARISH] / two-line title */
-function newsRow(i,{sym=true}={}){
+function newsRow(i,{sym=true,thumb=true}={}){
   NEWS_BY_ID.set(i.id,i);
   const b=newsBadges(i);
+  const pic=thumb?newsImg(i):i.articleImage;
   return `<div class="nrow">
-    <span class="nthumb" data-nstock="${esc(i.mint)}">${newsImg(i)?`<img src="${esc(imgSrc(newsImg(i)))}" alt="" onerror="this.remove()">`:''}</span>
+    ${pic?`<span class="nthumb" data-nstock="${esc(i.mint)}"><img src="${esc(imgSrc(pic))}" alt="" onerror="this.parentElement.remove()"></span>`:''}
     <span class="ngrow" data-nid="${esc(i.id)}">
       <span class="nmeta">${sym?`<b class="nsym" data-nstock="${esc(i.mint)}">${esc(i.symbol)}${i.change24h!=null?` <span class="${fmt.cls(i.change24h)}">${fmt.arrow(i.change24h,2)}</span>`:''}</b><span class="faint">·</span>`:''}<span>${esc(i.source)}</span><span class="faint">·</span><span>${fmt.ago(i.publishedAt)} ago</span>${b?`<span class="nbs">${b}</span>`:''}</span>
       <span class="ntitle">${esc(i.title)}</span>
@@ -1265,7 +1266,7 @@ async function paintNewsList(mount,path,symbol){
   if(!mount.isConnected) return;
   if(!items.length){ mount.innerHTML=`<div class="empty" style="margin-top:20px"><b>No news yet for ${esc(symbol)}</b><span class="sub">Headlines land here within 20 minutes of publication.</span></div>`; return; }
   const render=()=>{
-    mount.innerHTML=`<div class="pad" style="padding-top:4px"><div class="nlist">${items.map(i=>newsRow(i,{sym:false})).join('')}</div>
+    mount.innerHTML=`<div class="pad" style="padding-top:4px"><div class="nlist">${items.map(i=>newsRow(i,{sym:false,thumb:false})).join('')}</div>
       ${items.length>=5?`<button class="btn ghost" id="more" style="width:100%;margin-top:16px">More headlines</button>`:''}</div>`;
     bindNews(mount);
     const more=mount.querySelector('#more');
