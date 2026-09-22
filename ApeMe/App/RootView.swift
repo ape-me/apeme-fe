@@ -23,6 +23,7 @@ struct RootView: View {
         .animation(.easeOut(duration: 0.25), value: app.signedIn)
         .background(Theme.ground)
         .sheet(item: $app.sheet) { sheet in
+            Group {
             switch sheet {
             case .buyStock(let s): TradeSheetView(side: .buy, asset: .stock(s))
             case .apeToken(let t, let ref): TradeSheetView(side: .buy, asset: .token(t, ref))
@@ -32,16 +33,28 @@ struct RootView: View {
             case .position(let h): PositionSheet(holding: h)
             case .login: LoginSheet()
             }
-        }
-        .overlay(alignment: .top) {
-            if let t = app.toast {
-                ToastView(text: t, error: app.toastIsError)
-                    .transition(.move(edge: .top).combined(with: .opacity))
             }
+            .toastOverlay()
         }
-        .animation(.easeOut(duration: 0.25), value: app.toast)
+        .toastOverlay()
     }
 }
+
+/// Toast at the top of whatever is frontmost — the root or a presented sheet.
+private struct ToastOverlay: ViewModifier {
+    @Environment(AppState.self) private var app
+    func body(content: Content) -> some View {
+        content
+            .overlay(alignment: .top) {
+                if let t = app.toast {
+                    ToastView(text: t, error: app.toastIsError)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .animation(.easeOut(duration: 0.25), value: app.toast)
+    }
+}
+extension View { func toastOverlay() -> some View { modifier(ToastOverlay()) } }
 
 /// Slides first, then the login screen. Nothing is persisted until the user is actually signed in.
 private struct SignedOutFlow: View {

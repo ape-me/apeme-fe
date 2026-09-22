@@ -37,18 +37,20 @@ struct EmptyState<Content: View>: View {
 }
 
 /// Small, quiet, centered above the tab bar. Reads as a confirmation, not an alert.
+/// Small pill from the top. Green for good news, red for bad.
 struct ToastView: View {
     let text: String
     var error = false
     var body: some View {
-        Text(text)
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(error ? Theme.red : Theme.ink)
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 14).frame(height: 36)
-            .background(Theme.surface2, in: .capsule)
-            .overlay(Capsule().stroke(Theme.line, lineWidth: 1))
-            .padding(.top, 8)
+        HStack(spacing: 8) {
+            Image(systemName: error ? "xmark.circle.fill" : "checkmark.circle.fill").font(.system(size: 14, weight: .semibold))
+            Text(text).font(.system(size: 13, weight: .semibold)).multilineTextAlignment(.center)
+        }
+        .foregroundStyle(error ? Theme.red : Theme.green)
+        .padding(.horizontal, 14).frame(minHeight: 38)
+        .background(error ? Theme.redT : Theme.greenT, in: .capsule)
+        .overlay(Capsule().stroke((error ? Theme.red : Theme.green).opacity(0.25), lineWidth: 1))
+        .padding(.horizontal, 20).padding(.top, 8)
     }
 }
 
