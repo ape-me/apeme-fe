@@ -3,6 +3,7 @@ import SwiftUI
 struct StockView: View {
     @Environment(AppState.self) private var app
     @Environment(\.skin) private var skin
+    @Environment(\.openURL) private var openURL
     @State private var store: StockStore
     @State private var compact = false
 
@@ -144,7 +145,7 @@ struct StockView: View {
                            subtitle: "Headlines land here within 20 minutes of publication.")
             } else {
                 NewsList(items: store.news, showSymbol: false, showThumb: false,
-                         open: { app.sheet = .article($0) }, openStock: { app.openStock($0) })
+                         open: { openArticle($0, openURL) }, openStock: { app.openStock($0) })
                 if !store.newsExhausted {
                     BigButton(label: store.newsLoading ? "Loading…" : "More headlines", style: .ghost) {
                         Task { await store.moreNews() }

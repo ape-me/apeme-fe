@@ -33,7 +33,6 @@ struct RootView: View {
             case .resume(let r): TradeSheetView(resume: r)
             case .position(let h): PositionSheet(holding: h)
             case .login: LoginSheet()
-            case .article(let n): ArticleSheet(item: n)
             }
             }
             .toastOverlay()

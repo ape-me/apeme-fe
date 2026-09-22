@@ -3,14 +3,14 @@ import SwiftUI
 /// One curated headline per stock, biggest movers first, under the price ticker.
 struct HeadlineStrip: View {
     let items: [NewsItem]
-    @Environment(AppState.self) private var app
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         if !items.isEmpty {
             ScrollView(.horizontal) {
                 HStack(spacing: 8) {
                     ForEach(items) { item in
-                        Button { Haptic.light(); app.sheet = .article(item) } label: {
+                        Button { openArticle(item, openURL) } label: {
                             VStack(alignment: .leading, spacing: 5) {
                                 HStack(spacing: 5) {
                                     Text(item.symbol).foregroundStyle(Theme.ink)
@@ -45,6 +45,7 @@ struct HeadlineStrip: View {
 struct NewsSection: View {
     let store: HomeStore
     @Environment(AppState.self) private var app
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -62,7 +63,7 @@ struct NewsSection: View {
                 }
                 .padding(.top, 20).padding(.bottom, 2)
                 NewsList(items: store.feed,
-                         open: { app.sheet = .article($0) },
+                         open: { openArticle($0, openURL) },
                          openStock: { app.openStock($0) })
             }
         }

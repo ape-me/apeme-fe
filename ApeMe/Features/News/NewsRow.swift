@@ -1,5 +1,13 @@
 import SwiftUI
 
+/// Opens a headline in whichever browser the user has set as their default — Safari, Chrome,
+/// whatever. No sheet in between: they tapped a headline, they want the article.
+@MainActor func openArticle(_ item: NewsItem, _ open: OpenURLAction) {
+    guard let url = item.link else { return }
+    Haptic.light()
+    open(url)
+}
+
 /// MATERIAL / BULLISH. Only the scores the BE stands behind — confidence never reaches the screen.
 struct NewsBadge: View {
     let text: String
@@ -76,15 +84,15 @@ struct NewsRow: View {
                         if let c = item.change24h { Text(Fmt.arrow(c, 2)).foregroundStyle(Theme.change(c)) }
                     }
                     .font(.system(size: 12, weight: .bold)).monospacedDigit()
-                    .lineLimit(1).fixedSize(horizontal: true, vertical: false)
+                    .lineLimit(1).layoutPriority(2)
                 }
                 .buttonStyle(.plain)
                 dot
             }
-            Text(item.source).lineLimit(1).truncationMode(.tail)
+            Text(item.source).lineLimit(1).truncationMode(.tail).layoutPriority(-1)
             if let ts = item.publishedAt {
                 dot
-                Text("\(Fmt.ago(ts)) ago").fixedSize(horizontal: true, vertical: false)
+                Text("\(Fmt.ago(ts)) ago").lineLimit(1).layoutPriority(2)
             }
             Spacer(minLength: 0)
         }
