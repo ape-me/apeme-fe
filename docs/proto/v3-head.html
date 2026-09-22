@@ -92,6 +92,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .actions button i{width:52px;height:52px;border-radius:16px;background:var(--surface);display:flex;align-items:center;justify-content:center;color:var(--accent);font-style:normal}
 .actions button{color:var(--ink)}
 .actions button.acc i{background:var(--accent);color:var(--accentInk)}
+.actions button.buy i{background:#3fa86a;color:#fff}.actions button.sell i{background:#e4522f;color:#fff}
 /* tabs & segments */
 .tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
 .tabs button{height:40px;padding:0 4px;margin-right:14px;font-size:15px;font-weight:600;color:var(--faint);border-bottom:2px solid transparent;white-space:nowrap}
@@ -365,7 +366,7 @@ function bindRows(el){
 function stripHtml(items,ape){ const chip=t=>`<button class="chip ${(t.change24h||0)>=0?'up':'dn'} ${fmt.cls(t.change24h)}" data-flip>${state._stripAmt&&t.price!=null&&t.change24h!=null?((t.change24h>=0?'↑ ':'↓ ')+fmt.usd(Math.abs(t.price-t.price/(1+t.change24h/100)))):fmt.arrow(t.change24h,1)}</button>`; return `<div class="strip">${items.map(t=>`<span><button class="muted" data-${ape?'token':'stock'}="${t.id}">${esc(t.label)}</button>${chip(t)}</span>`).join('')}</div>`; }
 function bindStrip(el,items,ape){ const box=el.querySelector('#strip'); if(!box) return; box.innerHTML=stripHtml(items,ape); box.querySelectorAll('[data-flip]').forEach(b=>b.onclick=()=>{ state._stripAmt=!state._stripAmt; bindStrip(el,items,ape); }); bindRows(box); }
 function indexStocks(list){ list.forEach(s=>state.stocksByMint[s.mint]=s); }
-function actionRow(items){ return `<div class="actions">${items.map(a=>`<button data-act="${a.id}" class="${a.acc?'acc':''}"><i>${a.icon}</i>${a.label}</button>`).join('')}</div>`; }
+function actionRow(items){ return `<div class="actions">${items.map(a=>`<button data-act="${a.id}" class="${a.acc?'acc':''} ${a.tone||''}"><i>${a.icon}</i>${a.label}</button>`).join('')}</div>`; }
 function splitBar(a,b,la,lb,fa=fmt.n,fb=fmt.n){ const tot=(a||0)+(b||0)||1; return `<div class="split"><div class="lbl"><span><b>${fa(a)}</b> <span class="muted">${la}</span></span><span><b>${fb(b)}</b> <span class="muted">${lb}</span></span></div><div class="bar"><i style="width:${(a||0)/tot*100}%"></i><i style="flex:1"></i></div></div>`; }
 function kv(k,v){ return `<div class="kv"><span>${k}</span><b>${v}</b></div>`; }
 function flash(el,side){ if(!el) return; el.classList.remove('flash-buy','flash-sell'); void el.offsetWidth; el.classList.add(side==='buy'?'flash-buy':'flash-sell'); setTimeout(()=>el.classList.remove('flash-buy','flash-sell'),450); }
