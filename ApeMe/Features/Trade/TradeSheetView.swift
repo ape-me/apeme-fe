@@ -215,18 +215,12 @@ struct TradeSheetView: View {
         #endif
     }
 
+    /// Amount step button. Purely local — nothing is fetched until Review order.
     @ViewBuilder private var primary: some View {
-        switch store.phase {
-        case .insufficient:
-            if side == .buy { BigButton(label: "Deposit to buy", style: .white) { dismiss(); app.sheet = .deposit } }
-            else { BigButton(label: "You hold \(Fmt.cash(sellValue)) · Sell all", style: .white) { amount = String(format: "%.2f", floor(sellValue * 100) / 100); pct = 100 } }
-        case .quoting, .ready, .failed:
-            BigButton(label: "Review order", style: side == .sell ? .sell : .buy) { Haptic.light(); reviewing = true }
-        case .signing: BigButton(label: "Signing…", style: .off) {}
-        case .submitting: BigButton(label: "Submitting…", style: .off) {}
-        case .confirming: BigButton(label: "Confirming…", style: .off) {}
-        default: BigButton(label: "Enter an amount", style: .off) {}
-        }
+        if usd <= 0 { BigButton(label: "Enter an amount", style: .off) {} }
+        else if side == .buy, usd > cash + 0.000001 { BigButton(label: "Deposit to buy", style: .white) { dismiss(); app.sheet = .deposit } }
+        else if side == .sell, usd > sellValue + 0.005 { BigButton(label: "You hold \(Fmt.cash(sellValue)) · Sell all", style: .white) { amount = String(format: "%.2f", floor(sellValue * 100) / 100); pct = 100 } }
+        else { BigButton(label: "Review order", style: side == .sell ? .sell : .buy) { Haptic.light(); reviewing = true; requote() } }
     }
 
     // MARK: Details (shared by review + success)
@@ -278,6 +272,18 @@ struct TradeSheetView: View {
                 Text("\(asset.symbol) price \(Fmt.usd(asset.priceUsd))").font(.system(size: 15)).monospacedDigit().foregroundStyle(Theme.muted)
             }
             .frame(maxWidth: .infinity).padding(.top, 26)
+            if store.quote == nil {
+                VStack(spacing: 0) {
+                    HStack { Text(side == .buy ? "Receive" : "Selling").font(.system(size: 15)).foregroundStyle(Theme.muted); Spacer(); Shimmer().frame(width: 140, height: 16) }.frame(height: 52)
+                    Divider().overlay(Theme.line)
+                    HStack { Text("Account").font(.system(size: 15)).foregroundStyle(Theme.muted); Spacer(); Text(Fmt.short(app.walletAddress)).font(.system(size: 15, weight: .semibold)) }.frame(height: 52)
+                }
+                .padding(.top, 28)
+                Spacer(minLength: 20)
+                VStack(alignment: .leading, spacing: 8) { Shimmer().frame(width: 120, height: 22); Shimmer().frame(width: 90, height: 12) }
+                if store.phase == .failed { BigButton(label: "Try again", style: side == .sell ? .sell : .buy) { Haptic.medium(); store.error = nil; requote() }.padding(.top, 14) }
+                else { BigButton(label: "Getting price…", style: .off) {}.padding(.top, 14) }
+            }
             if let q = store.quote {
                 VStack(spacing: 0) {
                     row(side == .buy ? "Receive" : "Selling", side == .buy ? "≈ " + store.youGet : Fmt.qty(sellQty, symbol: asset.symbol))
