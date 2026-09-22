@@ -196,7 +196,7 @@ struct TradeSheetView: View {
                 note("Trading \(String(format: "%.0f", p))% above \(asset.isPreIPO ? "its fair value" : "the Nasdaq price").")
             }
             if let i = q.priceImpactPct, i > 2 {
-                note("Thin market: price impact \(String(format: "%.1f", i))%. You get a little less per dollar.")
+                note("Thin market: you're paying \(String(format: "%.1f", i))% above the current price.")
             }
         }
     }
@@ -293,7 +293,7 @@ struct TradeSheetView: View {
                     else { row("Fees", Fmt.cash(feesTotal(q))) }
                 }
                 .padding(.top, 28)
-                if let i = q.priceImpactPct, i > 2 { note("Thin market: price impact \(String(format: "%.1f", i))%. You get a little less per dollar.").padding(.top, 14) }
+                if let i = q.priceImpactPct, i > 2 { note("Thin market: you're paying \(String(format: "%.1f", i))% above the current price.").padding(.top, 14) }
                 if side == .buy, asset.isStock, let p = q.premiumPct, p > 5 { note("Trading \(String(format: "%.0f", p))% above \(asset.isPreIPO ? "its fair value" : "the Nasdaq price").").padding(.top, 14) }
                 if let rent = rentUsd(q) {
                     Text("First time holding \(asset.symbol): \(Fmt.cash(rent)) of this is a one-time network fee to open the token in your wallet. Next time it's just \(Fmt.cash(feesTotal(q) - rent)).")

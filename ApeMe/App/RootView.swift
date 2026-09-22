@@ -48,7 +48,7 @@ private struct ToastOverlay: ViewModifier {
         content
             .overlay(alignment: .top) {
                 if let t = app.toast {
-                    ToastView(text: t, error: app.toastIsError, pending: app.toastPending)
+                    ToastView(text: t, error: app.toastIsError, pending: app.toastPending, image: app.toastImage)
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }

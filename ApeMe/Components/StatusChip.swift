@@ -38,18 +38,33 @@ struct EmptyState<Content: View>: View {
 
 /// Small, quiet, centered above the tab bar. Reads as a confirmation, not an alert.
 /// Small pill from the top. Green for good news, red for bad.
+/// Phantom-size pill from the top. Asset mark + status badge when it's a trade, plain status disc otherwise.
 struct ToastView: View {
     let text: String
     var error = false
     var pending = false
-    private var tint: Color { pending ? Theme.ink : error ? Theme.red : Theme.green }
+    var image: ToastImage? = nil
+    private var tint: Color { error ? Theme.red : Theme.green }
+
     var body: some View {
         HStack(spacing: 12) {
-            Group {
-                if pending { ProgressView().tint(Theme.ink) }
-                else { Image(systemName: error ? "xmark" : "checkmark").font(.system(size: 15, weight: .bold)).foregroundStyle(error ? .white : Theme.ground) }
+            if let image {
+                ZStack(alignment: .bottomTrailing) {
+                    if image.isStock { Logo(url: image.url, symbol: image.symbol, size: 36) } else { Avatar(url: image.url, symbol: image.symbol, size: 36) }
+                    Group {
+                        if pending { ProgressView().tint(Theme.ink).scaleEffect(0.55) }
+                        else { Image(systemName: error ? "xmark" : "checkmark").font(.system(size: 9, weight: .bold)).foregroundStyle(error ? .white : Theme.ground) }
+                    }
+                    .frame(width: 18, height: 18).background(pending ? Theme.surface2 : tint, in: .circle)
+                    .overlay(Circle().stroke(Theme.surface, lineWidth: 2)).offset(x: 4, y: 4)
+                }
+            } else {
+                Group {
+                    if pending { ProgressView().tint(Theme.ink) }
+                    else { Image(systemName: error ? "xmark" : "checkmark").font(.system(size: 15, weight: .bold)).foregroundStyle(error ? .white : Theme.ground) }
+                }
+                .frame(width: 32, height: 32).background(pending ? Theme.surface2 : tint, in: .circle)
             }
-            .frame(width: 32, height: 32).background(pending ? Theme.surface2 : tint, in: .circle)
             Text(text).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ink).multilineTextAlignment(.leading).lineLimit(2)
         }
         .padding(.leading, 10).padding(.trailing, 18).frame(minHeight: 56)

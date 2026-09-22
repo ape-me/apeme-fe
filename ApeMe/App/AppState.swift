@@ -22,6 +22,8 @@ final class AppState {
     var toastIsError = false
     /// Spinner toast that stays until replaced (a trade in flight).
     var toastPending = false
+    /// Optional asset mark shown at the left of the toast (trades).
+    var toastImage: ToastImage?
     var wallet: Wallet?
     var stocksByMint: [String: Stock] = [:]
     var online = true
@@ -166,10 +168,11 @@ final class AppState {
 
     // MARK: Feedback
 
-    func show(_ message: String, error: Bool = false, pending: Bool = false) {
+    func show(_ message: String, error: Bool = false, pending: Bool = false, image: ToastImage? = nil) {
         if error { Haptic.error() }
         toastIsError = error
         toastPending = pending
+        toastImage = image
         toast = message
         if pending { toastTask?.cancel(); return }
         toastTask?.cancel()
@@ -189,19 +192,20 @@ final class AppState {
         tradeInFlight = r
         sheet = nil
         let what = r.side == .buy ? r.store.youGet : Fmt.qty(r.sellQty, symbol: r.asset.symbol)
-        show("\(r.side == .buy ? "Buying" : "Selling") \(what)…", pending: true)
+        let img = ToastImage(url: r.asset.imageURL, symbol: r.asset.symbol, isStock: r.asset.isStock)
+        show("\(r.side == .buy ? "Buying" : "Selling") \(what)…", pending: true, image: img)
         Task {
             await r.store.execute(wallet: wallet) { [weak self] in self?.settleWallet() }
             tradeInFlight = nil
             switch r.store.phase {
             case .confirmed:
                 Haptic.success()
-                show("\(r.side == .buy ? "Bought" : "Sold") \(what)")
+                show("\(r.side == .buy ? "Bought" : "Sold") \(what)", image: img)
             case .requoted:
-                show("Price changed — take a look", error: true)
+                show("Price changed — take a look", error: true, image: img)
                 sheet = .resume(r)
             default:
-                show(r.store.error ?? "Trade didn't go through. Nothing was charged.", error: true)
+                show(r.store.error ?? "Trade didn't go through. Nothing was charged.", error: true, image: img)
                 sheet = .resume(r)
             }
         }
@@ -212,4 +216,10 @@ final class AppState {
         UIPasteboard.general.string = value
         show("Copied to clipboard")
     }
+}
+
+struct ToastImage: Equatable {
+    let url: URL?
+    let symbol: String
+    let isStock: Bool
 }
