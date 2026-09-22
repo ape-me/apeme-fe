@@ -141,7 +141,7 @@ SCREENS.stock={
       </div>
       <div id="chart" style="margin-top:20px;height:200px"><div class="skel" style="height:200px;margin-inline:20px"></div></div>
       <div class="ranges" style="margin-top:14px">${[['1h','1H'],['1d','1D'],['1w','1W'],['1m','1M']].map(([r,l])=>`<button data-r="${r}" class="${r===range?'on':''}">${l}</button>`).join('')}<button disabled>1Y</button><button disabled>ALL</button></div>
-      <div class="pad" style="margin-top:18px"><div class="btns"><button class="btn primary" id="buy">Buy</button><button class="btn ghost" id="sell">Sell</button></div></div>
+      <div class="pad" style="margin-top:18px"><div class="btns"><button class="btn buy" id="buy">Buy</button><button class="btn sellb" id="sell">Sell</button></div></div>
       <div class="hr" style="margin-top:26px"></div>
       ${s.markUsd?(()=>{ const p=s.premiumPct||0, gap=s.priceUsd!=null?s.priceUsd-s.markUsd:null, neutral=Math.abs(p)<=0.25, what=s.issuer==='prestocks'?"PreStocks' mark from the last funding round":"the live Nasdaq price"; return `<div class="pad" style="margin-top:22px"><div class="sect">Fair value</div><div class="kcard">${kv('You pay',fmt.usd(s.priceUsd))}${kv("It's worth",fmt.usd(s.markUsd))}${kv(p>0?'Premium':p<0?'Discount':'Gap',`<span style="display:inline-flex;align-items:center;gap:8px">${gap!=null&&!neutral?fmt.usd(Math.abs(gap)):''}${premiumBadge(s)}</span>`)}<div class="sub" style="padding:12px 0">${neutral?`Trading at fair value — ${what}.`:`Buyers pay ${fmt.usd(Math.abs(gap))} ${p>0?'more':'less'} than ${what}.`}</div></div></div>`; })():''}
       <div class="stack" style="padding-top:22px">
