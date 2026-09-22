@@ -40,6 +40,12 @@ final class TradeStore {
 
     // MARK: Quote
 
+    /// Amount changed: forget the old quote, nothing fetched until Review order.
+    func reset() {
+        debounce?.cancel(); expiry?.cancel()
+        quote = nil; replacement = nil; error = nil; phase = .idle
+    }
+
     /// Buy: `usd` in dollars (the total debit). Sell: `rawAmount` in the holding's raw units.
     func requote(usd: Double? = nil, rawAmount: String? = nil, taker: String?, cashUsd: Double) {
         debounce?.cancel(); expiry?.cancel()
@@ -60,11 +66,7 @@ final class TradeStore {
         phase = .quoting
         let key = raw + priority
         lastRequest = key; lastRaw = raw
-        debounce = Task {
-            try? await Task.sleep(for: .milliseconds(600))
-            guard !Task.isCancelled else { return }
-            await fetchQuote(raw: raw, key: key)
-        }
+        debounce = Task { await fetchQuote(raw: raw, key: key) }
     }
 
     private func fetchQuote(raw: String, key: String) async {
@@ -239,6 +241,7 @@ final class TradeStore {
             if m.contains("no_route") { return "No route for this trade right now." }
             return "Trade didn't go through. Nothing was charged."
         }
+        if error is DecodingError || { if case APIError.decoding = error { return true }; return false }() { return "Couldn't read the price. Try again." }
         return "No connection. Try again."
     }
 }

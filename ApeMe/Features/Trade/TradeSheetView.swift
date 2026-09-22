@@ -69,14 +69,14 @@ struct TradeSheetView: View {
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(busy)
         .task { if app.wallet == nil { await app.loadWallet() } }
-        .onChange(of: amount) { _, _ in requote() }
-        .onChange(of: pct) { _, _ in requote() }
+        .onChange(of: amount) { _, _ in store.reset() }
+        .onChange(of: pct) { _, _ in store.reset() }
         .onChange(of: scenePhase) { _, p in if p == .active { Task { await store.refresh() } } }
         .onChange(of: store.phase) { old, p in
             // Soft ticks while the price loads, one firmer tick when it lands.
             if old == .quoting, p == .ready, reviewing { Haptic.light() }
         }
-        .onChange(of: store.error) { _, e in if let e, store.phase == .failed, app.tradeInFlight == nil, !reviewing { app.show(e, error: true) } }
+        .onChange(of: store.error) { _, e in if let e, store.phase == .failed, app.tradeInFlight == nil, reviewing { app.show(e, error: true) } }
     }
 
     private func requote() {
@@ -209,7 +209,7 @@ struct TradeSheetView: View {
     /// Errors go to the toast; the sheet only keeps the debug request id.
     @ViewBuilder private var errorBox: some View {
         #if DEBUG
-        if store.phase == .failed, let r = store.requestId {
+        if reviewing, store.phase == .failed, let r = store.requestId {
             Text("req \(r)").font(.system(size: 10)).foregroundStyle(Theme.faint).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
         }
         #endif
