@@ -27,10 +27,10 @@ actor API {
     // MARK: Endpoints
 
     func stocks(issuer: String) async throws -> StocksResponse {
-        try await fetch("/stocks?issuer=\(issuer)", ttl: 5)
+        let r: StocksResponse = try await fetch("/stocks?issuer=\(issuer)", ttl: 5); return r.visible
     }
     func stocks(mints: [String]) async throws -> StocksResponse {
-        try await fetch("/stocks?mints=\(mints.joined(separator: ","))", ttl: 5)
+        let r: StocksResponse = try await fetch("/stocks?mints=\(mints.joined(separator: ","))", ttl: 5); return r.visible
     }
     func stock(_ mint: String, fresh: Bool = false) async throws -> Stock {
         try await fetch("/stocks/\(mint)", ttl: fresh ? 0 : 5)
@@ -66,7 +66,7 @@ actor API {
     func stockNews(_ mint: String, limit: Int = 5, before: Int? = nil) async throws -> NewsResponse {
         var p = "/stocks/\(mint)/news?limit=\(limit)"
         if let before { p += "&before=\(before)" }
-        return try await fetch(p, ttl: 60)
+        let r: NewsResponse = try await fetch(p, ttl: 60); return r.visible
     }
     /// The Home feed, newest-first. With `mints`, those stocks come first. `perStock` caps how
     /// many headlines one company may take (BE default 3), and `minImpact` filters by score —
@@ -78,13 +78,13 @@ actor API {
         if let before { p += "&before=\(before)" }
         if let minImpact { p += "&minImpact=\(minImpact)" }
         if let perStock { p += "&perStock=\(perStock)" }
-        return try await fetch(p, ttl: 60)
+        let r: NewsResponse = try await fetch(p, ttl: 60); return r.visible
     }
     func collections() async throws -> CollectionsResponse {
-        try await fetch("/collections", ttl: 30)
+        let r: CollectionsResponse = try await fetch("/collections", ttl: 30); return r.visible
     }
     func movers(limit: Int = 5) async throws -> MoversResponse {
-        try await fetch("/movers?limit=\(limit)", ttl: 15)
+        let r: MoversResponse = try await fetch("/movers?limit=\(limit)", ttl: 15); return r.visible
     }
     func wallet(_ address: String, activity: Int = 30, fresh: Bool = false, bustCache: Bool = false) async throws -> Wallet {
         // `bustCache` → `fresh=1`: the BE skips its edge cache. Once after a confirmed trade, and on pull-to-refresh.
