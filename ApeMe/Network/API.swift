@@ -111,9 +111,10 @@ actor API {
 
     // MARK: Trading
 
-    func quote(inputMint: String, outputMint: String, amountRaw: String, taker: String, priority: String) async throws -> Quote {
-        try decoder.decode(Quote.self, from: try await send("POST", "/swap/quote", body: [
-            "inputMint": inputMint, "outputMint": outputMint, "amount": amountRaw, "taker": taker, "priority": priority]))
+    func quote(inputMint: String, outputMint: String, amountRaw: String, taker: String, priority: String, slippageBps: Int? = nil) async throws -> Quote {
+        var b: [String: Any] = ["inputMint": inputMint, "outputMint": outputMint, "amount": amountRaw, "taker": taker, "priority": priority]
+        if let slippageBps { b["slippageBps"] = slippageBps }
+        return try decoder.decode(Quote.self, from: try await send("POST", "/swap/quote", body: b))
     }
     func submit(requestId: String, signedTransaction: String) async throws -> SubmitResponse {
         try decoder.decode(SubmitResponse.self, from: try await send("POST", "/swap/submit", body: ["requestId": requestId, "signedTransaction": signedTransaction]))

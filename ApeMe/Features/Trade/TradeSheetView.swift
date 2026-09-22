@@ -219,6 +219,7 @@ struct TradeSheetView: View {
                 KCard {
                     if side == .buy { KV("Buys of \(asset.symbol)", Fmt.usd(q.swapUsd ?? q.outUsd)) }
                     KV("ApeMe fee", Fmt.usd(q.fee?.usd ?? 0))
+                    if let f = q.issuerFee, let bps = f.bps, bps > 0 { KV("Issuer fee \(String(format: "%g", Double(bps) / 100))%", Fmt.usd(f.usd ?? 0)) }
                     if (q.rent?.accounts ?? 0) > 0 { KV("One-time network fee", Fmt.usd(q.rent?.usd ?? 0)) }
                     KV("Gas", "Free")
                     KV("Price impact") {
@@ -267,12 +268,15 @@ struct TradeSheetView: View {
             case .quoting: BigButton(label: "Getting price…", style: .off) {}
             case .failed:
                 VStack(spacing: 10) {
-                    if store.slippageFails >= 2 {
-                        Text("Thin market. Raise “Max price move” in Trading settings to 3% and try again.").font(.sub).foregroundStyle(Theme.muted).frame(maxWidth: .infinity, alignment: .leading)
-                    }
                     BigButton(label: "Try again", style: side == .sell ? .sell : .buy) {
                         guard let w = app.auth.activeWallet else { return }
                         Task { await store.retry(wallet: w) { Task { await app.loadWallet(fresh: true) } } }
+                    }
+                    if store.slippageFails >= 1, (store.slippageBps ?? 0) < 300 {
+                        BigButton(label: "Retry with 3% price move", style: .ghost) {
+                            guard let w = app.auth.activeWallet else { return }
+                            Task { await store.retryWider(wallet: w) { Task { await app.loadWallet(fresh: true) } } }
+                        }
                     }
                 }
             default: BigButton(label: side == .buy ? "Pay \(Fmt.usd(store.quote?.inUsd))" : "Confirm sale", style: side == .sell ? .sell : .buy) { Task { await run() } }

@@ -6,6 +6,8 @@ struct Quote: Codable, Hashable {
     struct Rent: Codable, Hashable { let usd: Double?; let amountRaw: String?; let lamports: Int?; let accounts: Int?; let paidBy: String? }
     struct Gas: Codable, Hashable { let paidBy: String?; let priority: String?; let lamports: Int?; let rentLamports: Int? }
     struct Signers: Codable, Hashable { let feePayer: String?; let user: String? }
+    /// Token-2022 transfer fee taken by the issuer on delivery (PreStocks). Already out of `outUsd`.
+    struct IssuerFee: Codable, Hashable { let bps: Int?; let usd: Double?; let note: String? }
     let requestId: String
     let side: String
     let inputMint: String
@@ -20,6 +22,8 @@ struct Quote: Codable, Hashable {
     let swapUsd: Double?
     let priceImpactPct: Double?
     let slippageBps: Int?
+    let suggestedSlippageBps: Int?
+    let issuerFee: IssuerFee?
     let fee: Fee?
     let rent: Rent?
     /// fee + rent in $, charged on top of `inUsd` for buys.

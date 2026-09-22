@@ -25,6 +25,8 @@ final class TradeStore {
     var priority: String
     /// Consecutive 422 slippage failures — after two, the sheet suggests a wider tolerance.
     var slippageFails = 0
+    /// Per-trade tolerance. nil = the user's setting; raised to the BE's suggestion or to 3% on retry.
+    var slippageBps: Int?
 
     private var debounce: Task<Void, Never>?
     private var expiry: Task<Void, Never>?
@@ -67,9 +69,16 @@ final class TradeStore {
     private func fetchQuote(raw: String, key: String) async {
         guard let taker else { return }
         do {
-            let q = try await API.shared.quote(inputMint: side == .buy ? "usdc" : mint, outputMint: side == .buy ? mint : "usdc",
-                                               amountRaw: raw, taker: taker, priority: priority)
+            var q = try await API.shared.quote(inputMint: side == .buy ? "usdc" : mint, outputMint: side == .buy ? mint : "usdc",
+                                               amountRaw: raw, taker: taker, priority: priority, slippageBps: slippageBps)
             guard lastRequest == key else { return }
+            // Thin pool: the BE suggests a wider band than the user's setting — take it for this trade.
+            if let sug = q.suggestedSlippageBps, sug > (q.slippageBps ?? 0), slippageBps == nil || sug > slippageBps! {
+                slippageBps = sug
+                q = try await API.shared.quote(inputMint: side == .buy ? "usdc" : mint, outputMint: side == .buy ? mint : "usdc",
+                                               amountRaw: raw, taker: taker, priority: priority, slippageBps: sug)
+                guard lastRequest == key else { return }
+            }
             quote = q; requestId = q.requestId; phase = .ready
             armExpiry()
         } catch {
@@ -143,7 +152,7 @@ final class TradeStore {
                     if !Self.within1pct(q, nq) { replacement = nq; phase = .requoted; return }
                     q = nq; quote = nq; retried = true; continue
                 }
-                phase = .failed; error = status.error.map { "Trade failed: \($0)" } ?? "Trade failed."
+                phase = .failed; error = "Trade didn't go through. Nothing was charged." + (status.error.map { " (\($0))" } ?? "")
                 return
             } catch APIError.http(410, _) where !retried {
                 guard let nq = try? await requoteNow() else { phase = .failed; error = "Quote expired. Try again."; return }
@@ -153,7 +162,7 @@ final class TradeStore {
                 // Re-quote in place so Review already shows the new numbers; Try again pays with them.
                 slippageFails += 1
                 if let nq = try? await requoteNow() { quote = nq; requestId = nq.requestId; armExpiry() }
-                phase = .failed; error = slippageFails >= 2 ? "Price keeps moving faster than your 1% limit." : "Price moved. Try again."; return
+                phase = .failed; error = "Price moved. Nothing was charged."; return
             } catch {
                 phase = .failed; self.error = Self.message(error); return
             }
@@ -165,11 +174,18 @@ final class TradeStore {
         error = nil
         if quote == nil || !isFresh {
             guard let raw = lastRaw, let key = lastRequest else { return }
-            phase = .quoting
+            phase = .quoting; lastRequest = key
             await fetchQuote(raw: raw, key: key)
             guard phase == .ready else { return }
         } else { phase = .ready }
         await execute(wallet: wallet, onConfirmed: onConfirmed)
+    }
+
+    /// "Retry with 3%": widen the band for this trade only, re-quote, pay.
+    func retryWider(wallet: any EmbeddedSolanaWallet, onConfirmed: @escaping () -> Void) async {
+        slippageBps = max(300, slippageBps ?? 0)
+        quote = nil
+        await retry(wallet: wallet, onConfirmed: onConfirmed)
     }
 
     /// User looked at the new numbers and accepted them.
@@ -187,7 +203,7 @@ final class TradeStore {
     private func requoteNow() async throws -> Quote {
         guard let old = quote, let taker else { throw APIError.http(410, "quote_expired") }
         return try await API.shared.quote(inputMint: old.side == "buy" ? "usdc" : mint, outputMint: old.side == "buy" ? mint : "usdc",
-                                          amountRaw: old.inAmount, taker: taker, priority: priority)
+                                          amountRaw: old.inAmount, taker: taker, priority: priority, slippageBps: slippageBps)
     }
 
     private func poll(_ sig: String) async throws -> TxStatus {
