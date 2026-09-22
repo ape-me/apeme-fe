@@ -16,6 +16,7 @@ struct HomeView: View {
                 body_
             }
             .padding(.bottom, 24)
+            .containerRelativeFrame(.horizontal)
         }
         .scrollIndicators(.hidden)
         .background(Theme.ground)

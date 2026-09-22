@@ -18,6 +18,7 @@ struct StockView: View {
                     else if let err = store.error { ErrorBar(text: err) }
                     else { VStack(spacing: 10) { Skeleton(); Skeleton(height: 44); Skeleton(height: 200) }.padding(20) }
                 }
+                .containerRelativeFrame(.horizontal)
                 .reportScrollOffset(in: "stock")
             }
             .coordinateSpace(name: "stock")
