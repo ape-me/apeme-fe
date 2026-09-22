@@ -219,7 +219,7 @@ struct StockView: View {
 
     @ViewBuilder private func chart(_ s: Stock) -> some View {
         let live = store.range == .live
-        if store.chartLoading && store.points.isEmpty {
+        if store.chartLoading {
             Skeleton(height: live ? 260 : 200).padding(.horizontal, 20)
         } else {
             LineChart(points: store.points, tint: store.direction, live: live, height: live ? 260 : 200) { store.scrub = $0 }

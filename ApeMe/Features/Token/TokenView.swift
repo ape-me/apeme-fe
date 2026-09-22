@@ -140,7 +140,7 @@ struct TokenView: View {
     }
 
     @ViewBuilder private var chart: some View {
-        if store.chartLoading && store.linePoints.isEmpty {
+        if store.chartLoading {
             Skeleton(height: 260).padding(.horizontal, 20)
         } else {
             LineChart(points: store.linePoints, tint: store.direction, live: true, height: 260,

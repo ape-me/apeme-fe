@@ -86,10 +86,11 @@ final class StockStore {
         Task { await loadRange() }
     }
 
-    func loadRange(fresh: Bool = false) async {
+    /// `silent` is for the 30s resync, which must never blink the chart away under the user.
+    func loadRange(fresh: Bool = false, silent: Bool = false) async {
         rangeGen += 1
         let gen = rangeGen
-        chartLoading = points.isEmpty
+        if !silent { chartLoading = true }
         defer { if gen == rangeGen { chartLoading = false } }
         do {
             let h = try await API.shared.history(mint, range: range, fresh: fresh)
@@ -138,7 +139,7 @@ final class StockStore {
         while !Task.isCancelled {
             try? await Task.sleep(for: .seconds(30))
             if Task.isCancelled { break }
-            if scrub == nil { await loadRange(fresh: true) }
+            if scrub == nil { await loadRange(fresh: true, silent: true) }
         }
     }
 
