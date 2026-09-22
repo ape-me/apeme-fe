@@ -190,6 +190,7 @@ struct StockView: View {
             Text(scrubbing ? Fmt.dateTime(store.scrub!.t) : store.range.caption.capitalized)
                 .font(.system(size: 17)).foregroundStyle(Theme.muted)
                 .padding(.top, 4)
+            if let ins = store.insights, !scrubbing { NasdaqLine(insights: ins).padding(.top, 8) }
         }
         .padding(.horizontal, 20).padding(.top, 8)
     }
@@ -374,7 +375,6 @@ struct FairValueBlock: View {
                 }
                 Text(sentence).font(.sub).foregroundStyle(Theme.muted).lineSpacing(2)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
-                if let insights { Divider().overlay(Theme.line); NasdaqLine(insights: insights) }
             }
         }
     }

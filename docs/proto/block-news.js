@@ -53,16 +53,21 @@ function articleSheet(i){
 /* ---- insights: the brokerage half of the stock page ---- */
 const SESSION_LABEL2={pre:'Pre-market',open:'Market open',post:'After hours',closed:'Closed'};
 
-/* nasdaq.last is the live print; while the market is shut it IS yesterday's close, so say so
-   rather than dressing a stale number up as live. premiumVsLastPct is measured against it. */
+/* One line under the price answering the only question that matters before tapping Buy: am I
+   paying more than the real share right now? Neutral inside +/-0.5%, amber past +1% (paying up),
+   green past -1% (cheaper here). Pre-IPO names have no Nasdaq, so the line simply isn't there. */
 function nasdaqLine(ins){
-  const n=ins?.nasdaq; if(!n||n.last==null) return '';
-  const open=ins.market?.session==='open';
-  const p=ins.premiumVsLastPct;
-  const age=open&&n.asOf?` · ${fmt.ago(n.asOf)} ago`:'';
-  return `<div class="sub" style="padding:12px 0;border-top:1px solid var(--line);line-height:19px">
-    ${open?'Nasdaq':'Nasdaq close'} <b style="color:var(--ink)">${fmt.usd(n.last)}</b>${age}${p==null?'':` · here <b class="${fmt.cls(-p)}">${fmt.pct(p,2)}</b>`}
-    ${open?'':`<br><span class="faint">${SESSION_LABEL2[ins.market?.session]||'Closed'} — we trade 24/7.</span>`}</div>`;
+  const n=ins&&ins.nasdaq; if(!n||n.last==null) return '';
+  const open=ins.market&&ins.market.session==='open', p=ins.premiumVsLastPct;
+  let verdict='', colour='var(--muted)';
+  if(p!=null){
+    verdict = Math.abs(p)<0.5 ? 'in line'
+      : p>0 ? `you're paying ${fmt.pct(p,2)}`
+            : `you're saving ${Math.abs(p).toFixed(2)}%`;
+    colour = p>1 ? 'var(--amber)' : p<-1 ? 'var(--green)' : 'var(--muted)';
+  }
+  return `<div class="mono" style="margin-top:8px;font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+    ${open?'Nasdaq open':'Nasdaq closed'} <span class="faint">·</span> <b style="color:var(--ink)">${open?'':'last '}${fmt.usd(n.last)}</b>${verdict?` <span class="faint">·</span> <b style="color:${colour}">${verdict}</b>`:''}</div>`;
 }
 
 /* The 52-week range, said out loud: a bar plus one sentence, no vocabulary. */

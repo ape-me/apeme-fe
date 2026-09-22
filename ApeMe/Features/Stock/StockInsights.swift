@@ -5,31 +5,44 @@ import SwiftUI
 
 /// `Nasdaq $87.99 · 21s ago · here −0.4%` while the market trades; once it shuts the same number
 /// is yesterday's close, so say that instead of dressing it up as live.
+/// One line under the price answering the only question that matters before tapping Buy:
+/// am I paying more than the real share right now? Pre-IPO names have no Nasdaq to compare
+/// against, so the line simply isn't there — never a dash.
 struct NasdaqLine: View {
     let insights: Insights
 
+    private var premium: Double? { insights.premiumVsLastPct }
+    private var isOpen: Bool { insights.market?.isLive ?? false }
+
+    /// Neutral inside ±0.5%, amber past +1% (paying up), green past −1% (buying it cheaper).
+    private var tint: Color {
+        guard let p = premium else { return Theme.muted }
+        if p > 1 { return Theme.amber }
+        if p < -1 { return Theme.green }
+        return Theme.muted
+    }
+
+    /// "+1.70%" reads fine as a premium and badly as a discount, so each direction gets its
+    /// own sentence instead of one phrase carrying a minus sign.
+    private var verdict: String? {
+        guard let p = premium else { return nil }
+        if abs(p) < 0.5 { return "in line" }
+        return p > 0 ? "you're paying \(Fmt.pct(p, 2))" : "you're saving \(String(format: "%.2f%%", abs(p)))"
+    }
+
     var body: some View {
         if let n = insights.nasdaq, let last = n.last {
-            let open = insights.market?.isLive ?? false
-            let premium = insights.premiumVsLastPct
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 4) {
-                    Text(open ? "Nasdaq" : "Nasdaq close")
-                    Text(Fmt.usd(last)).foregroundStyle(Theme.ink).fontWeight(.semibold)
-                    if open, let asOf = n.asOf { Text("· \(Fmt.ago(asOf)) ago") }
-                    if let premium {
-                        Text("· here")
-                        // Paying above the real share is the bad direction, so the colour flips.
-                        Text(Fmt.pct(premium, 2)).foregroundStyle(Theme.change(-premium)).fontWeight(.semibold)
-                    }
+            HStack(spacing: 5) {
+                Text(isOpen ? "Nasdaq open" : "Nasdaq closed").foregroundStyle(Theme.muted)
+                Text("·").foregroundStyle(Theme.faint)
+                Text("\(isOpen ? "" : "last ")\(Fmt.usd(last))").foregroundStyle(Theme.ink).fontWeight(.semibold)
+                if let verdict {
+                    Text("·").foregroundStyle(Theme.faint)
+                    Text(verdict).foregroundStyle(tint).fontWeight(.semibold)
                 }
-                if !open {
-                    Text("\(insights.market?.label ?? "Closed") — we trade 24/7.").foregroundStyle(Theme.faint)
-                }
+                Spacer(minLength: 0)
             }
-            .font(.sub).foregroundStyle(Theme.muted)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 12)
+            .font(.system(size: 14)).monospacedDigit().lineLimit(1)
         }
     }
 }
