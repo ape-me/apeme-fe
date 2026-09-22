@@ -58,6 +58,27 @@ actor API {
     func trades(_ mint: String, limit: Int = 40) async throws -> TradesResponse {
         try await fetch("/tokens/\(mint)/trades?limit=\(limit)", ttl: 3)
     }
+    /// Nasdaq, company, earnings and the token's dividend rebase. Cached 5 min on the BE.
+    func insights(_ mint: String) async throws -> Insights {
+        try await fetch("/stocks/\(mint)/insights", ttl: 300)
+    }
+    /// A stock's own headlines. `before` is the previous page's oldest `publishedAt`.
+    func stockNews(_ mint: String, limit: Int = 5, before: Int? = nil) async throws -> NewsResponse {
+        var p = "/stocks/\(mint)/news?limit=\(limit)"
+        if let before { p += "&before=\(before)" }
+        return try await fetch(p, ttl: 60)
+    }
+    /// The Home feed. With `mints`, those stocks come first, newest-first inside each group.
+    func news(mints: [String] = [], limit: Int = 30, before: Int? = nil) async throws -> NewsResponse {
+        var p = "/news?limit=\(limit)"
+        if !mints.isEmpty { p += "&mints=\(mints.joined(separator: ","))" }
+        if let before { p += "&before=\(before)" }
+        return try await fetch(p, ttl: 60)
+    }
+    /// One curated headline per stock, material or better, biggest movers first.
+    func newsTicker() async throws -> NewsResponse {
+        try await fetch("/news/ticker", ttl: 60)
+    }
     func collections() async throws -> CollectionsResponse {
         try await fetch("/collections", ttl: 30)
     }

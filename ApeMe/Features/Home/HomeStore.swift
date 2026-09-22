@@ -4,9 +4,9 @@ import Observation
 @Observable @MainActor
 final class HomeStore {
     enum InvestTab: String, CaseIterable, Identifiable {
-        case preipo, movers, explore, watch
+        case preipo, movers, explore, watch, news
         var id: String { rawValue }
-        var label: String { switch self { case .preipo: "Pre-IPO"; case .movers: "Movers"; case .explore: "Explore"; case .watch: "Watchlist" } }
+        var label: String { switch self { case .preipo: "Pre-IPO"; case .movers: "Movers"; case .explore: "Explore"; case .watch: "Watchlist"; case .news: "News" } }
     }
     enum ApeTab: String, CaseIterable, Identifiable {
         case preipo, new, kings
@@ -28,10 +28,30 @@ final class HomeStore {
     var exploreId: String?
     var flashes: [String: Flash] = [:]
     var socketStatus: LiveSocket.Status = .connecting
+    /// One curated headline per stock for the strip, and the full feed for the News tab.
+    var headlines: [NewsItem] = []
+    var feed: [NewsItem] = []
+    var feedLoading = false
+    var feedError: String?
 
     private var socket: LiveSocket?
     private var listener: Task<Void, Never>?
     private var stamp = 0
+
+    /// The user's own stocks come first; signed out it's simply the newest across the market.
+    func loadFeed(app: AppState) async {
+        guard !feedLoading else { return }
+        feedLoading = true
+        defer { feedLoading = false }
+        let held = (app.wallet?.positions ?? []).filter { $0.kind == "stock" }.map(\.mint)
+        let mints = Array(Set(app.watch + held))
+        do {
+            feed = try await API.shared.news(mints: mints, limit: 30).items
+            feedError = nil
+        } catch {
+            if feed.isEmpty { feedError = "Couldn't load the news." }
+        }
+    }
 
     func load(app: AppState) async {
         // Paint whatever is cached first, then refresh.
@@ -57,6 +77,7 @@ final class HomeStore {
         }
         loading = false
         if let t = try? await API.shared.ticker(memes: 10, stonks: 1) { ticker = t.tokens }
+        if let h = try? await API.shared.newsTicker() { headlines = h.items }
     }
 
     func loadWatch(app: AppState) async {

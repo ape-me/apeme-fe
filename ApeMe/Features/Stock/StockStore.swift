@@ -13,6 +13,20 @@ final class StockStore {
     var scrub: LineChart.Point?
     var status: LiveSocket.Status = .connecting
 
+    enum Tab: String, CaseIterable, Identifiable {
+        case overview, news, about
+        var id: String { rawValue }
+        var label: String { rawValue.capitalized }
+    }
+    var tab: Tab = .overview
+    var insights: Insights?
+    var news: [NewsItem] = []
+    var newsLoading = false
+    var newsError: String?
+    var newsExhausted = false
+    /// A headline that arrived over the socket while the user was on another tab.
+    var unreadNews = false
+
     private var rangeGen = 0
     private var socket: LiveSocket?
     private var listener: Task<Void, Never>?
@@ -29,6 +43,35 @@ final class StockStore {
             if stock == nil { self.error = "Couldn't load this stock." }
         }
         await loadRange()
+    }
+
+    /// Insights land after the first paint; Overview and About redraw when they do.
+    func loadInsights() async {
+        insights = try? await API.shared.insights(mint)
+    }
+
+    func loadNews() async {
+        guard news.isEmpty, !newsLoading else { return }
+        newsLoading = true
+        defer { newsLoading = false }
+        do {
+            news = try await API.shared.stockNews(mint, limit: 5).items
+            newsError = nil
+            newsExhausted = news.count < 5
+        } catch {
+            if news.isEmpty { newsError = "Couldn't load the news." }
+        }
+    }
+
+    /// Page back with the oldest headline we hold, the way the BE asked for it.
+    func moreNews() async {
+        guard let oldest = news.last?.publishedAt, !newsLoading, !newsExhausted else { return }
+        newsLoading = true
+        defer { newsLoading = false }
+        guard let page = try? await API.shared.stockNews(mint, limit: 20, before: oldest) else { return }
+        let known = Set(news.map(\.id))
+        let fresh = page.items.filter { !known.contains($0.id) }
+        if fresh.isEmpty { newsExhausted = true } else { news += fresh }
     }
 
     func setRange(_ r: HistoryRange) {
@@ -64,7 +107,15 @@ final class StockStore {
                 switch ev {
                 case .status(let st): status = st
                 case .frames(let frames):
-                    for case .price(let p) in frames where p.mint == mint { apply(p, app: app) }
+                    for f in frames {
+                        switch f {
+                        case .price(let p) where p.mint == mint: apply(p, app: app)
+                        // A headline published while the page is open just flags the tab.
+                        case .news(let n) where n.mint == mint:
+                            if tab == .news { news = []; await loadNews() } else { unreadNews = true }
+                        default: break
+                        }
+                    }
                 }
             }
         }

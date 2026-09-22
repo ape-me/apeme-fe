@@ -31,6 +31,7 @@ struct StockView: View {
             store.connect(app: app)
             await store.load(app: app)
         }
+        .task { await store.loadInsights() }
         .task { await store.resync() }
         .onDisappear { store.disconnect() }
     }
@@ -74,11 +75,86 @@ struct StockView: View {
                 BigButton(label: "Sell", style: .sell) { app.sell(store.mint) }
             }
             .padding(.horizontal, 20).padding(.top, 18)
-            HR().padding(.top, 26)
-            if let mark = s.markUsd, let p = s.premiumPct { FairValueBlock(stock: s, mark: mark, premium: p) }
-            stats(s)
+            if let ins = store.insights {
+                EarningsNote(insights: ins).padding(.horizontal, 20).padding(.top, 22)
+            }
+            HR().padding(.top, 22)
+            tabs.padding(.top, 18)
+            Group {
+                switch store.tab {
+                case .overview: overview(s)
+                case .news: newsTab(s)
+                case .about: about(s)
+                }
+            }
         }
         .padding(.bottom, 24)
+    }
+
+    private var tabs: some View {
+        HStack(spacing: 0) {
+            ForEach(StockStore.Tab.allCases) { t in
+                Button {
+                    Haptic.selection()
+                    store.tab = t
+                    if t == .news { store.unreadNews = false }
+                } label: {
+                    VStack(spacing: 8) {
+                        HStack(spacing: 5) {
+                            Text(t.label)
+                            if t == .news, store.unreadNews {
+                                Circle().fill(skin.accent).frame(width: 6, height: 6)
+                            }
+                        }
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(store.tab == t ? Theme.ink : Theme.faint)
+                        Rectangle().fill(store.tab == t ? Theme.ink : .clear).frame(height: 2)
+                    }
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+
+    /// Three cards: is it cheap, where is it in its year, is it busy here.
+    private func overview(_ s: Stock) -> some View {
+        VStack(alignment: .leading, spacing: 22) {
+            if let mark = s.markUsd, let p = s.premiumPct {
+                FairValueBlock(stock: s, mark: mark, premium: p, insights: store.insights)
+            }
+            if let stats = store.insights?.stats, let price = s.priceUsd {
+                YearRangeCard(stats: stats, price: price)
+            }
+            TradingHereCard(stock: s)
+            if let d = store.insights?.dividends { DividendCard(dividends: d) }
+        }
+        .padding(.horizontal, 20).padding(.top, 20)
+    }
+
+    @ViewBuilder private func newsTab(_ s: Stock) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let err = store.newsError, store.news.isEmpty {
+                ErrorBar(text: err).padding(.top, 18)
+            } else if store.news.isEmpty, store.newsLoading {
+                VStack(spacing: 12) { Skeleton(height: 66); Skeleton(height: 66); Skeleton(height: 66) }.padding(.top, 18)
+            } else if store.news.isEmpty {
+                EmptyState(title: "No news yet for \(s.symbol)",
+                           subtitle: "Headlines land here within 20 minutes of publication.")
+            } else {
+                NewsList(items: store.news, showSymbol: false, showThumb: false,
+                         open: { app.sheet = .article($0) }, openStock: { app.openStock($0) })
+                if !store.newsExhausted {
+                    BigButton(label: store.newsLoading ? "Loading…" : "More headlines", style: .ghost) {
+                        Task { await store.moreNews() }
+                    }
+                    .padding(.top, 16)
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .task(id: store.tab) { if store.tab == .news { await store.loadNews() } }
     }
 
     /// Apple Stocks header: logo + bold symbol with the name beside it, hairline, bold price + change, issuer · USD.
@@ -106,7 +182,7 @@ struct StockView: View {
                     .foregroundStyle(Theme.change(change))
             }
             .padding(.top, 14)
-            Text(scrubbing ? Fmt.dateTime(store.scrub!.t) : "\(issuerLabel(s.issuer)) · USD · \(store.range.caption)")
+            Text(scrubbing ? Fmt.dateTime(store.scrub!.t) : store.range.caption.capitalized)
                 .font(.system(size: 17)).foregroundStyle(Theme.muted)
                 .padding(.top, 4)
         }
@@ -169,33 +245,67 @@ struct StockView: View {
         .buttonStyle(.plain)
     }
 
-    private func stats(_ s: Stock) -> some View {
+    /// The reference tab: who the company is, the analyst numbers, then the chain plumbing.
+    private func about(_ s: Stock) -> some View {
         VStack(alignment: .leading, spacing: 22) {
-            VStack(alignment: .leading, spacing: 0) {
-                SectionTitle("Market stats")
-                KCard {
-                    KV("Liquidity", Fmt.big(s.liquidityUsd))
-                    KV("24h volume", Fmt.big(s.stockVol24hUsd))
-                    KV("Buys · sells") {
-                        Text("\(Text(Fmt.n(s.buys24h)).foregroundStyle(Theme.green)) \(Text("/").foregroundStyle(Theme.faint)) \(Text(Fmt.n(s.sells24h)).foregroundStyle(Theme.red))")
+            if let c = store.insights?.company, c.name != nil {
+                VStack(alignment: .leading, spacing: 0) {
+                    SectionTitle("Company")
+                    KCard {
+                        if let v = c.name { KV("Company", v) }
+                        if let v = c.sector { KV("Sector", v) }
+                        if let v = c.exchange { KV("Exchange", v) }
+                        if let v = c.ipo, let d = Self.ipoDate(v) { KV("IPO", d) }
+                        if let url = c.websiteURL, let host = c.host {
+                            KV("Website") {
+                                Link(destination: url) {
+                                    Text("\(host) ↗").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ink)
+                                }
+                            }
+                        }
                     }
-                    KV("Market", s.marketOpen ? "Open" : "After hours · trades 24/7 here")
                 }
             }
+            investorStats
             VStack(alignment: .leading, spacing: 0) {
-                SectionTitle("Buys vs sells · 24h")
-                KCard(padded: true) { SplitBar(a: s.buys24h, b: s.sells24h) }
-            }
-            VStack(alignment: .leading, spacing: 0) {
-                SectionTitle("About")
+                SectionTitle("On chain")
                 KCard {
-                    KV("Issuer", s.issuer)
-                    KV("Category", s.category)
+                    KV("Issued by", issuerLabel(s.issuer))
+                    KV("Trades in", "USD")
                     KV("Mint address") { CopyButton(text: Fmt.short(s.mint), value: s.mint) }
                 }
             }
         }
-        .padding(.horizontal, 20).padding(.top, 22)
+        .padding(.horizontal, 20).padding(.top, 20)
+    }
+
+    /// The analyst numbers still exist — they just don't ambush anyone on Overview.
+    @ViewBuilder private var investorStats: some View {
+        if let st = store.insights?.stats {
+            VStack(alignment: .leading, spacing: 0) {
+                SectionTitle("For investors")
+                KCard {
+                    if let v = st.marketCapUsd { KV("Market cap", Fmt.big(v)) }
+                    // Finnhub returns no P/E when trailing earnings are negative — an em dash, not a bug.
+                    KV("P/E (TTM)", st.peTtm.map { String(format: "%.2f", $0) } ?? "—")
+                    if let v = st.epsTtm { KV("Earnings per share", Fmt.usd(v)) }
+                    if let e = store.insights?.earnings, let day = e.day {
+                        KV("Next earnings", "\(Self.shortDate.string(from: day))\(e.when.map { " · \($0)" } ?? "")")
+                    }
+                }
+            }
+        }
+    }
+
+    private static let shortDate: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "MMM d"; f.timeZone = .gmt; return f
+    }()
+
+    private static func ipoDate(_ s: String) -> String? {
+        let parse = DateFormatter(); parse.dateFormat = "yyyy-MM-dd"; parse.timeZone = .gmt
+        guard let d = parse.date(from: s) else { return nil }
+        let out = DateFormatter(); out.dateFormat = "MMM d, yyyy"; out.timeZone = .gmt
+        return out.string(from: d)
     }
 }
 
@@ -227,14 +337,22 @@ struct FairValueBlock: View {
     let stock: Stock
     let mark: Double
     let premium: Double
+    var insights: Insights?
 
     private var neutral: Bool { abs(premium) <= 0.25 }
     private var gapUsd: Double? { stock.priceUsd.map { $0 - mark } }
     private var sentence: String {
-        let what = stock.isPreIPO ? "PreStocks' mark from the last funding round" : "the live Nasdaq price"
+        let what = stock.isPreIPO ? "PreStocks' mark from the last funding round" : "the real share price"
         guard !neutral, let gap = gapUsd else { return "Trading at fair value — \(what)." }
         let dir = premium > 0 ? "more" : "less"
-        return "Buyers pay \(Fmt.usd(abs(gap))) \(dir) than \(what)."
+        return "You're paying \(Fmt.usd(abs(gap))) \(dir) than \(what)."
+    }
+
+    /// "It's worth" says nothing; "Real INTC share" says exactly what the number is.
+    private var worthLabel: String {
+        if stock.isPreIPO { return "Last funding round" }
+        let ticker = insights?.ticker ?? String(stock.symbol.dropLast(stock.symbol.hasSuffix("X") ? 1 : 0))
+        return "Real \(ticker) share"
     }
 
     var body: some View {
@@ -242,7 +360,7 @@ struct FairValueBlock: View {
             SectionTitle("Fair value")
             KCard {
                 KV("You pay", Fmt.usd(stock.priceUsd))
-                KV("It's worth", Fmt.usd(mark))
+                KV(worthLabel, Fmt.usd(mark))
                 KV(premium > 0 ? "Premium" : premium < 0 ? "Discount" : "Gap") {
                     HStack(spacing: 8) {
                         if let gap = gapUsd, !neutral { Text(Fmt.usd(abs(gap))) }
@@ -251,8 +369,8 @@ struct FairValueBlock: View {
                 }
                 Text(sentence).font(.sub).foregroundStyle(Theme.muted).lineSpacing(2)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
+                if let insights { Divider().overlay(Theme.line); NasdaqLine(insights: insights) }
             }
         }
-        .padding(.horizontal, 20).padding(.top, 22)
     }
 }

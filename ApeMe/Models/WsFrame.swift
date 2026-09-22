@@ -5,6 +5,17 @@ enum WsFrame: Hashable {
     case trade(WsTrade)
     case token(mint: String, event: String)
     case price(WsPrice)
+    case news(WsNews)
+}
+
+/// `stock:<mint>` announces a headline the moment it lands. Enough to flag the tab; the list refetches.
+struct WsNews: Codable, Hashable {
+    let mint: String
+    let symbol: String?
+    let title: String?
+    let source: String?
+    let url: String?
+    let publishedAt: Int?
 }
 
 /// Jupiter-sampled stock price on `stock:<mint>`, at most one per 5s, only when it moved.
@@ -50,6 +61,8 @@ struct RawWsFrame: Decodable {
             frame = .token(mint: mint, event: event)
         case "price":
             frame = (try? WsPrice(from: decoder)).map(WsFrame.price)
+        case "news":
+            frame = (try? WsNews(from: decoder)).map(WsFrame.news)
         default:
             frame = nil
         }

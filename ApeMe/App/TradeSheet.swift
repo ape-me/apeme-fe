@@ -10,6 +10,7 @@ enum TradeSheet: Identifiable {
     case tx(Activity)
     case resume(TradeResume)
     case position(Holding)
+    case article(NewsItem)
 
     var id: String {
         switch self {
@@ -21,6 +22,7 @@ enum TradeSheet: Identifiable {
         case .resume(let r): "resume-\(r.id)"
         case .position(let h): "pos-\(h.mint)"
         case .login: "login"
+        case .article(let n): "news-\(n.id)"
         }
     }
 }

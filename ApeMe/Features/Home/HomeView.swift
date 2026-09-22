@@ -10,6 +10,7 @@ struct HomeView: View {
             VStack(spacing: 0) {
                 header
                 strip
+                if !app.isApe { HeadlineStrip(items: store.headlines).padding(.top, 12) }
                 HR().padding(.top, 8)
                 tabs
                 body_
@@ -73,6 +74,7 @@ struct HomeView: View {
             case .movers: MoversSection(store: store)
             case .explore: ExploreSection(store: store)
             case .watch: WatchSection(store: store)
+            case .news: NewsSection(store: store)
             }
         }
     }
