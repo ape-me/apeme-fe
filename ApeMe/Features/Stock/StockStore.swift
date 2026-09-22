@@ -20,6 +20,10 @@ final class StockStore {
     }
     var tab: Tab = .overview
     var insights: Insights?
+    var insightsLoading = true
+    /// Distinguishes "not fetched yet" from "fetched, genuinely empty" so the empty state
+    /// never flashes before the first request has even gone out.
+    var newsLoaded = false
     var news: [NewsItem] = []
     var newsLoading = false
     var newsError: String?
@@ -48,16 +52,18 @@ final class StockStore {
     /// Insights land after the first paint; Overview and About redraw when they do.
     func loadInsights() async {
         insights = try? await API.shared.insights(mint)
+        insightsLoading = false
     }
 
     func loadNews() async {
-        guard news.isEmpty, !newsLoading else { return }
+        guard news.isEmpty, !newsLoading, !newsLoaded else { return }
         newsLoading = true
         defer { newsLoading = false }
         do {
             news = try await API.shared.stockNews(mint, limit: 5).items
             newsError = nil
             newsExhausted = news.count < 5
+            newsLoaded = true
         } catch {
             if news.isEmpty { newsError = "Couldn't load the news." }
         }

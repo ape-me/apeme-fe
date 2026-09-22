@@ -30,8 +30,10 @@ final class HomeStore {
     var socketStatus: LiveSocket.Status = .connecting
     /// One curated headline per stock for the strip, and the full feed for the News tab.
     var headlines: [NewsItem] = []
+    var headlinesLoading = true
     var feed: [NewsItem] = []
     var feedLoading = false
+    var feedLoaded = false
     var feedError: String?
 
     private var socket: LiveSocket?
@@ -48,6 +50,7 @@ final class HomeStore {
         do {
             feed = try await API.shared.news(mints: mints, limit: 30).items
             feedError = nil
+            feedLoaded = true
         } catch {
             if feed.isEmpty { feedError = "Couldn't load the news." }
         }
@@ -78,6 +81,7 @@ final class HomeStore {
         loading = false
         if let t = try? await API.shared.ticker(memes: 10, stonks: 1) { ticker = t.tokens }
         if let h = try? await API.shared.newsTicker() { headlines = h.items }
+        headlinesLoading = false
     }
 
     func loadWatch(app: AppState) async {

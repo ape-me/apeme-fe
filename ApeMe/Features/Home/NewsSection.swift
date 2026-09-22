@@ -51,8 +51,14 @@ struct NewsSection: View {
         VStack(alignment: .leading, spacing: 0) {
             if let err = store.feedError, store.feed.isEmpty {
                 ErrorBar(text: err).padding(.top, 20)
-            } else if store.feed.isEmpty, store.feedLoading {
-                VStack(spacing: 12) { ForEach(0..<4, id: \.self) { _ in Skeleton(height: 66) } }.padding(.top, 20)
+            } else if store.feed.isEmpty, !store.feedLoaded {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Latest").h2Text()
+                    Text(hasOwn ? "Your stocks first, then the rest of the market" : "Newest across every stock")
+                        .font(.sub).foregroundStyle(Theme.muted)
+                }
+                .padding(.top, 20).padding(.bottom, 2)
+                NewsListSkeleton()
             } else if store.feed.isEmpty {
                 EmptyState(title: "No news yet.", subtitle: "Headlines land here within 20 minutes of publication.")
             } else {

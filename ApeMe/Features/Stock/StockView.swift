@@ -128,9 +128,12 @@ struct StockView: View {
             }
             if let stats = store.insights?.stats, let price = s.priceUsd {
                 YearRangeCard(stats: stats, price: price)
+            } else if store.insightsLoading {
+                InsightCardSkeleton(title: "Past 12 months", height: 92)
             }
             TradingHereCard(stock: s)
             if let d = store.insights?.dividends { DividendCard(dividends: d) }
+            else if store.insightsLoading { InsightCardSkeleton(title: "Dividends", height: 84) }
         }
         .padding(.horizontal, 20).padding(.top, 20)
     }
@@ -139,8 +142,8 @@ struct StockView: View {
         VStack(alignment: .leading, spacing: 0) {
             if let err = store.newsError, store.news.isEmpty {
                 ErrorBar(text: err).padding(.top, 18)
-            } else if store.news.isEmpty, store.newsLoading {
-                VStack(spacing: 12) { Skeleton(height: 66); Skeleton(height: 66); Skeleton(height: 66) }.padding(.top, 18)
+            } else if store.news.isEmpty, !store.newsLoaded {
+                NewsListSkeleton(count: 3, showThumb: false)
             } else if store.news.isEmpty {
                 EmptyState(title: "No news yet for \(s.symbol)",
                            subtitle: "Headlines land here within 20 minutes of publication.")
