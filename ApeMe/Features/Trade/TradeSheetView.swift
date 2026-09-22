@@ -59,7 +59,7 @@ struct TradeSheetView: View {
             switch store.phase {
             case .confirmed: ScrollView { done }.scrollIndicators(.hidden)
             case .requoted: requoted
-            default: if reviewing { review } else { form }
+            default: if reviewing { ScrollView { review }.scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize) } else { form }
             }
         }
         .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 18)
@@ -245,7 +245,7 @@ struct TradeSheetView: View {
                     if let rent = rentUsd(q) {
                         KV("One-time network fee", Fmt.cash(rent))
                         Text("Charged by Solana to open \(asset.symbol) in your wallet, not by ApeMe. Never again for this token.")
-                            .font(.system(size: 12)).foregroundStyle(Theme.faint).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 10)
+                            .font(.system(size: 12)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 10)
                     }
                     KV("Gas", "Free")
                     KV("Price impact") {
@@ -279,7 +279,7 @@ struct TradeSheetView: View {
                     HStack { Text("Account").font(.system(size: 15)).foregroundStyle(Theme.muted); Spacer(); Text(Fmt.short(app.walletAddress)).font(.system(size: 15, weight: .semibold)) }.frame(height: 52)
                 }
                 .padding(.top, 28)
-                Spacer(minLength: 20)
+                Color.clear.frame(height: 24)
                 VStack(alignment: .leading, spacing: 8) { Shimmer().frame(width: 120, height: 22); Shimmer().frame(width: 90, height: 12) }
                 if store.phase == .failed { BigButton(label: "Try again", style: side == .sell ? .sell : .buy) { Haptic.medium(); store.error = nil; requote() }.padding(.top, 14) }
                 else { BigButton(label: "Getting price…", style: .off) {}.padding(.top, 14) }
@@ -297,10 +297,10 @@ struct TradeSheetView: View {
                 if side == .buy, asset.isStock, let p = q.premiumPct, p > 5 { note("Trading \(String(format: "%.0f", p))% above \(asset.isPreIPO ? "its fair value" : "the Nasdaq price").").padding(.top, 14) }
                 if let rent = rentUsd(q) {
                     Text("First time holding \(asset.symbol): \(Fmt.cash(rent)) of this is a one-time network fee to open the token in your wallet. Next time it's just \(Fmt.cash(feesTotal(q) - rent)).")
-                        .font(.sub).foregroundStyle(Theme.muted).lineSpacing(2).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 14)
+                        .font(.sub).foregroundStyle(Theme.muted).lineSpacing(2).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 14)
                 }
                 errorBox.padding(.top, 14)
-                Spacer(minLength: 20)
+                Color.clear.frame(height: 24)
                 // Footer: total on the left, details underneath, one button.
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -340,7 +340,6 @@ struct TradeSheetView: View {
                 .padding(.top, 14)
             }
         }
-        .frame(maxHeight: .infinity)
     }
 
     private func row(_ k: String, _ v: String) -> some View {
