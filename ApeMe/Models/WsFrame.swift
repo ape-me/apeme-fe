@@ -10,6 +10,7 @@ enum WsFrame: Hashable {
 /// Jupiter-sampled stock price on `stock:<mint>`, at most one per 5s, only when it moved.
 struct WsPrice: Codable, Hashable {
     let mint: String
+    let kind: String?          // "stock" | "meme"
     let ts: Int
     let priceUsd: Double?
     let markUsd: Double?

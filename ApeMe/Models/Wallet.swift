@@ -9,6 +9,8 @@ struct Wallet: Codable, Hashable {
     var stocksUsd: Double?
     var memesUsd: Double?
     let costUsd: Double?
+    /// Total fees paid across the wallet.
+    let feesUsd: Double?
     var pnlUsd: Double?
     let realizedUsd: Double?
     let pendingSwaps: Int?

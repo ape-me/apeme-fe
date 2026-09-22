@@ -18,6 +18,10 @@ struct Holding: Codable, Identifiable, Hashable {
     let costUsd: Double?
     var pnlUsd: Double?
     var pnlPct: Double?
+    /// Cost per displayed unit, fees excluded. nil for cash / SOL / outside deposits.
+    let avgEntryUsd: Double?
+    /// ApeMe fee + rent + issuer fee paid on this token's buys and sells.
+    let feesUsd: Double?
 
     var imageURL: URL? { image.flatMap { $0.isEmpty ? nil : URL(string: $0) } }
 }
