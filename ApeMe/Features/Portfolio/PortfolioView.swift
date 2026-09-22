@@ -86,7 +86,7 @@ struct PortfolioView: View {
             CentsText(value: max(0, invested)).padding(.top, 2)
             HStack(spacing: 8) {
                 if let p = w.pnlUsd, !positions.isEmpty {
-                    Text((p >= 0 ? "+" : "−") + Fmt.usd(abs(p))).foregroundStyle(Theme.change(p))
+                    Text(Fmt.signedCash(p)).foregroundStyle(Theme.change(p))
                     if let pct {
                         Text(Fmt.arrow(pct, 2)).foregroundStyle(Theme.change(p))
                             .padding(.horizontal, 7).frame(height: 22).background(p >= 0 ? Theme.greenT : Theme.redT, in: .capsule)
@@ -156,7 +156,7 @@ struct PositionRow: View {
                 VStack(alignment: .trailing, spacing: 3) {
                     Text(Fmt.usd(holding.valueUsd)).font(.rowPrice).monospacedDigit()
                     // No cost basis (deposited from outside) → no P&L, not a fake $0.
-                    if holding.costUsd != nil, let p = holding.pnlUsd { Text((p >= 0 ? "+" : "−") + Fmt.usd(abs(p))).font(.rowChange).monospacedDigit().foregroundStyle(Theme.change(p)) }
+                    if holding.costUsd != nil, let p = holding.pnlUsd { Text(Fmt.signedCash(p)).font(.rowChange).monospacedDigit().foregroundStyle(Theme.change(p)) }
                 }
             }
             .padding(.vertical, 8).frame(minHeight: 60).contentShape(.rect)
@@ -353,7 +353,7 @@ struct PositionSheet: View {
                     if let e = entry { KV("Entry", Fmt.usd(e)) }
                     KV("Now", Fmt.usd(holding.priceUsd))
                     KV("Profit") {
-                        if holding.costUsd != nil, let p = holding.pnlUsd { Text("\((p >= 0 ? "+" : "−") + Fmt.usd(abs(p))) (\(Fmt.pct(holding.pnlPct, 1)))").foregroundStyle(Theme.change(p)) }
+                        if holding.costUsd != nil, let p = holding.pnlUsd { Text("\(Fmt.signedCash(p)) (\(Fmt.pct(holding.pnlPct, 1)))").foregroundStyle(Theme.change(p)) }
                         else { Text("—").foregroundStyle(Theme.muted) }
                     }
                 }

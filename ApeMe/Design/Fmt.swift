@@ -36,6 +36,12 @@ enum Fmt {
         return (n < 0 ? "−" : "") + "$" + group(abs(n), 2)
     }
 
+    /// `+$1.20`, `−$0.30`, `−<$0.01` — for P&L.
+    static func signedCash(_ n: Double) -> String {
+        if abs(n) < 0.005 { return n < 0 ? "−<$0.01" : n > 0 ? "+<$0.01" : "$0.00" }
+        return (n >= 0 ? "+" : "−") + "$" + group(abs(n), 2)
+    }
+
     /// Whole dollars and the cents separately, so the cents can be muted.
     static func cents(_ n: Double?) -> (whole: String, cents: String)? {
         guard let n, n.isFinite else { return nil }

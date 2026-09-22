@@ -196,7 +196,7 @@ struct TradeSheetView: View {
                 note("Trading \(String(format: "%.0f", p))% above \(asset.isPreIPO ? "its fair value" : "the Nasdaq price").")
             }
             if let i = q.priceImpactPct, i > 2 {
-                note("Large order: price impact \(String(format: "%.1f", i))%. You get less per dollar.")
+                note("Thin market: price impact \(String(format: "%.1f", i))%. You get a little less per dollar.")
             }
         }
     }
@@ -286,13 +286,14 @@ struct TradeSheetView: View {
             }
             if let q = store.quote {
                 VStack(spacing: 0) {
-                    row(side == .buy ? "Receive" : "Selling", side == .buy ? "≈ " + store.youGet : Fmt.qty(sellQty, symbol: asset.symbol))
+                    row(side == .buy ? "Receive" : "Selling", side == .buy ? "≈ \(store.youGet) · \(Fmt.cash(q.swapUsd ?? q.outUsd))" : Fmt.qty(sellQty, symbol: asset.symbol))
                     Divider().overlay(Theme.line)
                     if asset.isStock, let m = q.markUsd { row(asset.isPreIPO ? "Fair value" : "Nasdaq price", Fmt.usd(m)); Divider().overlay(Theme.line) }
-                    row("Account", Fmt.short(app.walletAddress))
+                    if let rent = rentUsd(q) { row("Fees", "\(Fmt.cash(feesTotal(q) - rent)) + \(Fmt.cash(rent)) one-time") }
+                    else { row("Fees", Fmt.cash(feesTotal(q))) }
                 }
                 .padding(.top, 28)
-                if let i = q.priceImpactPct, i > 2 { note("Large order: price impact \(String(format: "%.1f", i))%. You get less per dollar.").padding(.top, 14) }
+                if let i = q.priceImpactPct, i > 2 { note("Thin market: price impact \(String(format: "%.1f", i))%. You get a little less per dollar.").padding(.top, 14) }
                 if side == .buy, asset.isStock, let p = q.premiumPct, p > 5 { note("Trading \(String(format: "%.0f", p))% above \(asset.isPreIPO ? "its fair value" : "the Nasdaq price").").padding(.top, 14) }
                 if let rent = rentUsd(q) {
                     Text("First time holding \(asset.symbol): \(Fmt.cash(rent)) of this is a one-time network fee to open the token in your wallet. Next time it's just \(Fmt.cash(feesTotal(q) - rent)).")
@@ -304,8 +305,7 @@ struct TradeSheetView: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(side == .buy ? "\(Fmt.cash(q.inUsd)) total" : "\(Fmt.cash(q.outUsd)) you get").font(.system(size: 20, weight: .semibold)).tracking(-0.4).monospacedDigit()
-                        if let rent = rentUsd(q) { Text("incl. \(Fmt.cash(feesTotal(q) - rent)) fees + \(Fmt.cash(rent)) one-time").font(.sub).foregroundStyle(Theme.muted) }
-                        else { Text("incl. \(Fmt.cash(feesTotal(q))) fees").font(.sub).foregroundStyle(Theme.muted) }
+                        Text(side == .buy ? "\(Fmt.cash(q.swapUsd ?? q.outUsd)) of \(asset.symbol) · \(Fmt.cash(feesTotal(q))) fees" : "after \(Fmt.cash(feesTotal(q))) fees").font(.sub).foregroundStyle(Theme.muted)
                     }
                     Spacer()
                     HStack(spacing: 6) {
