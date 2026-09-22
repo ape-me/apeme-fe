@@ -70,7 +70,8 @@ struct TradeSheetView: View {
         case .buy: store.requote(usd: usd, taker: app.walletAddress, cashUsd: cash)
         case .sell:
             guard let h = store.holding, let raw = h.raw, let r = Decimal(string: raw), let value = h.valueUsd, value > 0, usd > 0 else { store.requote(rawAmount: nil, taker: app.walletAddress, cashUsd: 0); return }
-            // Whole position when they asked for all of it, so no dust is left behind.
+            // More than they hold → stop, like Buy does. All of it → the whole position, so no dust is left.
+            if usd > value + 0.005 { store.requote(rawAmount: "over", taker: app.walletAddress, cashUsd: 0); return }
             if usd >= value - 0.005 || pct == 100 { store.requote(rawAmount: raw, taker: app.walletAddress, cashUsd: 0); return }
             var v = r * Decimal(usd) / Decimal(value)
             var out = Decimal(); NSDecimalRound(&out, &v, 0, .down)
@@ -114,7 +115,7 @@ struct TradeSheetView: View {
                         Text(store.phase == .quoting ? "…" : store.youGet).foregroundStyle(Theme.ink).fontWeight(.semibold)
                     } else {
                         Text("≈ \(Fmt.qty(sellQty, symbol: asset.symbol))").foregroundStyle(Theme.ink).fontWeight(.semibold)
-                        if sellValue > 0 { Text("· \(Fmt.n(min(100, usd / sellValue * 100).rounded()))% of your \(asset.symbol)").foregroundStyle(Theme.muted) }
+                        if sellValue > 0 { Text("· \(Fmt.n(min(100, usd / sellValue * 100).rounded()))%").foregroundStyle(Theme.muted) }
                     }
                 }
                 .font(.system(size: 15)).monospacedDigit()
@@ -214,7 +215,9 @@ struct TradeSheetView: View {
 
     @ViewBuilder private var primary: some View {
         switch store.phase {
-        case .insufficient: BigButton(label: "Deposit to buy", style: .white) { dismiss(); app.sheet = .deposit }
+        case .insufficient:
+            if side == .buy { BigButton(label: "Deposit to buy", style: .white) { dismiss(); app.sheet = .deposit } }
+            else { BigButton(label: "You hold \(Fmt.cash(sellValue)) · Sell all", style: .white) { amount = String(format: "%.2f", floor(sellValue * 100) / 100); pct = 100 } }
         case .quoting: BigButton(label: "Getting price…", style: .off) {}
         case .ready:
             tradeButton(side == .buy ? "\(verb) $\(amount) of" : "Sell $\(amount) of", style: side == .sell ? .sell : .buy) {
@@ -245,9 +248,9 @@ struct TradeSheetView: View {
             if showDetails {
                 KCard {
                     if side == .buy { KV("Buys of \(asset.symbol)", Fmt.usd(q.swapUsd ?? q.outUsd)) }
-                    KV("ApeMe fee", Fmt.usd(q.fee?.usd ?? 0))
-                    if let f = q.issuerFee, let bps = f.bps, bps > 0 { KV("Issuer fee \(String(format: "%g", Double(bps) / 100))%", Fmt.usd(f.usd ?? 0)) }
-                    if (q.rent?.accounts ?? 0) > 0 { KV("One-time network fee", Fmt.usd(q.rent?.usd ?? 0)) }
+                    KV("ApeMe fee", Fmt.cash(q.fee?.usd ?? 0))
+                    if let f = q.issuerFee, let bps = f.bps, bps > 0 { KV("Issuer fee \(String(format: "%g", Double(bps) / 100))%", Fmt.cash(f.usd ?? 0)) }
+                    if (q.rent?.accounts ?? 0) > 0 { KV("One-time network fee", Fmt.cash(q.rent?.usd ?? 0)) }
                     KV("Gas", "Free")
                     KV("Price impact") {
                         Text(String(format: "%.2f%%", q.priceImpactPct ?? 0)).foregroundStyle((q.priceImpactPct ?? 0) > 2 ? Theme.amber : Theme.ink)
@@ -280,7 +283,7 @@ struct TradeSheetView: View {
                         KV("You get", "≈ " + store.youGet)
                     } else {
                         KV("You get", store.youGet)
-                        KV("Includes fee", Fmt.usd(q.fee?.usd ?? 0))
+                        KV("Includes fee", Fmt.cash((q.fee?.usd ?? 0) + (q.issuerFee?.usd ?? 0)))
                     }
                 }
                 if let i = q.priceImpactPct, i > 2 { note("Large order: price impact \(String(format: "%.1f", i))%. You get less per dollar.") }

@@ -28,6 +28,14 @@ enum Fmt {
         return "$" + String(format: "%.6f", n)
     }
 
+    /// Cash amounts only (fees, balances): cents, never sub-cent digits.
+    static func cash(_ n: Double?) -> String {
+        guard let n, n.isFinite else { return "—" }
+        if n > 0, n < 0.005 { return "<$0.01" }
+        if n < 0, n > -0.005 { return "−<$0.01" }
+        return (n < 0 ? "−" : "") + "$" + group(abs(n), 2)
+    }
+
     /// Whole dollars and the cents separately, so the cents can be muted.
     static func cents(_ n: Double?) -> (whole: String, cents: String)? {
         guard let n, n.isFinite else { return nil }

@@ -54,6 +54,7 @@ final class TradeStore {
             raw = String(Int64((usd * 1_000_000).rounded()))
         case .sell:
             guard let rawAmount, rawAmount != "0" else { phase = .idle; return }
+            if rawAmount == "over" { phase = .insufficient; return }
             raw = rawAmount
         }
         phase = .quoting
