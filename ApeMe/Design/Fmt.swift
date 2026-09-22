@@ -12,7 +12,11 @@ enum Fmt {
         if n == 0 { return "$0.00" }
         if n < 0 { return "−" + usd(-n) }
         if n >= 1 { return "$" + group(n, 2) }
-        if n >= 0.01 { return "$" + String(format: "%.4f", n) }
+        if n >= 0.01 {
+            // Cash-like values round to cents; only keep 4 decimals when the extra precision is real (tiny prices).
+            let c = (n * 100).rounded() / 100
+            return "$" + String(format: abs(n - c) < 0.00005 ? "%.2f" : "%.4f", abs(n - c) < 0.00005 ? c : n)
+        }
         let e = Int(floor(log10(n)))
         let mantissa = n / pow(10, Double(e))                 // 1.0 ..< 10.0
         var digits = String(Int((mantissa * 100).rounded()))  // 3 significant digits

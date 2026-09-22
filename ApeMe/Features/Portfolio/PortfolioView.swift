@@ -349,7 +349,8 @@ struct PositionSheet: View {
                 KV("P&L") {
                     if let p = holding.pnlUsd { Text("\((p >= 0 ? "+" : "−") + Fmt.usd(abs(p))) (\(Fmt.pct(holding.pnlPct, 1)))").foregroundStyle(Theme.change(p)) } else { Text("—") }
                 }
-                KV("Price", Fmt.usd(holding.priceUsd))
+                if let c = holding.costUsd, holding.amount > 0 { KV("Avg entry", Fmt.usd(c / holding.amount)) }
+                KV("Price now", Fmt.usd(holding.priceUsd))
             }
             HStack(spacing: 10) {
                 BigButton(label: "Buy more", style: .buy) {
@@ -368,7 +369,7 @@ struct PositionSheet: View {
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 18)
-        .presentationDetents([.height(360)])
+        .presentationDetents([.height(420)])
         .presentationBackground(Theme.surface)
         .presentationDragIndicator(.visible)
     }
