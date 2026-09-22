@@ -64,8 +64,8 @@ SCREENS.invite={
 SCREENS.home={
   html(p,skin){ const ape=skin==='ape'; return `<div class="scroll" id="hs">
     <div class="pad" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:16px"><div class="h1">${ape?'Floors':'Home'}</div>${modeToggle()}</div>
-    <div id="strip" style="margin-top:10px"></div><div class="hr"></div>
-    <div class="tabs" id="hometabs" style="padding-inline:20px;margin-top:6px">${ape?'<button data-ht="preipo" class="on">Pre-IPO</button><button data-ht="new">New launches</button><button data-ht="kings">Kings</button>':'<button data-ht="preipo" class="on">Pre-IPO</button><button data-ht="movers">Movers</button><button data-ht="explore">Explore</button><button data-ht="watch">Watchlist</button>'}</div>
+    <div id="strip" style="margin-top:10px"></div><div class="hstrip" id="hstrip" hidden></div><div class="hr"></div>
+    <div class="tabs" id="hometabs" style="padding-inline:20px;margin-top:6px">${ape?'<button data-ht="preipo" class="on">Pre-IPO</button><button data-ht="new">New launches</button><button data-ht="kings">Kings</button>':'<button data-ht="preipo" class="on">Pre-IPO</button><button data-ht="movers">Movers</button><button data-ht="explore">Explore</button><button data-ht="watch">Watchlist</button><button data-ht="news">News</button>'}</div>
     <div id="body"><div class="sec"><div class="skel" style="height:220px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div></div></div></div>`; },
   async mount(el,p,skin){
     const ape=skin==='ape', body=el.querySelector('#body'); bindMode(el);
@@ -74,6 +74,9 @@ SCREENS.home={
     if(!el.isConnected) return; indexStocks(pre.stocks); cols.collections.forEach(c=>indexStocks(c.stocks||[])); updateDataStatus();
     if(!ape) bindStrip(el,[...pre.stocks,...(mov.mostTraded||[]).slice(0,4)].map(x=>({id:x.mint,label:x.symbol,price:x.priceUsd,change24h:x.change24h})),false);
     const bind=()=>{ bindRows(el); el.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>root(b.dataset.tab)); };
+    api('/news/ticker',60000).then(d=>{ const box=el.querySelector('#hstrip'); if(!el.isConnected||!box||!(d.items||[]).length) return;
+      box.innerHTML=d.items.map(i=>{ NEWS_BY_ID.set(i.id,i); return `<button data-nid="${esc(i.id)}"><span class="hm"><b style="color:var(--ink)">${esc(i.symbol)}</b>${i.change24h!=null?`<span class="${fmt.cls(i.change24h)}">${fmt.arrow(i.change24h,1)}</span>`:''}<span class="faint">·</span><span>${fmt.ago(i.publishedAt)}</span></span><span class="hl">${esc(i.title)}</span></button>`; }).join('');
+      box.hidden=false; bindNews(box); }).catch(()=>{});
     const featureCard=s=> ape
       ? `<button class="feature" data-stock="${s.mint}"><div class="top">${logo(s,44)}<div style="flex:1;min-width:0"><div class="h3">${esc(s.symbol)} floor</div><div class="sub">${s.memes} memes · ${s.launched24h} launched today</div></div>${s.king?avatar(s.king,'m'):''}</div>
       <div><div class="hero" style="font-size:34px;line-height:38px">${fmt.big(s.memeVol24hUsd)}</div><div class="sub" style="margin-top:4px">traded on the floor today · ${fmt.n(s.wallets24h)} apes</div></div>
@@ -90,6 +93,14 @@ SCREENS.home={
       explore(){ const cs=cols.collections.filter(c=>c.id!=='preipo'); let id=cs[0]?.id; const rows=()=>{ const c=cs.find(x=>x.id===id); return c?`<div class="card">${(c.stocks||[]).slice(0,6).map(s=>stockRow(s,skin)).join('')}</div><button class="link" data-tab="markets" style="height:44px">See all in Markets ${I.chev}</button>`:''; };
         setTimeout(()=>{ el.querySelectorAll('[data-col]').forEach(b=>b.onclick=()=>{ id=b.dataset.col; el.querySelectorAll('[data-col]').forEach(x=>x.classList.toggle('on',x===b)); el.querySelector('#colbody').innerHTML=rows(); bind(); }); });
         return `<div class="sec" style="padding-inline:0"><div class="chips">${cs.map(c=>`<button class="pill sm ${c.id===id?'on':''}" data-col="${c.id}">${esc(c.title)}</button>`).join('')}</div><div class="pad" id="colbody">${rows()}</div></div>`; },
+      async news(){ body.innerHTML=`<div class="sec">${'<div class="skel" style="height:66px"></div>'.repeat(4)}</div>`;
+        const mints=[...new Set([...state.watch,...(acct.wallet().holdings||[]).filter(h=>h.kind==='stock').map(h=>h.mint)])];
+        let d; try{ d=await api(`/news?limit=30${mints.length?'&mints='+mints.join(','):''}`,60000); }catch(e){ body.innerHTML='<div class="sec"><div class="errbar">Couldn\'t load the news.</div></div>'; return null; }
+        if(!el.isConnected) return null;
+        body.innerHTML=(d.items||[]).length
+          ? `<div class="sec"><div class="head"><div><div class="h2">Latest</div><div class="sub">${mints.length?'Your stocks first, then the rest of the market':'Newest across every stock'}</div></div></div><div class="nlist">${d.items.map(i=>newsRow(i)).join('')}</div></div>`
+          : '<div class="empty"><b>No news yet.</b><span class="sub">Headlines land here within 20 minutes of publication.</span></div>';
+        bind(); bindNews(body); return null; },
       watch(){ const w=state.watch.map(m=>state.stocksByMint[m]).filter(Boolean); return `<div class="sec">${w.length?`<div class="card">${w.map(s=>stockRow(s,skin)).join('')}</div>`:`<div class="empty">${I.star(false)}<b>Nothing watched yet</b><span class="sub">Tap the star on any stock to keep it here.</span><button class="link" data-tab="markets">Explore markets ${I.chev}</button></div>`}</div>`; },
       async new(){ body.innerHTML='<div class="sec"><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div></div>'; const d=await api('/tokens?column=new&limit=30'); if(!el.isConnected) return null;
         ws('floor',m=>{ if(m.t==='trade') flash(el.querySelector(`[data-mint="${m.mint}"]`),m.side); else if(m.t==='token'&&m.event==='created') setTimeout(async()=>{ try{ const t=await api('/tokens/'+m.mint,0); const l=el.querySelector('#newlist'); if(l){ l.insertAdjacentHTML('afterbegin',tokenRow(t,state.stocksByMint[t.quoteMint]?.symbol)); bind(); flash(l.firstElementChild,'buy'); } }catch(e){} },1500); });
@@ -130,7 +141,7 @@ SCREENS.stock={
     <div class="scroll" id="sc"><div id="body"><div class="pad"><div class="skel" style="width:40%;margin-top:12px"></div><div class="skel" style="height:44px;margin-top:10px"></div><div class="skel" style="height:200px;margin-top:20px"></div></div></div></div>`; },
   async mount(el,p){
     let s; try{ s=await api('/stocks/'+p.mint); state.stocksByMint[s.mint]=s; }catch(e){ s=state.stocksByMint[p.mint]; if(!s){ el.querySelector('#body').innerHTML=`<div class="errbar">Couldn't load this stock.</div>`; return; } }
-    const body=el.querySelector('#body'); let range='1d', longR='1w';
+    const body=el.querySelector('#body'); let range='1d', longR='1w', stab='overview', ins=null, fresh=0;
     const RANGES={live:{api:'5m',label:'LIVE',cap:'live'},'1h':{api:'1h',label:'1H',cap:'past hour'},'1d':{api:'1d',label:'1D',cap:'today'},'1w':{api:'1w',label:'7D',cap:'past 7 days'},'1m':{api:'1m',label:'30D',cap:'past 30 days'},all:{api:'1m',label:'ALL',cap:'all time'}};
     el.querySelector('#csub').innerHTML=`<span class="${fmt.cls(s.change24h)}">${fmt.arrow(s.change24h)}</span> today`;
     const abs=s.change24h==null?null:s.priceUsd-s.priceUsd/(1+s.change24h/100);
@@ -145,12 +156,9 @@ SCREENS.stock={
       <div class="ranges" style="margin-top:14px" id="rng"></div>
       <div class="pad" style="margin-top:18px"><div class="btns"><button class="btn buy" id="buy">Buy</button><button class="btn sellb" id="sell">Sell</button></div></div>
       <div class="hr" style="margin-top:26px"></div>
-      ${s.markUsd?(()=>{ const p=s.premiumPct||0, gap=s.priceUsd!=null?s.priceUsd-s.markUsd:null, neutral=Math.abs(p)<=0.25, what=s.issuer==='prestocks'?"PreStocks' mark from the last funding round":"the live Nasdaq price"; return `<div class="pad" style="margin-top:22px"><div class="sect">Fair value</div><div class="kcard">${kv('You pay',fmt.usd(s.priceUsd))}${kv("It's worth",fmt.usd(s.markUsd))}${kv(p>0?'Premium':p<0?'Discount':'Gap',`<span style="display:inline-flex;align-items:center;gap:8px">${gap!=null&&!neutral?fmt.usd(Math.abs(gap)):''}${premiumBadge(s)}</span>`)}<div class="sub" style="padding:12px 0">${neutral?`Trading at fair value — ${what}.`:`Buyers pay ${fmt.usd(Math.abs(gap))} ${p>0?'more':'less'} than ${what}.`}</div></div></div>`; })():''}
-      <div class="stack" style="padding-top:22px">
-        <div><div class="sect">Market stats</div><div class="kcard">${kv('Liquidity',fmt.big(s.liquidityUsd))}${kv('24h volume',fmt.big(s.stockVol24hUsd))}${kv('Buys · sells',`<span class="up">${fmt.n(s.buys24h)}</span> <span class="faint">/</span> <span class="dn">${fmt.n(s.sells24h)}</span>`)}${kv('Market',s.marketOpen?'Open':'After hours · trades 24/7 here')}</div></div>
-        <div><div class="sect">Buys vs sells · 24h</div><div class="kcard pad">${splitBar(s.buys24h,s.sells24h,'buys','sells')}</div></div>
-        <div><div class="sect">About</div><div class="kcard">${kv('Issuer',esc(s.issuer))}${kv('Category',esc(s.category))}${kv('Mint address',`<button style="display:inline-flex;gap:6px;align-items:center;color:var(--ink);font-weight:600" id="cpm">${fmt.short(s.mint)} ${I.copy}</button>`)}</div></div>
-      </div>
+      <div id="earn"></div>
+      <div class="tabs fill" id="stabs" style="padding-inline:20px;margin-top:20px"><button data-st="overview" class="on">Overview</button><button data-st="news">News<i class="ndot" hidden></i></button><button data-st="about">About</button></div>
+      <div id="stab"></div>
       <div class="pad" style="margin-top:20px"><span class="cc" data-data-status></span></div>`;
     updateDataStatus();
     const paintRanges=()=>{ el.querySelector('#rng').innerHTML=['live','1h','1d','long','all'].map(k=>{ const key=k==='long'?longR:k; const on=range===key; return k==='long'?`<button data-r="${longR}" data-long class="menu ${on?'on':''}">${RANGES[longR].label} ▾</button>`:`<button data-r="${key}" class="${on?'on':''}">${RANGES[key].label}</button>`; }).join('');
@@ -159,7 +167,28 @@ SCREENS.stock={
       const hp=el.querySelector('#hp'),hc=el.querySelector('#hc'),hc0=hc.innerHTML,hp0=hp.innerHTML; const first=h.points.find(p=>p.price!=null);
       attachScrub(chart.firstElementChild,p=>{ hp.innerHTML=fmt.usd(p.price); const d=first?(p.price-first.price)/first.price*100:null; hc.className='chg '+fmt.cls(d); hc.innerHTML=`${d==null?'':(d>=0?'+':'−')+Math.abs(d).toFixed(2)+'%'} <span class="muted" style="font-size:13px;font-weight:500">${new Date(p.t*1000).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</span>`; },()=>{ hp.innerHTML=hp0; hc.className='chg '+fmt.cls(s.change24h); hc.innerHTML=hc0; }); }catch(e){ if(range===req&&el.isConnected) chart.innerHTML=lineChart([]); } };
     paintRanges(); loadRange();
-    el.querySelector('#cpm').onclick=()=>copy(s.mint);
+    /* Overview keeps everything it had, plus the Nasdaq line, the live session and Key stats. */
+    const overview=()=>`
+      ${s.markUsd?(()=>{ const p=s.premiumPct||0, gap=s.priceUsd!=null?s.priceUsd-s.markUsd:null, neutral=Math.abs(p)<=0.25, what=s.issuer==='prestocks'?"PreStocks' mark from the last funding round":"the live Nasdaq price"; return `<div class="pad" style="margin-top:20px"><div class="sect">Fair value</div><div class="kcard">${kv('You pay',fmt.usd(s.priceUsd))}${kv("It's worth",fmt.usd(s.markUsd))}${kv(p>0?'Premium':p<0?'Discount':'Gap',`<span style="display:inline-flex;align-items:center;gap:8px">${gap!=null&&!neutral?fmt.usd(Math.abs(gap)):''}${premiumBadge(s)}</span>`)}<div class="sub" style="padding:12px 0">${neutral?`Trading at fair value — ${what}.`:`Buyers pay ${fmt.usd(Math.abs(gap))} ${p>0?'more':'less'} than ${what}.`}</div>${nasdaqLine(ins)}</div></div>`; })():''}
+      <div class="stack" style="padding-top:20px">
+        <div><div class="sect">Market stats</div><div class="kcard">${kv('Liquidity',fmt.big(s.liquidityUsd))}${kv('24h volume',fmt.big(s.stockVol24hUsd))}${kv('Buys · sells',`<span class="up">${fmt.n(s.buys24h)}</span> <span class="faint">/</span> <span class="dn">${fmt.n(s.sells24h)}</span>`)}${marketRow(ins,s)}</div></div>
+        ${keyStats(ins,s)}
+        <div><div class="sect">Buys vs sells · 24h</div><div class="kcard pad">${splitBar(s.buys24h,s.sells24h,'buys','sells')}</div></div>
+      </div>`;
+    const paintStab=()=>{ const m=el.querySelector('#stab'); if(!m) return;
+      if(stab==='news'){ el.querySelector('#stabs .ndot').hidden=true; fresh=0; paintNewsList(m,`/stocks/${s.mint}/news?`,s.symbol); return; }
+      m.innerHTML=stab==='about'?aboutCards(s,ins):overview();
+      const cp=m.querySelector('#cpm'); if(cp) cp.onclick=()=>copy(s.mint);
+      m.querySelectorAll('[data-web]').forEach(b=>b.onclick=()=>window.open(b.dataset.web,'_blank','noopener'));
+    };
+    el.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{ stab=b.dataset.st; el.querySelectorAll('[data-st]').forEach(x=>x.classList.toggle('on',x===b)); paintStab(); });
+    paintStab();
+    /* insights arrive after the first paint; Overview and About redraw when they do */
+    api(`/stocks/${s.mint}/insights`,300000).then(d=>{ if(!el.isConnected) return; ins=d;
+      el.querySelector('#earn').innerHTML=earningsNote(ins); if(stab!=='news') paintStab(); }).catch(()=>{});
+    /* a headline published while the page is open just flags the tab */
+    ws('stock:'+s.mint,m=>{ if(m.t!=='news') return; fresh++; const d=el.querySelector('#stabs .ndot'); if(d&&stab!=='news') d.hidden=false; });
+
     el.querySelector('#watch').onclick=()=>{ toggleWatch(s.mint); const f=state.watch.includes(s.mint); el.querySelector('#watch').innerHTML=`${I.star(f)}${f?'Watching':'Watch'}`; };
     el.querySelector('#share').onclick=()=>copy(location.href);
     el.querySelector('#buy').onclick=()=>buyFlow('stock',s,s); el.querySelector('#sell').onclick=()=>sellFlow(s.mint);
@@ -278,6 +307,7 @@ SCREENS.you={
   }
 };
 /*__BLOCK_ACCOUNT__*/
+/*__BLOCK_NEWS__*/
 /* ============ boot ============ */
 boot();
 </script>

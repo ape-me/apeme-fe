@@ -2,6 +2,7 @@ import re
 head=open('v3-head.html').read(); screens=open('v3-screens.html').read()
 data=open('data-lines.js').read(); bd=open('block-data.js').read(); bw=open('block-ws.js').read(); bs=open('block-sheet.js').read()
 screens=screens.replace('/*__BLOCK_ACCOUNT__*/',open('block-account.js').read())
+screens=screens.replace('/*__BLOCK_NEWS__*/',open('block-news.js').read())
 out=head.replace('/*__DATA__*/',data.strip()).replace('/*__BLOCK_DATA__*/',bd.strip()).replace('/*__BLOCK_WS__*/',bw.strip()).replace('/*__BLOCK_SHEET__*/',bs.strip())+screens
 open('apeme-v3.html','w').write(out); open('apeme-prototype.html','w').write(out)
 js=re.search(r'<script>(.*)</script>',out,re.S).group(1); open('/tmp/v3check.js','w').write(js.replace("document.getElementById('phone')","({querySelectorAll(){return[]},querySelector(){return null}})"))

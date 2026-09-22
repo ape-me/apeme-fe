@@ -232,6 +232,31 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .srch{display:flex;align-items:center;gap:10px;height:46px;padding:0 8px 0 16px;border-radius:999px;background:var(--surface);color:var(--muted)}
 .srch input{flex:1;min-width:0;border:0;background:none;outline:0;color:var(--ink);font-size:15px}.srch input::placeholder{color:var(--faint)}
 .srch .paste{height:32px;padding:0 12px;border-radius:999px;background:var(--surface2);font-size:12px;font-weight:600;color:var(--ink)}
+/* news */
+.nlist{display:flex;flex-direction:column}
+.nrow{display:flex;gap:12px;padding:14px 0;align-items:flex-start;cursor:pointer}
+.nrow+.nrow{border-top:1px solid var(--line)}
+.nthumb{width:40px;height:40px;border-radius:12px;flex-shrink:0;overflow:hidden;background:var(--surface2);display:block}
+.nthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.ngrow{flex:1;min-width:0;display:block}
+.nmeta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:12px;font-weight:500;color:var(--muted);min-height:18px}
+.nsym{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.nbs{display:inline-flex;gap:4px;margin-left:2px}
+.ntitle{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:15px;font-weight:600;line-height:20px;letter-spacing:-.015em;margin-top:5px;color:var(--ink)}
+.nb{height:17px;padding:0 6px;border-radius:5px;font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;display:inline-flex;align-items:center;white-space:nowrap}
+.nb.material{background:var(--amberT);color:var(--amber)}
+.nb.major,.nb.critical{background:var(--redT);color:var(--red)}
+.nb.bullish{background:var(--greenT);color:var(--green)}
+.nb.bearish{background:var(--redT);color:var(--red)}
+.nb.neutral{background:var(--surface2);color:var(--muted)}
+.rbar{position:relative;height:6px;border-radius:999px;background:var(--surface2)}
+.rbar .rdot{position:absolute;top:50%;width:12px;height:12px;border-radius:999px;background:var(--ink);border:2px solid var(--surface);box-sizing:border-box;transform:translate(-50%,-50%)}
+/* home headline strip */
+.hstrip{display:flex;overflow-x:auto;scrollbar-width:none;padding:2px 20px 12px}
+.hstrip::-webkit-scrollbar{display:none}
+.hstrip button{flex-shrink:0;width:230px;margin-right:8px;padding:10px 12px;border-radius:14px;background:var(--surface);text-align:left;display:flex;flex-direction:column;gap:5px}
+.hstrip .hm{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.hstrip .hl{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12.5px;font-weight:600;line-height:17px;color:var(--ink)}
 .skel{background:var(--surface);border-radius:12px;height:14px;animation:pulse 1.2s infinite}@keyframes pulse{50%{opacity:.5}}
 .errbar{margin:12px 20px 0;padding:12px 14px;border-radius:12px;background:var(--redT);color:var(--red);font-size:13px}
 .holdchip{font-size:12px;font-weight:600;padding:6px 10px;border-radius:999px;background:var(--surface2);color:var(--muted);display:inline-flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums}
@@ -303,7 +328,7 @@ const fmt={
     return '$'+n.toFixed(6);},
   cents(n){ if(n==null||isNaN(n)) return '—'; const [a,b]=n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).split('.'); return `$${a}<span class="cents">.${b}</span>`; },
   big(n,p='$'){ if(n==null||isNaN(n)) return '—'; const a=Math.abs(n); const s=n<0?'−':'';
-    if(a>=1e9) return s+p+(a/1e9).toFixed(1)+'B'; if(a>=1e6) return s+p+(a/1e6).toFixed(1)+'M'; if(a>=1e3) return s+p+(a/1e3).toFixed(1)+'K';
+    if(a>=1e12) return s+p+(a/1e12).toFixed(2)+'T'; if(a>=1e9) return s+p+(a/1e9).toFixed(1)+'B'; if(a>=1e6) return s+p+(a/1e6).toFixed(1)+'M'; if(a>=1e3) return s+p+(a/1e3).toFixed(1)+'K';
     return s+p+a.toFixed(a>=100?0:2);},
   n(n){ return n==null?'—':Math.round(n).toLocaleString('en-US'); },
   cash(n){ if(n==null||isNaN(n)) return '—'; if(n<0) return '−'+fmt.cash(-n); if(n>0&&n<0.005) return '<$0.01'; return '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); },
@@ -437,7 +462,7 @@ function candleChart(cs,w=390,h=200){
 function ws(room,onMsg){
  const screen=phone.querySelector('.screen');let connection,retry,heartbeat,stopped=false;
  const status=(text,live=false)=>{if(screen){screen.dataset.wsState=text;screen.dataset.wsLive=String(live)}if(screen?.isConnected)screen.querySelectorAll('[data-ws-status]').forEach(el=>el.innerHTML=`<i class="dots ${live?'live':''}"></i>${text}`)};
- const connect=()=>{if(stopped||!screen?.isConnected)return;status('Connecting');try{connection=new WebSocket(WSB+room);connection.onopen=()=>{status('Live',true);heartbeat=setInterval(()=>{if(connection.readyState===1)connection.send('ping')},25000)};connection.onmessage=e=>{if(!screen.isConnected)return;try{const frames=JSON.parse(e.data);(Array.isArray(frames)?frames:[frames]).forEach(m=>{if(m.t==='trade'||m.t==='token')onMsg(m)})}catch(e){}};connection.onerror=()=>status('Reconnecting');connection.onclose=()=>{clearInterval(heartbeat);if(!stopped&&screen.isConnected){status('Reconnecting');retry=setTimeout(connect,3000)}}}catch(e){status('Offline')}};
+ const connect=()=>{if(stopped||!screen?.isConnected)return;status('Connecting');try{connection=new WebSocket(WSB+room);connection.onopen=()=>{status('Live',true);heartbeat=setInterval(()=>{if(connection.readyState===1)connection.send('ping')},25000)};connection.onmessage=e=>{if(!screen.isConnected)return;try{const frames=JSON.parse(e.data);(Array.isArray(frames)?frames:[frames]).forEach(m=>{if(m.t==='trade'||m.t==='token'||m.t==='news')onMsg(m)})}catch(e){}};connection.onerror=()=>status('Reconnecting');connection.onclose=()=>{clearInterval(heartbeat);if(!stopped&&screen.isConnected){status('Reconnecting');retry=setTimeout(connect,3000)}}}catch(e){status('Offline')}};
  const handle={close(){stopped=true;clearTimeout(retry);clearInterval(heartbeat);connection?.close()}};sockets.push(handle);connect();return handle;
 }
 /* ============ sheets ============ */
@@ -551,8 +576,8 @@ SCREENS.invite={
 SCREENS.home={
   html(p,skin){ const ape=skin==='ape'; return `<div class="scroll" id="hs">
     <div class="pad" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:16px"><div class="h1">${ape?'Floors':'Home'}</div>${modeToggle()}</div>
-    <div id="strip" style="margin-top:10px"></div><div class="hr"></div>
-    <div class="tabs" id="hometabs" style="padding-inline:20px;margin-top:6px">${ape?'<button data-ht="preipo" class="on">Pre-IPO</button><button data-ht="new">New launches</button><button data-ht="kings">Kings</button>':'<button data-ht="preipo" class="on">Pre-IPO</button><button data-ht="movers">Movers</button><button data-ht="explore">Explore</button><button data-ht="watch">Watchlist</button>'}</div>
+    <div id="strip" style="margin-top:10px"></div><div class="hstrip" id="hstrip" hidden></div><div class="hr"></div>
+    <div class="tabs" id="hometabs" style="padding-inline:20px;margin-top:6px">${ape?'<button data-ht="preipo" class="on">Pre-IPO</button><button data-ht="new">New launches</button><button data-ht="kings">Kings</button>':'<button data-ht="preipo" class="on">Pre-IPO</button><button data-ht="movers">Movers</button><button data-ht="explore">Explore</button><button data-ht="watch">Watchlist</button><button data-ht="news">News</button>'}</div>
     <div id="body"><div class="sec"><div class="skel" style="height:220px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div></div></div></div>`; },
   async mount(el,p,skin){
     const ape=skin==='ape', body=el.querySelector('#body'); bindMode(el);
@@ -561,6 +586,9 @@ SCREENS.home={
     if(!el.isConnected) return; indexStocks(pre.stocks); cols.collections.forEach(c=>indexStocks(c.stocks||[])); updateDataStatus();
     if(!ape) bindStrip(el,[...pre.stocks,...(mov.mostTraded||[]).slice(0,4)].map(x=>({id:x.mint,label:x.symbol,price:x.priceUsd,change24h:x.change24h})),false);
     const bind=()=>{ bindRows(el); el.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>root(b.dataset.tab)); };
+    api('/news/ticker',60000).then(d=>{ const box=el.querySelector('#hstrip'); if(!el.isConnected||!box||!(d.items||[]).length) return;
+      box.innerHTML=d.items.map(i=>{ NEWS_BY_ID.set(i.id,i); return `<button data-nid="${esc(i.id)}"><span class="hm"><b style="color:var(--ink)">${esc(i.symbol)}</b>${i.change24h!=null?`<span class="${fmt.cls(i.change24h)}">${fmt.arrow(i.change24h,1)}</span>`:''}<span class="faint">·</span><span>${fmt.ago(i.publishedAt)}</span></span><span class="hl">${esc(i.title)}</span></button>`; }).join('');
+      box.hidden=false; bindNews(box); }).catch(()=>{});
     const featureCard=s=> ape
       ? `<button class="feature" data-stock="${s.mint}"><div class="top">${logo(s,44)}<div style="flex:1;min-width:0"><div class="h3">${esc(s.symbol)} floor</div><div class="sub">${s.memes} memes · ${s.launched24h} launched today</div></div>${s.king?avatar(s.king,'m'):''}</div>
       <div><div class="hero" style="font-size:34px;line-height:38px">${fmt.big(s.memeVol24hUsd)}</div><div class="sub" style="margin-top:4px">traded on the floor today · ${fmt.n(s.wallets24h)} apes</div></div>
@@ -577,6 +605,14 @@ SCREENS.home={
       explore(){ const cs=cols.collections.filter(c=>c.id!=='preipo'); let id=cs[0]?.id; const rows=()=>{ const c=cs.find(x=>x.id===id); return c?`<div class="card">${(c.stocks||[]).slice(0,6).map(s=>stockRow(s,skin)).join('')}</div><button class="link" data-tab="markets" style="height:44px">See all in Markets ${I.chev}</button>`:''; };
         setTimeout(()=>{ el.querySelectorAll('[data-col]').forEach(b=>b.onclick=()=>{ id=b.dataset.col; el.querySelectorAll('[data-col]').forEach(x=>x.classList.toggle('on',x===b)); el.querySelector('#colbody').innerHTML=rows(); bind(); }); });
         return `<div class="sec" style="padding-inline:0"><div class="chips">${cs.map(c=>`<button class="pill sm ${c.id===id?'on':''}" data-col="${c.id}">${esc(c.title)}</button>`).join('')}</div><div class="pad" id="colbody">${rows()}</div></div>`; },
+      async news(){ body.innerHTML=`<div class="sec">${'<div class="skel" style="height:66px"></div>'.repeat(4)}</div>`;
+        const mints=[...new Set([...state.watch,...(acct.wallet().holdings||[]).filter(h=>h.kind==='stock').map(h=>h.mint)])];
+        let d; try{ d=await api(`/news?limit=30${mints.length?'&mints='+mints.join(','):''}`,60000); }catch(e){ body.innerHTML='<div class="sec"><div class="errbar">Couldn\'t load the news.</div></div>'; return null; }
+        if(!el.isConnected) return null;
+        body.innerHTML=(d.items||[]).length
+          ? `<div class="sec"><div class="head"><div><div class="h2">Latest</div><div class="sub">${mints.length?'Your stocks first, then the rest of the market':'Newest across every stock'}</div></div></div><div class="nlist">${d.items.map(i=>newsRow(i)).join('')}</div></div>`
+          : '<div class="empty"><b>No news yet.</b><span class="sub">Headlines land here within 20 minutes of publication.</span></div>';
+        bind(); bindNews(body); return null; },
       watch(){ const w=state.watch.map(m=>state.stocksByMint[m]).filter(Boolean); return `<div class="sec">${w.length?`<div class="card">${w.map(s=>stockRow(s,skin)).join('')}</div>`:`<div class="empty">${I.star(false)}<b>Nothing watched yet</b><span class="sub">Tap the star on any stock to keep it here.</span><button class="link" data-tab="markets">Explore markets ${I.chev}</button></div>`}</div>`; },
       async new(){ body.innerHTML='<div class="sec"><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div></div>'; const d=await api('/tokens?column=new&limit=30'); if(!el.isConnected) return null;
         ws('floor',m=>{ if(m.t==='trade') flash(el.querySelector(`[data-mint="${m.mint}"]`),m.side); else if(m.t==='token'&&m.event==='created') setTimeout(async()=>{ try{ const t=await api('/tokens/'+m.mint,0); const l=el.querySelector('#newlist'); if(l){ l.insertAdjacentHTML('afterbegin',tokenRow(t,state.stocksByMint[t.quoteMint]?.symbol)); bind(); flash(l.firstElementChild,'buy'); } }catch(e){} },1500); });
@@ -617,7 +653,7 @@ SCREENS.stock={
     <div class="scroll" id="sc"><div id="body"><div class="pad"><div class="skel" style="width:40%;margin-top:12px"></div><div class="skel" style="height:44px;margin-top:10px"></div><div class="skel" style="height:200px;margin-top:20px"></div></div></div></div>`; },
   async mount(el,p){
     let s; try{ s=await api('/stocks/'+p.mint); state.stocksByMint[s.mint]=s; }catch(e){ s=state.stocksByMint[p.mint]; if(!s){ el.querySelector('#body').innerHTML=`<div class="errbar">Couldn't load this stock.</div>`; return; } }
-    const body=el.querySelector('#body'); let range='1d', longR='1w';
+    const body=el.querySelector('#body'); let range='1d', longR='1w', stab='overview', ins=null, fresh=0;
     const RANGES={live:{api:'5m',label:'LIVE',cap:'live'},'1h':{api:'1h',label:'1H',cap:'past hour'},'1d':{api:'1d',label:'1D',cap:'today'},'1w':{api:'1w',label:'7D',cap:'past 7 days'},'1m':{api:'1m',label:'30D',cap:'past 30 days'},all:{api:'1m',label:'ALL',cap:'all time'}};
     el.querySelector('#csub').innerHTML=`<span class="${fmt.cls(s.change24h)}">${fmt.arrow(s.change24h)}</span> today`;
     const abs=s.change24h==null?null:s.priceUsd-s.priceUsd/(1+s.change24h/100);
@@ -632,12 +668,9 @@ SCREENS.stock={
       <div class="ranges" style="margin-top:14px" id="rng"></div>
       <div class="pad" style="margin-top:18px"><div class="btns"><button class="btn buy" id="buy">Buy</button><button class="btn sellb" id="sell">Sell</button></div></div>
       <div class="hr" style="margin-top:26px"></div>
-      ${s.markUsd?(()=>{ const p=s.premiumPct||0, gap=s.priceUsd!=null?s.priceUsd-s.markUsd:null, neutral=Math.abs(p)<=0.25, what=s.issuer==='prestocks'?"PreStocks' mark from the last funding round":"the live Nasdaq price"; return `<div class="pad" style="margin-top:22px"><div class="sect">Fair value</div><div class="kcard">${kv('You pay',fmt.usd(s.priceUsd))}${kv("It's worth",fmt.usd(s.markUsd))}${kv(p>0?'Premium':p<0?'Discount':'Gap',`<span style="display:inline-flex;align-items:center;gap:8px">${gap!=null&&!neutral?fmt.usd(Math.abs(gap)):''}${premiumBadge(s)}</span>`)}<div class="sub" style="padding:12px 0">${neutral?`Trading at fair value — ${what}.`:`Buyers pay ${fmt.usd(Math.abs(gap))} ${p>0?'more':'less'} than ${what}.`}</div></div></div>`; })():''}
-      <div class="stack" style="padding-top:22px">
-        <div><div class="sect">Market stats</div><div class="kcard">${kv('Liquidity',fmt.big(s.liquidityUsd))}${kv('24h volume',fmt.big(s.stockVol24hUsd))}${kv('Buys · sells',`<span class="up">${fmt.n(s.buys24h)}</span> <span class="faint">/</span> <span class="dn">${fmt.n(s.sells24h)}</span>`)}${kv('Market',s.marketOpen?'Open':'After hours · trades 24/7 here')}</div></div>
-        <div><div class="sect">Buys vs sells · 24h</div><div class="kcard pad">${splitBar(s.buys24h,s.sells24h,'buys','sells')}</div></div>
-        <div><div class="sect">About</div><div class="kcard">${kv('Issuer',esc(s.issuer))}${kv('Category',esc(s.category))}${kv('Mint address',`<button style="display:inline-flex;gap:6px;align-items:center;color:var(--ink);font-weight:600" id="cpm">${fmt.short(s.mint)} ${I.copy}</button>`)}</div></div>
-      </div>
+      <div id="earn"></div>
+      <div class="tabs fill" id="stabs" style="padding-inline:20px;margin-top:20px"><button data-st="overview" class="on">Overview</button><button data-st="news">News<i class="ndot" hidden></i></button><button data-st="about">About</button></div>
+      <div id="stab"></div>
       <div class="pad" style="margin-top:20px"><span class="cc" data-data-status></span></div>`;
     updateDataStatus();
     const paintRanges=()=>{ el.querySelector('#rng').innerHTML=['live','1h','1d','long','all'].map(k=>{ const key=k==='long'?longR:k; const on=range===key; return k==='long'?`<button data-r="${longR}" data-long class="menu ${on?'on':''}">${RANGES[longR].label} ▾</button>`:`<button data-r="${key}" class="${on?'on':''}">${RANGES[key].label}</button>`; }).join('');
@@ -646,7 +679,28 @@ SCREENS.stock={
       const hp=el.querySelector('#hp'),hc=el.querySelector('#hc'),hc0=hc.innerHTML,hp0=hp.innerHTML; const first=h.points.find(p=>p.price!=null);
       attachScrub(chart.firstElementChild,p=>{ hp.innerHTML=fmt.usd(p.price); const d=first?(p.price-first.price)/first.price*100:null; hc.className='chg '+fmt.cls(d); hc.innerHTML=`${d==null?'':(d>=0?'+':'−')+Math.abs(d).toFixed(2)+'%'} <span class="muted" style="font-size:13px;font-weight:500">${new Date(p.t*1000).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</span>`; },()=>{ hp.innerHTML=hp0; hc.className='chg '+fmt.cls(s.change24h); hc.innerHTML=hc0; }); }catch(e){ if(range===req&&el.isConnected) chart.innerHTML=lineChart([]); } };
     paintRanges(); loadRange();
-    el.querySelector('#cpm').onclick=()=>copy(s.mint);
+    /* Overview keeps everything it had, plus the Nasdaq line, the live session and Key stats. */
+    const overview=()=>`
+      ${s.markUsd?(()=>{ const p=s.premiumPct||0, gap=s.priceUsd!=null?s.priceUsd-s.markUsd:null, neutral=Math.abs(p)<=0.25, what=s.issuer==='prestocks'?"PreStocks' mark from the last funding round":"the live Nasdaq price"; return `<div class="pad" style="margin-top:20px"><div class="sect">Fair value</div><div class="kcard">${kv('You pay',fmt.usd(s.priceUsd))}${kv("It's worth",fmt.usd(s.markUsd))}${kv(p>0?'Premium':p<0?'Discount':'Gap',`<span style="display:inline-flex;align-items:center;gap:8px">${gap!=null&&!neutral?fmt.usd(Math.abs(gap)):''}${premiumBadge(s)}</span>`)}<div class="sub" style="padding:12px 0">${neutral?`Trading at fair value — ${what}.`:`Buyers pay ${fmt.usd(Math.abs(gap))} ${p>0?'more':'less'} than ${what}.`}</div>${nasdaqLine(ins)}</div></div>`; })():''}
+      <div class="stack" style="padding-top:20px">
+        <div><div class="sect">Market stats</div><div class="kcard">${kv('Liquidity',fmt.big(s.liquidityUsd))}${kv('24h volume',fmt.big(s.stockVol24hUsd))}${kv('Buys · sells',`<span class="up">${fmt.n(s.buys24h)}</span> <span class="faint">/</span> <span class="dn">${fmt.n(s.sells24h)}</span>`)}${marketRow(ins,s)}</div></div>
+        ${keyStats(ins,s)}
+        <div><div class="sect">Buys vs sells · 24h</div><div class="kcard pad">${splitBar(s.buys24h,s.sells24h,'buys','sells')}</div></div>
+      </div>`;
+    const paintStab=()=>{ const m=el.querySelector('#stab'); if(!m) return;
+      if(stab==='news'){ el.querySelector('#stabs .ndot').hidden=true; fresh=0; paintNewsList(m,`/stocks/${s.mint}/news?`,s.symbol); return; }
+      m.innerHTML=stab==='about'?aboutCards(s,ins):overview();
+      const cp=m.querySelector('#cpm'); if(cp) cp.onclick=()=>copy(s.mint);
+      m.querySelectorAll('[data-web]').forEach(b=>b.onclick=()=>window.open(b.dataset.web,'_blank','noopener'));
+    };
+    el.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{ stab=b.dataset.st; el.querySelectorAll('[data-st]').forEach(x=>x.classList.toggle('on',x===b)); paintStab(); });
+    paintStab();
+    /* insights arrive after the first paint; Overview and About redraw when they do */
+    api(`/stocks/${s.mint}/insights`,300000).then(d=>{ if(!el.isConnected) return; ins=d;
+      el.querySelector('#earn').innerHTML=earningsNote(ins); if(stab!=='news') paintStab(); }).catch(()=>{});
+    /* a headline published while the page is open just flags the tab */
+    ws('stock:'+s.mint,m=>{ if(m.t!=='news') return; fresh++; const d=el.querySelector('#stabs .ndot'); if(d&&stab!=='news') d.hidden=false; });
+
     el.querySelector('#watch').onclick=()=>{ toggleWatch(s.mint); const f=state.watch.includes(s.mint); el.querySelector('#watch').innerHTML=`${I.star(f)}${f?'Watching':'Watch'}`; };
     el.querySelector('#share').onclick=()=>copy(location.href);
     el.querySelector('#buy').onclick=()=>buyFlow('stock',s,s); el.querySelector('#sell').onclick=()=>sellFlow(s.mint);
@@ -1089,6 +1143,141 @@ SCREENS.you={
     el.querySelector('#out').onclick=()=>dialog('Sign out?','Your wallet stays with your account. Sign back in any time.',[{label:'Cancel'},{label:'Sign out',cls:'danger',onClick(){ auth.signOut(); }}]);
   }
 };
+
+/* ============ news & insights (BE: /stocks/:mint/insights, /news, /news/ticker) ============ */
+const NEWS_BY_ID=new Map();
+const SESSION_LABEL={pre:'Pre-market',open:'Market open',post:'After hours',closed:'Closed'};
+
+/* Only material and worse earns a badge — minor is noise, none/null is nothing (BE's call). */
+function newsBadges(i){
+  let out='';
+  if(i.impact==='material'||i.impact==='major'||i.impact==='critical') out+=`<span class="nb ${i.impact}">${i.impact}</span>`;
+  if(i.direction) out+=`<span class="nb ${i.direction}">${i.direction}</span>`;
+  return out;
+}
+const newsImg=i=>i.articleImage||i.image;
+
+/* [logo] SYM ▲1.14% · Source · 2h ago [MATERIAL][BEARISH] / two-line title */
+function newsRow(i,{sym=true}={}){
+  NEWS_BY_ID.set(i.id,i);
+  const b=newsBadges(i);
+  return `<div class="nrow">
+    <span class="nthumb" data-nstock="${esc(i.mint)}">${newsImg(i)?`<img src="${esc(imgSrc(newsImg(i)))}" alt="" onerror="this.remove()">`:''}</span>
+    <span class="ngrow" data-nid="${esc(i.id)}">
+      <span class="nmeta">${sym?`<b class="nsym" data-nstock="${esc(i.mint)}">${esc(i.symbol)}${i.change24h!=null?` <span class="${fmt.cls(i.change24h)}">${fmt.arrow(i.change24h,2)}</span>`:''}</b><span class="faint">·</span>`:''}<span>${esc(i.source)}</span><span class="faint">·</span><span>${fmt.ago(i.publishedAt)} ago</span>${b?`<span class="nbs">${b}</span>`:''}</span>
+      <span class="ntitle">${esc(i.title)}</span>
+    </span></div>`;
+}
+
+function bindNews(scope){
+  scope.querySelectorAll('[data-nid]').forEach(e=>e.onclick=ev=>{ ev.stopPropagation(); const i=NEWS_BY_ID.get(e.dataset.nid); if(i) articleSheet(i); });
+  scope.querySelectorAll('[data-nstock]').forEach(e=>e.onclick=ev=>{ ev.stopPropagation(); push(state.mode==='ape'?'floor':'stock',{mint:e.dataset.nstock}); });
+}
+
+/* The article lives on the publisher's site — the app opens it in Safari Reader without leaving. */
+function articleSheet(i){
+  openSheet(`<div class="grab"></div>
+    <div class="sheet-title"><div style="display:flex;align-items:center;gap:10px">${logo({symbol:i.symbol,logo:i.image},28)}<div><div class="h3">${esc(i.symbol)}</div><div class="sub">${esc(i.source)} · ${fmt.ago(i.publishedAt)} ago</div></div></div><button class="iconbtn" data-close aria-label="Close">${I.x}</button></div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      ${newsBadges(i)?`<div class="nbs">${newsBadges(i)}</div>`:''}
+      <div class="h2" style="line-height:27px;text-wrap:balance">${esc(i.title)}</div>
+      ${i.articleImage?`<img src="${esc(imgSrc(i.articleImage))}" alt="" style="width:100%;max-height:200px;object-fit:cover;border-radius:14px;display:block" onerror="this.remove()">`:''}
+      ${i.summary?`<div style="font-size:15px;line-height:22px;color:var(--muted)">${esc(i.summary)}</div>`:''}
+      <button class="btn ghost" id="read">Read on ${esc(i.source)} ↗</button>
+      <div style="font-size:12px;color:var(--faint);text-align:center;line-height:16px">In the app this opens in Safari Reader — you stay inside ApeMe.</div>
+    </div>
+    <div style="flex:1;min-height:12px"></div>
+    <button class="btn buy" id="trade">Trade ${esc(i.symbol)}</button>`,w=>{
+    w.querySelector('#read').onclick=()=>window.open(i.url,'_blank','noopener');
+    w.querySelector('#trade').onclick=()=>{ w.close(); const s=state.stocksByMint[i.mint];
+      push(state.mode==='ape'?'floor':'stock',{mint:i.mint});
+      if(s) setTimeout(()=>buyFlow('stock',s,s),360); };
+  });
+}
+
+/* ---- insights: the brokerage half of the stock page ---- */
+function marketRow(ins,s){
+  const m=ins?.market;
+  /* pre-IPO names have no ticker and no session to report — they only ever trade here */
+  if(ins&&!ins.ticker) return kv('Market','No market hours · trades 24/7 here');
+  const label=m?(SESSION_LABEL[m.session]||(m.isOpen?'Market open':'Closed')):(s.marketOpen?'Market open':'Closed');
+  return kv('Market',`${label}${m?.holiday?` · ${esc(m.holiday)}`:''} · trades 24/7 here`);
+}
+
+/* nasdaq.last is the live print and premiumVsLastPct is measured against it — never prevClose. */
+function nasdaqLine(ins){
+  const n=ins?.nasdaq; if(!n||n.last==null) return '';
+  const p=ins.premiumVsLastPct;
+  return `<div class="sub" style="padding:12px 0;border-top:1px solid var(--line)">Nasdaq <b style="color:var(--ink)">${fmt.usd(n.last)}</b>${p==null?'':` · here <b class="${fmt.cls(p)}">${fmt.pct(p,2)}</b>`}</div>`;
+}
+
+const shortDate=d=>d?new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+
+/* Close earnings are a banner; far-off ones are just another stat. */
+function earningsNote(ins){
+  const e=ins?.earnings; if(!e||e.inDays==null||e.inDays>30) return '';
+  return `<div class="pad" style="margin-top:14px"><div class="notice">${I.warn}<span>Earnings in ${e.inDays} day${e.inDays===1?'':'s'} · ${shortDate(e.date)}, ${esc(e.when||'')}</span></div></div>`;
+}
+
+function keyStats(ins,s){
+  const st=ins?.stats; if(!st) return '';
+  let bar='';
+  if(st.low52w!=null&&st.high52w!=null&&st.high52w>st.low52w&&s.priceUsd!=null){
+    const at=Math.max(0,Math.min(100,(s.priceUsd-st.low52w)/(st.high52w-st.low52w)*100));
+    bar=`<div class="kcard pad" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="sub">52-week range</span><b class="mono" style="font-size:15px">${fmt.usd(s.priceUsd)}</b></div>
+      <div class="rbar"><span class="rdot" style="left:${at.toFixed(1)}%"></span></div>
+      <div class="mono" style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)"><span>${fmt.usd(st.low52w)}</span><span>${fmt.usd(st.high52w)}</span></div></div>`;
+  }
+  const rows=[];
+  if(st.marketCapUsd!=null) rows.push(kv('Market cap',fmt.big(st.marketCapUsd)));
+  if(st.peTtm!=null) rows.push(kv('P/E (TTM)',st.peTtm.toFixed(2)));
+  if(st.epsTtm!=null) rows.push(kv('EPS (TTM)',fmt.usd(st.epsTtm)));
+  if(st.dividendYieldPct!=null) rows.push(kv('Dividend yield',st.dividendYieldPct.toFixed(2)+'%'));
+  if(st.beta!=null) rows.push(kv('Beta',st.beta.toFixed(2)));
+  const e=ins.earnings;
+  if(e&&e.date&&(e.inDays==null||e.inDays>30)) rows.push(kv('Next earnings',`${shortDate(e.date)}${e.when?' · '+esc(e.when):''}`));
+  if(!bar&&!rows.length) return '';
+  return `<div><div class="sect">Key stats</div>${bar}${rows.length?`<div class="kcard"${bar?' style="margin-top:10px"':''}>${rows.join('')}</div>`:''}</div>`;
+}
+
+function aboutCards(s,ins){
+  const c=ins?.company, rows=[];
+  if(c){
+    if(c.name) rows.push(kv('Company',esc(c.name)));
+    if(c.sector) rows.push(kv('Sector',esc(c.sector)));
+    if(c.exchange) rows.push(kv('Exchange',esc(c.exchange)));
+    if(c.ipo) rows.push(kv('IPO',new Date(c.ipo+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})));
+    if(c.website) rows.push(kv('Website',`<button data-web="${esc(c.website)}" style="color:var(--ink);font-weight:600">${esc(c.website.replace(/^https?:\/\//,'').replace(/\/$/,''))} ↗</button>`));
+  }
+  return `<div class="stack" style="padding-top:20px">
+    ${rows.length?`<div><div class="sect">Company</div><div class="kcard">${rows.join('')}</div></div>`:''}
+    <div><div class="sect">On chain</div><div class="kcard">${kv('Issuer',esc(s.issuer))}${kv('Category',esc(s.category))}${kv('Mint address',`<button style="display:inline-flex;gap:6px;align-items:center;color:var(--ink);font-weight:600" id="cpm">${fmt.short(s.mint)} ${I.copy}</button>`)}</div></div>
+  </div>`;
+}
+
+/* ---- news list, paged with ?before=<publishedAt> ---- */
+async function paintNewsList(mount,path,symbol){
+  mount.innerHTML=`<div class="pad" style="padding-top:8px">${'<div class="skel" style="height:66px;margin-top:14px"></div>'.repeat(3)}</div>`;
+  let items;
+  try{ items=(await api(`${path}limit=5`,60000)).items||[]; }
+  catch(e){ mount.innerHTML=`<div class="pad" style="padding-top:18px"><div class="errbar">Couldn't load the news.</div></div>`; return; }
+  if(!mount.isConnected) return;
+  if(!items.length){ mount.innerHTML=`<div class="empty" style="margin-top:20px"><b>No news yet for ${esc(symbol)}</b><span class="sub">Headlines land here within 20 minutes of publication.</span></div>`; return; }
+  const render=()=>{
+    mount.innerHTML=`<div class="pad" style="padding-top:4px"><div class="nlist">${items.map(i=>newsRow(i,{sym:false})).join('')}</div>
+      ${items.length>=5?`<button class="btn ghost" id="more" style="width:100%;margin-top:16px">More headlines</button>`:''}</div>`;
+    bindNews(mount);
+    const more=mount.querySelector('#more');
+    if(more) more.onclick=async()=>{ more.textContent='Loading…';
+      try{ const d=await api(`${path}limit=20&before=${items[items.length-1].publishedAt}`,60000);
+        const add=(d.items||[]).filter(x=>!items.some(y=>y.id===x.id));
+        if(!add.length){ more.textContent='That’s all for now'; more.disabled=true; return; }
+        items=items.concat(add); render();
+      }catch(e){ more.textContent='Try again'; } };
+  };
+  render();
+}
 
 /* ============ boot ============ */
 boot();
