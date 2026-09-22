@@ -65,7 +65,7 @@ SCREENS.home={
   html(p,skin){ const ape=skin==='ape'; return `<div class="scroll" id="hs">
     <div class="pad" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:16px"><div class="h1">${ape?'Floors':'Home'}</div>${modeToggle()}</div>
     <div id="strip" style="margin-top:10px"></div><div class="hstrip" id="hstrip" hidden></div><div class="hr"></div>
-    <div class="tabs" id="hometabs" style="padding-inline:20px;margin-top:6px">${ape?'<button data-ht="preipo" class="on">Pre-IPO</button><button data-ht="new">New launches</button><button data-ht="kings">Kings</button>':'<button data-ht="preipo" class="on">Pre-IPO</button><button data-ht="movers">Movers</button><button data-ht="explore">Explore</button><button data-ht="watch">Watchlist</button><button data-ht="news">News</button>'}</div>
+    <div class="tabs" id="hometabs" style="padding-inline:20px;margin-top:6px">${ape?'<button data-ht="preipo" class="on">Pre-IPO</button><button data-ht="new">New launches</button><button data-ht="kings">Kings</button>':'<button data-ht="news" class="on">News</button><button data-ht="preipo">Pre-IPO</button><button data-ht="movers">Movers</button><button data-ht="explore">Explore</button><button data-ht="watch">Watchlist</button>'}</div>
     <div id="body"><div class="sec"><div class="skel" style="height:220px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div></div></div></div>`; },
   async mount(el,p,skin){
     const ape=skin==='ape', body=el.querySelector('#body'); bindMode(el);
@@ -74,9 +74,9 @@ SCREENS.home={
     if(!el.isConnected) return; indexStocks(pre.stocks); cols.collections.forEach(c=>indexStocks(c.stocks||[])); updateDataStatus();
     if(!ape) bindStrip(el,[...pre.stocks,...(mov.mostTraded||[]).slice(0,4)].map(x=>({id:x.mint,label:x.symbol,price:x.priceUsd,change24h:x.change24h})),false);
     const bind=()=>{ bindRows(el); el.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>root(b.dataset.tab)); };
-    api('/news/ticker',60000).then(d=>{ const box=el.querySelector('#hstrip'); if(!el.isConnected||!box||!(d.items||[]).length) return;
+    api('/news?minImpact=material&perStock=1&limit=12',60000).then(d=>{ const box=el.querySelector('#hstrip'); if(!el.isConnected||!box||!(d.items||[]).length) return;
       box.innerHTML=d.items.map(i=>{ NEWS_BY_ID.set(i.id,i); return `<button data-nid="${esc(i.id)}"><span class="hm"><b style="color:var(--ink)">${esc(i.symbol)}</b>${i.change24h!=null?`<span class="${fmt.cls(i.change24h)}">${fmt.arrow(i.change24h,1)}</span>`:''}<span class="faint">·</span><span>${fmt.ago(i.publishedAt)}</span></span><span class="hl">${esc(i.title)}</span></button>`; }).join('');
-      box.hidden=false; bindNews(box); }).catch(()=>{});
+      box.dataset.filled='1'; box.hidden=el.querySelector('[data-ht].on')?.dataset.ht==='news'; bindNews(box); }).catch(()=>{});
     const featureCard=s=> ape
       ? `<button class="feature" data-stock="${s.mint}"><div class="top">${logo(s,44)}<div style="flex:1;min-width:0"><div class="h3">${esc(s.symbol)} floor</div><div class="sub">${s.memes} memes · ${s.launched24h} launched today</div></div>${s.king?avatar(s.king,'m'):''}</div>
       <div><div class="hero" style="font-size:34px;line-height:38px">${fmt.big(s.memeVol24hUsd)}</div><div class="sub" style="margin-top:4px">traded on the floor today · ${fmt.n(s.wallets24h)} apes</div></div>
@@ -110,8 +110,9 @@ SCREENS.home={
     };
     const show=async(t)=>{ closeSockets(); const h=await tabs[t](); if(h==null||!el.isConnected) return; body.innerHTML=h; bind();
       const pg=el.querySelector('#pager'); if(pg){ const ds=[...el.querySelectorAll('#pdots i')]; pg.addEventListener('scroll',()=>{ const i=Math.round(pg.scrollLeft/(pg.firstElementChild.offsetWidth+12)); ds.forEach((d,j)=>d.classList.toggle('on',j===i)); },{passive:true}); } };
-    el.querySelectorAll('[data-ht]').forEach(b=>b.onclick=()=>{ el.querySelectorAll('[data-ht]').forEach(x=>x.classList.toggle('on',x===b)); show(b.dataset.ht); });
-    await show('preipo');
+    const syncStrip=t=>{ const box=el.querySelector('#hstrip'); if(box) box.hidden=(t==='news')||!box.dataset.filled; };
+    el.querySelectorAll('[data-ht]').forEach(b=>b.onclick=()=>{ el.querySelectorAll('[data-ht]').forEach(x=>x.classList.toggle('on',x===b)); syncStrip(b.dataset.ht); show(b.dataset.ht); });
+    await show('news');
   }
 };
 /* --- markets --- */

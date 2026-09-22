@@ -1,4 +1,4 @@
-/* ============ news & insights (BE: /stocks/:mint/insights, /news, /news/ticker) ============ */
+/* ============ news & insights (BE: /stocks/:mint/insights, /news) ============ */
 const NEWS_BY_ID=new Map();
 const SESSION_LABEL={pre:'Pre-market',open:'Market open',post:'After hours',closed:'Closed'};
 
