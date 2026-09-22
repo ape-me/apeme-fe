@@ -51,49 +51,74 @@ function articleSheet(i){
 }
 
 /* ---- insights: the brokerage half of the stock page ---- */
-function marketRow(ins,s){
-  const m=ins?.market;
-  /* pre-IPO names have no ticker and no session to report — they only ever trade here */
-  if(ins&&!ins.ticker) return kv('Market','No market hours · trades 24/7 here');
-  const label=m?(SESSION_LABEL[m.session]||(m.isOpen?'Market open':'Closed')):(s.marketOpen?'Market open':'Closed');
-  return kv('Market',`${label}${m?.holiday?` · ${esc(m.holiday)}`:''} · trades 24/7 here`);
-}
+const SESSION_LABEL2={pre:'Pre-market',open:'Market open',post:'After hours',closed:'Closed'};
 
-/* nasdaq.last is the live print and premiumVsLastPct is measured against it — never prevClose. */
+/* nasdaq.last is the live print; while the market is shut it IS yesterday's close, so say so
+   rather than dressing a stale number up as live. premiumVsLastPct is measured against it. */
 function nasdaqLine(ins){
   const n=ins?.nasdaq; if(!n||n.last==null) return '';
+  const open=ins.market?.session==='open';
   const p=ins.premiumVsLastPct;
-  return `<div class="sub" style="padding:12px 0;border-top:1px solid var(--line)">Nasdaq <b style="color:var(--ink)">${fmt.usd(n.last)}</b>${p==null?'':` · here <b class="${fmt.cls(p)}">${fmt.pct(p,2)}</b>`}</div>`;
+  const age=open&&n.asOf?` · ${fmt.ago(n.asOf)} ago`:'';
+  return `<div class="sub" style="padding:12px 0;border-top:1px solid var(--line);line-height:19px">
+    ${open?'Nasdaq':'Nasdaq close'} <b style="color:var(--ink)">${fmt.usd(n.last)}</b>${age}${p==null?'':` · here <b class="${fmt.cls(-p)}">${fmt.pct(p,2)}</b>`}
+    ${open?'':`<br><span class="faint">${SESSION_LABEL2[ins.market?.session]||'Closed'} — we trade 24/7.</span>`}</div>`;
+}
+
+/* The 52-week range, said out loud: a bar plus one sentence, no vocabulary. */
+function yearRange(ins,s){
+  const st=ins?.stats; if(!st||st.low52w==null||st.high52w==null||st.high52w<=st.low52w||s.priceUsd==null) return '';
+  const at=Math.max(0,Math.min(100,(s.priceUsd-st.low52w)/(st.high52w-st.low52w)*100));
+  const where=at>=80?'Near its 12-month high.':at<=20?'Near its 12-month low.':at>=55?'In the upper half of its year.':at<=45?'In the lower half of its year.':'Right in the middle of its year.';
+  return `<div><div class="sect">Past 12 months</div><div class="kcard pad" style="display:flex;flex-direction:column;gap:12px">
+    <div class="rbar"><span class="rdot" style="left:${at.toFixed(1)}%"></span></div>
+    <div class="mono" style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)"><span>${fmt.usd(st.low52w)} low</span><span>${fmt.usd(st.high52w)} high</span></div>
+    <div class="sub" style="color:var(--ink);font-weight:600">${where}</div></div></div>`;
+}
+
+/* Our own market — the one thing no brokerage can show them. */
+function tradingHere(s){
+  return `<div><div class="sect">Trading here today</div><div class="kcard pad" style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;justify-content:space-between;font-size:15px"><span class="muted">Traded</span><b class="mono">${fmt.big(s.stockVol24hUsd)}</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:15px"><span class="muted">In the pool</span><b class="mono">${fmt.big(s.liquidityUsd)}</b></div>
+    ${splitBar(s.buys24h,s.sells24h,'buys','sells')}
+    <div class="sub" style="line-height:18px">Small orders fill at the price above. Very large ones move it.</div></div></div>`;
+}
+
+/* Dividends are real here: Backed reinvests them and the token balance grows. Never a bare yield. */
+function dividendCard(ins){
+  const d=ins?.dividends; if(!d||d.mechanism!=='rebase') return '';
+  const grown=d.growthSinceLaunchPct>0;
+  return `<div><div class="sect">Dividends</div><div class="kcard pad" style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-size:15px;font-weight:600">Paid as extra tokens</div>
+    <div class="sub" style="line-height:19px">${grown
+      ? `You don't collect anything — your balance just grows. It's up <b style="color:var(--green)">${d.growthSinceLaunchPct.toFixed(2)}%</b> since this token launched.`
+      : `Reinvested into your balance automatically, no action needed. Nothing paid out yet.`}</div></div></div>`;
 }
 
 const shortDate=d=>d?new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+const coName=ins=>(ins?.company?.name||'').replace(/\s+(Corp|Corporation|Inc|Inc\.|plc|Ltd|Co)\.?$/i,'')||ins?.ticker||'';
 
-/* Close earnings are a banner; far-off ones are just another stat. */
+/* A date on the calendar, not a warning — and only once it's close enough to act on. */
 function earningsNote(ins){
-  const e=ins?.earnings; if(!e||e.inDays==null||e.inDays>30) return '';
-  return `<div class="pad" style="margin-top:14px"><div class="notice">${I.warn}<span>Earnings in ${e.inDays} day${e.inDays===1?'':'s'} · ${shortDate(e.date)}, ${esc(e.when||'')}</span></div></div>`;
+  const e=ins?.earnings; if(!e||e.inDays==null||e.inDays>14||e.inDays<0) return '';
+  return `<div class="pad" style="margin-top:14px"><div class="calnote">
+    <div style="font-size:15px;font-weight:600">${esc(coName(ins))} reports results in ${e.inDays} day${e.inDays===1?'':'s'}</div>
+    <div class="sub" style="margin-top:3px;line-height:18px">${shortDate(e.date)}${e.when==='after close'?', after Nasdaq closes':e.when?', '+esc(e.when):''}. Prices usually move hard — and we're open when other apps aren't.</div></div></div>`;
 }
 
-function keyStats(ins,s){
+function marketRow(ins,s){ return ''; }
+
+/* The analyst numbers still exist — they just live in About, where reference material belongs. */
+function investorRows(ins){
   const st=ins?.stats; if(!st) return '';
-  let bar='';
-  if(st.low52w!=null&&st.high52w!=null&&st.high52w>st.low52w&&s.priceUsd!=null){
-    const at=Math.max(0,Math.min(100,(s.priceUsd-st.low52w)/(st.high52w-st.low52w)*100));
-    bar=`<div class="kcard pad" style="display:flex;flex-direction:column;gap:12px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="sub">52-week range</span><b class="mono" style="font-size:15px">${fmt.usd(s.priceUsd)}</b></div>
-      <div class="rbar"><span class="rdot" style="left:${at.toFixed(1)}%"></span></div>
-      <div class="mono" style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)"><span>${fmt.usd(st.low52w)}</span><span>${fmt.usd(st.high52w)}</span></div></div>`;
-  }
   const rows=[];
   if(st.marketCapUsd!=null) rows.push(kv('Market cap',fmt.big(st.marketCapUsd)));
-  if(st.peTtm!=null) rows.push(kv('P/E (TTM)',st.peTtm.toFixed(2)));
-  if(st.epsTtm!=null) rows.push(kv('EPS (TTM)',fmt.usd(st.epsTtm)));
-  if(st.dividendYieldPct!=null) rows.push(kv('Dividend yield',st.dividendYieldPct.toFixed(2)+'%'));
-  if(st.beta!=null) rows.push(kv('Beta',st.beta.toFixed(2)));
+  rows.push(kv('P/E (TTM)',st.peTtm!=null?st.peTtm.toFixed(2):'—'));
+  if(st.epsTtm!=null) rows.push(kv('Earnings per share',fmt.usd(st.epsTtm)));
   const e=ins.earnings;
-  if(e&&e.date&&(e.inDays==null||e.inDays>30)) rows.push(kv('Next earnings',`${shortDate(e.date)}${e.when?' · '+esc(e.when):''}`));
-  if(!bar&&!rows.length) return '';
-  return `<div><div class="sect">Key stats</div>${bar}${rows.length?`<div class="kcard"${bar?' style="margin-top:10px"':''}>${rows.join('')}</div>`:''}</div>`;
+  if(e&&e.date) rows.push(kv('Next earnings',`${shortDate(e.date)}${e.when?' · '+esc(e.when):''}`));
+  return rows.length?`<div><div class="sect">For investors</div><div class="kcard">${rows.join('')}</div></div>`:'';
 }
 
 function aboutCards(s,ins){
@@ -105,9 +130,11 @@ function aboutCards(s,ins){
     if(c.ipo) rows.push(kv('IPO',new Date(c.ipo+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})));
     if(c.website) rows.push(kv('Website',`<button data-web="${esc(c.website)}" style="color:var(--ink);font-weight:600">${esc(c.website.replace(/^https?:\/\//,'').replace(/\/$/,''))} ↗</button>`));
   }
+  const iss={prestocks:'PreStocks',xstocks:'xStocks',backpack:'Backpack'}[s.issuer]||s.issuer;
   return `<div class="stack" style="padding-top:20px">
     ${rows.length?`<div><div class="sect">Company</div><div class="kcard">${rows.join('')}</div></div>`:''}
-    <div><div class="sect">On chain</div><div class="kcard">${kv('Issuer',esc(s.issuer))}${kv('Category',esc(s.category))}${kv('Mint address',`<button style="display:inline-flex;gap:6px;align-items:center;color:var(--ink);font-weight:600" id="cpm">${fmt.short(s.mint)} ${I.copy}</button>`)}</div></div>
+    ${investorRows(ins)}
+    <div><div class="sect">On chain</div><div class="kcard">${kv('Issued by',esc(iss))}${kv('Trades in','USD')}${kv('Mint address',`<button style="display:inline-flex;gap:6px;align-items:center;color:var(--ink);font-weight:600" id="cpm">${fmt.short(s.mint)} ${I.copy}</button>`)}</div></div>
   </div>`;
 }
 

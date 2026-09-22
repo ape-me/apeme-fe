@@ -168,12 +168,16 @@ SCREENS.stock={
       attachScrub(chart.firstElementChild,p=>{ hp.innerHTML=fmt.usd(p.price); const d=first?(p.price-first.price)/first.price*100:null; hc.className='chg '+fmt.cls(d); hc.innerHTML=`${d==null?'':(d>=0?'+':'−')+Math.abs(d).toFixed(2)+'%'} <span class="muted" style="font-size:13px;font-weight:500">${new Date(p.t*1000).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</span>`; },()=>{ hp.innerHTML=hp0; hc.className='chg '+fmt.cls(s.change24h); hc.innerHTML=hc0; }); }catch(e){ if(range===req&&el.isConnected) chart.innerHTML=lineChart([]); } };
     paintRanges(); loadRange();
     /* Overview keeps everything it had, plus the Nasdaq line, the live session and Key stats. */
+    /* Three cards: is it cheap, where is it in its year, is it busy here. Nothing else. */
     const overview=()=>`
-      ${s.markUsd?(()=>{ const p=s.premiumPct||0, gap=s.priceUsd!=null?s.priceUsd-s.markUsd:null, neutral=Math.abs(p)<=0.25, what=s.issuer==='prestocks'?"PreStocks' mark from the last funding round":"the live Nasdaq price"; return `<div class="pad" style="margin-top:20px"><div class="sect">Fair value</div><div class="kcard">${kv('You pay',fmt.usd(s.priceUsd))}${kv("It's worth",fmt.usd(s.markUsd))}${kv(p>0?'Premium':p<0?'Discount':'Gap',`<span style="display:inline-flex;align-items:center;gap:8px">${gap!=null&&!neutral?fmt.usd(Math.abs(gap)):''}${premiumBadge(s)}</span>`)}<div class="sub" style="padding:12px 0">${neutral?`Trading at fair value — ${what}.`:`Buyers pay ${fmt.usd(Math.abs(gap))} ${p>0?'more':'less'} than ${what}.`}</div>${nasdaqLine(ins)}</div></div>`; })():''}
+      ${s.markUsd?(()=>{ const p=s.premiumPct||0, gap=s.priceUsd!=null?s.priceUsd-s.markUsd:null, neutral=Math.abs(p)<=0.25, pre=s.issuer==='prestocks';
+        const worth=pre?'Last funding round':`Real ${esc(ins?.ticker||s.symbol.replace(/X$/,''))} share`;
+        const what=pre?"PreStocks' mark from the last funding round":'the real share price';
+        return `<div class="pad" style="margin-top:20px"><div class="sect">Fair value</div><div class="kcard">${kv('You pay',fmt.usd(s.priceUsd))}${kv(worth,fmt.usd(s.markUsd))}${kv(p>0?'Premium':p<0?'Discount':'Gap',`<span style="display:inline-flex;align-items:center;gap:8px">${gap!=null&&!neutral?fmt.usd(Math.abs(gap)):''}${premiumBadge(s)}</span>`)}<div class="sub" style="padding:12px 0">${neutral?`Trading at fair value \u2014 ${what}.`:`You're paying ${fmt.usd(Math.abs(gap))} ${p>0?'more':'less'} than ${what}.`}</div>${nasdaqLine(ins)}</div></div>`; })():''}
       <div class="stack" style="padding-top:20px">
-        <div><div class="sect">Market stats</div><div class="kcard">${kv('Liquidity',fmt.big(s.liquidityUsd))}${kv('24h volume',fmt.big(s.stockVol24hUsd))}${kv('Buys · sells',`<span class="up">${fmt.n(s.buys24h)}</span> <span class="faint">/</span> <span class="dn">${fmt.n(s.sells24h)}</span>`)}${marketRow(ins,s)}</div></div>
-        ${keyStats(ins,s)}
-        <div><div class="sect">Buys vs sells · 24h</div><div class="kcard pad">${splitBar(s.buys24h,s.sells24h,'buys','sells')}</div></div>
+        ${yearRange(ins,s)}
+        ${tradingHere(s)}
+        ${dividendCard(ins)}
       </div>`;
     const paintStab=()=>{ const m=el.querySelector('#stab'); if(!m) return;
       if(stab==='news'){ el.querySelector('#stabs .ndot').hidden=true; fresh=0; paintNewsList(m,`/stocks/${s.mint}/news?`,s.symbol); return; }
