@@ -53,21 +53,29 @@ function articleSheet(i){
 /* ---- insights: the brokerage half of the stock page ---- */
 const SESSION_LABEL2={pre:'Pre-market',open:'Market open',post:'After hours',closed:'Closed'};
 
-/* One line under the price answering the only question that matters before tapping Buy: am I
-   paying more than the real share right now? Neutral inside +/-0.5%, amber past +1% (paying up),
-   green past -1% (cheaper here). Pre-IPO names have no Nasdaq, so the line simply isn't there. */
-function nasdaqLine(ins){
+/* The comparison as a card, not a grey run-on line: is the US market open, what does the real
+   share cost there, and am I better or worse off here. Tinted by the answer so the verdict reads
+   before the words do. Pre-IPO has no Nasdaq listing, so there is no card at all. */
+function nasdaqCard(ins){
   const n=ins&&ins.nasdaq; if(!n||n.last==null) return '';
   const open=ins.market&&ins.market.session==='open', p=ins.premiumVsLastPct;
-  let verdict='', colour='var(--muted)';
-  if(p!=null){
-    verdict = Math.abs(p)<0.5 ? 'in line'
-      : p>0 ? `you're paying ${fmt.pct(p,2)}`
-            : `you're saving ${Math.abs(p).toFixed(2)}%`;
-    colour = p>1 ? 'var(--amber)' : p<-1 ? 'var(--green)' : 'var(--muted)';
-  }
-  return `<div class="mono" style="margin-top:8px;font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-    ${open?'Nasdaq open':'Nasdaq closed'} <span class="faint">·</span> <b style="color:var(--ink)">${open?'':'last '}${fmt.usd(n.last)}</b>${verdict?` <span class="faint">·</span> <b style="color:${colour}">${verdict}</b>`:''}</div>`;
+  const tint = p==null?'var(--muted)' : p>1?'var(--amber)' : p<-1?'var(--green)' : 'var(--muted)';
+  const fill = p==null?'var(--surface)' : p>1?'var(--amberT)' : p<-1?'var(--greenT)' : 'var(--surface)';
+  const target = open?'on Nasdaq':"Nasdaq's last close";
+  const verdict = p==null ? (open?'Trading alongside Nasdaq':'Nasdaq is shut — we trade 24/7')
+    : Math.abs(p)<0.5 ? `Same price as ${target} right now`
+    : p>0 ? `${p.toFixed(2)}% more expensive here than ${target}`
+          : `${Math.abs(p).toFixed(2)}% cheaper here than ${target}`;
+  return `<div style="margin-top:14px;padding:12px 14px;border-radius:14px;background:${fill};border:1px solid ${tint.replace('var(--','var(--')}22">
+    <div style="display:flex;align-items:center;gap:7px">
+      <span style="width:7px;height:7px;border-radius:999px;background:${open?'var(--green)':'var(--faint)'};${open?'animation:nqpulse 1.1s ease-in-out infinite':''}"></span>
+      <span style="font-size:11px;font-weight:700;letter-spacing:.07em;color:${open?'var(--green)':'var(--muted)'}">${open?'NASDAQ OPEN':'NASDAQ CLOSED'}</span>
+      <span style="flex:1"></span>
+      <span class="mono" style="font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap">${open?'Real share':'Last close'} ${fmt.usd(n.last)}</span>
+    </div>
+    <div style="margin-top:8px;font-size:15px;font-weight:600;letter-spacing:-.01em;color:${tint}">${verdict}</div>
+    ${open?'':`<div style="margin-top:4px;font-size:12px;color:var(--faint);line-height:16px">The US market is shut. ApeMe trades 24/7 — you don't have to wait for the bell.</div>`}
+  </div>`;
 }
 
 /* The 52-week range, said out loud: a bar plus one sentence, no vocabulary. */

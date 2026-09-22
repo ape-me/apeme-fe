@@ -123,7 +123,7 @@ struct StockView: View {
     /// Three cards: is it cheap, where is it in its year, is it busy here.
     private func overview(_ s: Stock) -> some View {
         VStack(alignment: .leading, spacing: 22) {
-            if let mark = s.markUsd, let p = s.premiumPct {
+            if let mark = fairMark(s), let p = fairPremium(s) {
                 FairValueBlock(stock: s, mark: mark, premium: p, insights: store.insights)
             }
             if let stats = store.insights?.stats, let price = s.priceUsd {
@@ -136,6 +136,17 @@ struct StockView: View {
             else if store.insightsLoading { InsightCardSkeleton(title: "Dividends", height: 84) }
         }
         .padding(.horizontal, 20).padding(.top, 20)
+    }
+
+    /// Listed stocks are measured against the live Nasdaq print so the page never shows two
+    /// different "real share" prices; pre-IPO names fall back to the issuer's mark.
+    private func fairMark(_ s: Stock) -> Double? {
+        if !s.isPreIPO, let last = store.insights?.nasdaq?.last { return last }
+        return s.markUsd
+    }
+    private func fairPremium(_ s: Stock) -> Double? {
+        if !s.isPreIPO, store.insights?.nasdaq?.last != nil { return store.insights?.premiumVsLastPct }
+        return s.premiumPct
     }
 
     @ViewBuilder private func newsTab(_ s: Stock) -> some View {
@@ -190,7 +201,7 @@ struct StockView: View {
             Text(scrubbing ? Fmt.dateTime(store.scrub!.t) : store.range.caption.capitalized)
                 .font(.system(size: 17)).foregroundStyle(Theme.muted)
                 .padding(.top, 4)
-            if let ins = store.insights, !scrubbing { NasdaqLine(insights: ins).padding(.top, 8) }
+            if let ins = store.insights, !scrubbing { NasdaqCard(insights: ins).padding(.top, 14) }
         }
         .padding(.horizontal, 20).padding(.top, 8)
     }

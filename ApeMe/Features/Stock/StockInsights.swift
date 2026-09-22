@@ -5,44 +5,70 @@ import SwiftUI
 
 /// `Nasdaq $87.99 · 21s ago · here −0.4%` while the market trades; once it shuts the same number
 /// is yesterday's close, so say that instead of dressing it up as live.
-/// One line under the price answering the only question that matters before tapping Buy:
-/// am I paying more than the real share right now? Pre-IPO names have no Nasdaq to compare
-/// against, so the line simply isn't there — never a dash.
-struct NasdaqLine: View {
+/// The comparison a first-timer actually needs, as a card rather than a grey run-on line:
+/// is the US market open right now, what does the real share cost there, and am I better or
+/// worse off buying it here. The card is tinted by the answer so the verdict reads before the
+/// words do. Pre-IPO names have no Nasdaq listing, so there is no card at all — never a dash.
+struct NasdaqCard: View {
     let insights: Insights
+    @State private var pulse = false
 
     private var premium: Double? { insights.premiumVsLastPct }
     private var isOpen: Bool { insights.market?.isLive ?? false }
 
-    /// Neutral inside ±0.5%, amber past +1% (paying up), green past −1% (buying it cheaper).
+    /// Neutral inside ±0.5%, amber past +1% (paying up), green past −1% (cheaper here).
     private var tint: Color {
         guard let p = premium else { return Theme.muted }
         if p > 1 { return Theme.amber }
         if p < -1 { return Theme.green }
         return Theme.muted
     }
+    private var fill: Color {
+        guard let p = premium else { return Theme.surface }
+        if p > 1 { return Theme.amberT }
+        if p < -1 { return Theme.greenT }
+        return Theme.surface
+    }
 
-    /// "+1.70%" reads fine as a premium and badly as a discount, so each direction gets its
-    /// own sentence instead of one phrase carrying a minus sign.
-    private var verdict: String? {
-        guard let p = premium else { return nil }
-        if abs(p) < 0.5 { return "in line" }
-        return p > 0 ? "you're paying \(Fmt.pct(p, 2))" : "you're saving \(String(format: "%.2f%%", abs(p)))"
+    /// Plain English, and never a minus sign doing the talking.
+    private var verdict: String {
+        guard let p = premium else { return isOpen ? "Trading alongside Nasdaq" : "Nasdaq is shut — we trade 24/7" }
+        let target = isOpen ? "on Nasdaq" : "Nasdaq's last close"
+        if abs(p) < 0.5 { return "Same price as \(target) right now" }
+        return p > 0 ? "\(String(format: "%.2f", p))% more expensive here than \(target)"
+                     : "\(String(format: "%.2f", abs(p)))% cheaper here than \(target)"
     }
 
     var body: some View {
         if let n = insights.nasdaq, let last = n.last {
-            HStack(spacing: 5) {
-                Text(isOpen ? "Nasdaq open" : "Nasdaq closed").foregroundStyle(Theme.muted)
-                Text("·").foregroundStyle(Theme.faint)
-                Text("\(isOpen ? "" : "last ")\(Fmt.usd(last))").foregroundStyle(Theme.ink).fontWeight(.semibold)
-                if let verdict {
-                    Text("·").foregroundStyle(Theme.faint)
-                    Text(verdict).foregroundStyle(tint).fontWeight(.semibold)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 7) {
+                    Circle().fill(isOpen ? Theme.green : Theme.faint)
+                        .frame(width: 7, height: 7)
+                        .opacity(isOpen && pulse ? 0.35 : 1)
+                    Text(isOpen ? "NASDAQ OPEN" : "NASDAQ CLOSED")
+                        .font(.system(size: 11, weight: .bold)).tracking(0.7)
+                        .foregroundStyle(isOpen ? Theme.green : Theme.muted)
+                    Spacer(minLength: 8)
+                    Text(isOpen ? "Real share \(Fmt.usd(last))" : "Last close \(Fmt.usd(last))")
+                        .font(.system(size: 13, weight: .semibold)).monospacedDigit()
+                        .foregroundStyle(Theme.muted).lineLimit(1)
                 }
-                Spacer(minLength: 0)
+                Text(verdict)
+                    .font(.system(size: 15, weight: .semibold)).tracking(-0.2)
+                    .foregroundStyle(tint)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !isOpen {
+                    Text("The US market is shut. ApeMe trades 24/7 — you don't have to wait for the bell.")
+                        .font(.system(size: 12)).foregroundStyle(Theme.faint).lineSpacing(1)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            .font(.system(size: 14)).monospacedDigit().lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14).padding(.vertical, 12)
+            .background(fill, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(tint.opacity(0.18), lineWidth: 1))
+            .onAppear { if isOpen { withAnimation(.easeInOut(duration: 1.1).repeatForever()) { pulse = true } } }
         }
     }
 }
