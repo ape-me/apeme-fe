@@ -55,6 +55,10 @@ struct YouView: View {
                     SettingRow(symbol: "arrow.counterclockwise", title: "Show onboarding again", sub: "Three slides and the mode question") { confirmOnboarding = true }
                     SettingRow(symbol: "rectangle.portrait.and.arrow.right", title: "Sign out", sub: app.auth.accountLabel ?? "Signed in") { confirmSignOut = true }
                     #if DEBUG
+                    SettingRow(symbol: "bell", title: "Preview toasts", sub: "Success, then error") {
+                        app.show("You own 0.109 NVDAX")
+                        Task { try? await Task.sleep(for: .seconds(2.6)); app.show("Price moved. Nothing was charged.", error: true) }
+                    }
                     SettingRow(symbol: "ladybug", title: "Copy /v1/me response", sub: app.auth.me.map { "status: \($0.status)" } ?? app.auth.meRaw.map { String($0.prefix(60)) } ?? "not loaded yet") {
                         Task { await app.auth.refreshMe(); app.copy(app.auth.meRaw ?? "no response") }
                     }
