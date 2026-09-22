@@ -28,6 +28,8 @@ struct RootView: View {
             case .apeToken(let t, let ref): TradeSheetView(side: .buy, asset: .token(t, ref))
             case .sell(let h): TradeSheetView(side: .sell, asset: .holding(h))
             case .deposit: DepositSheet()
+            case .tx(let a): TxSheet(activity: a)
+            case .position(let h): PositionSheet(holding: h)
             case .login: LoginSheet()
             }
         }

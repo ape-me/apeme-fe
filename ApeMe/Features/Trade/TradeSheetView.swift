@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Buy / Sell / Ape. Real quotes, real signatures. One sheet for stocks and memes.
+/// Buy / Sell / Ape: what you pay, what you get, one button. Fees live under "Details".
 struct TradeSheetView: View {
     enum Asset {
         case stock(Stock)
@@ -13,6 +13,7 @@ struct TradeSheetView: View {
         var imageURL: URL? { switch self { case .stock(let s): s.logoURL; case .token(let t, _): t.imageURL; case .holding(let h): h.imageURL } }
         var isStock: Bool { switch self { case .stock: true; case .token: false; case .holding(let h): h.kind == "stock" } }
         var isPreIPO: Bool { if case .stock(let s) = self { return s.isPreIPO }; return false }
+        var onSymbol: String? { switch self { case .token(_, let r): r?.symbol; case .holding(let h): h.quoteSymbol; default: nil } }
     }
 
     let side: TradeStore.Side
@@ -21,10 +22,11 @@ struct TradeSheetView: View {
     @Environment(AppState.self) private var app
     @Environment(\.skin) private var skin
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @State private var store: TradeStore
-    @State private var amount = ""            // buy: dollars typed
-    @State private var pct: Double? = nil     // sell: chip
-    @State private var confirming = false
+    @State private var amount = ""
+    @State private var pct: Double? = nil
+    @State private var reviewing = false
 
     init(side: TradeStore.Side, asset: Asset) {
         self.side = side; self.asset = asset
@@ -36,15 +38,17 @@ struct TradeSheetView: View {
     private var verb: String { side == .sell ? "Sell" : asset.isStock ? "Buy" : "Ape" }
     private var usd: Double { Double(amount) ?? 0 }
     private var settings: Me.Settings { app.auth.settings }
-    private var quickBuy: [Double] { settings.quickBuyUsd ?? [10, 25, 50, 100] }
-    private var quickSell: [Double] { settings.quickSellPct ?? [25, 50, 100] }
+    private var cash: Double { app.cashUsd }
+    private var maxCash: Double { floor(cash * 100) / 100 }
     private var busy: Bool { [.signing, .submitting, .confirming].contains(store.phase) }
+    private var sellQty: Double { (store.holding?.amount ?? 0) * (pct ?? 0) / 100 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             switch store.phase {
             case .confirmed: done
-            default: if confirming { review } else { form }
+            case .requoted: requoted
+            default: if reviewing { review } else { form }
             }
         }
         .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 18)
@@ -56,12 +60,12 @@ struct TradeSheetView: View {
         .task { if app.wallet == nil { await app.loadWallet() } }
         .onChange(of: amount) { _, _ in requote() }
         .onChange(of: pct) { _, _ in requote() }
-        .onChange(of: store.priority) { _, _ in requote() }
+        .onChange(of: scenePhase) { _, p in if p == .active { Task { await store.refresh() } } }
     }
 
     private func requote() {
         switch side {
-        case .buy: store.requote(usd: usd, taker: app.walletAddress, cashUsd: app.cashUsd)
+        case .buy: store.requote(usd: usd, taker: app.walletAddress, cashUsd: cash)
         case .sell:
             guard let h = store.holding, let raw = h.raw, let r = Decimal(string: raw), let p = pct else { store.requote(rawAmount: nil, taker: app.walletAddress, cashUsd: 0); return }
             var v = r * Decimal(p) / 100
@@ -70,15 +74,15 @@ struct TradeSheetView: View {
         }
     }
 
-    // MARK: Form
+    // MARK: Amount
 
     private var header: some View {
         HStack {
             HStack(spacing: 10) {
-                if asset.isStock { Logo(url: asset.imageURL, symbol: asset.symbol, size: 28) } else { Avatar(url: asset.imageURL, symbol: asset.symbol, size: 28) }
+                assetImage(28)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(verb) \(asset.symbol)").h3Text()
-                    Text(side == .sell ? "You hold \(Fmt.qty(store.holding?.amount ?? 0, symbol: asset.symbol)) · \(Fmt.usd(store.holding?.valueUsd))" : "Cash \(Fmt.usd(app.cashUsd))")
+                    Text(side == .sell ? "You hold \(Fmt.qty(store.holding?.amount ?? 0, symbol: asset.symbol)) · \(Fmt.usd(store.holding?.valueUsd))" : "Cash \(Fmt.usd(cash))")
                         .font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
                 }
             }
@@ -87,28 +91,39 @@ struct TradeSheetView: View {
         }
     }
 
+    @ViewBuilder private func assetImage(_ size: CGFloat) -> some View {
+        if asset.isStock { Logo(url: asset.imageURL, symbol: asset.symbol, size: size) } else { Avatar(url: asset.imageURL, symbol: asset.symbol, size: size) }
+    }
+
+    private var hasAmount: Bool { side == .buy ? usd > 0 : pct != nil }
+
     private var form: some View {
         VStack(alignment: .leading, spacing: 16) {
             header
-            if side == .buy {
-                VStack(spacing: 4) {
-                    HStack(alignment: .lastTextBaseline, spacing: 6) {
-                        Text("$").font(.system(size: 40, weight: .medium)).foregroundStyle(Theme.faint)
+            VStack(spacing: 6) {
+                if side == .buy {
+                    HStack(spacing: 10) {
+                        Image("usdc").resizable().frame(width: 36, height: 36).clipShape(.circle)
                         Text(amount.isEmpty ? "0" : amount).font(.amount).tracking(-2.8).monospacedDigit().foregroundStyle(Theme.ink)
                     }
-                    Text("You get ≈ \(store.phase == .quoting ? "…" : store.youGet)").font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
-                }
-                .frame(maxWidth: .infinity).padding(.top, 8)
-                chips(quickBuy.map { ("$" + Fmt.n($0), $0) }, selected: usd) { amount = Fmt.n($0) }
-            } else {
-                VStack(spacing: 4) {
+                } else {
                     Text(pct.map { Fmt.n($0) + "%" } ?? "—").font(.amount).tracking(-2.8).monospacedDigit().foregroundStyle(Theme.ink)
-                    Text("You get ≈ \(store.phase == .quoting ? "…" : store.youGet)").font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
                 }
-                .frame(maxWidth: .infinity).padding(.top, 8)
-                chips(quickSell.map { (Fmt.n($0) + "%", $0) }, selected: pct ?? -1) { pct = $0 }
+                HStack(spacing: 4) {
+                    Text("You get ≈").foregroundStyle(Theme.muted)
+                    Text(store.phase == .quoting ? "…" : store.youGet).foregroundStyle(Theme.ink).fontWeight(.semibold)
+                }
+                .font(.system(size: 15)).monospacedDigit()
+                .opacity(hasAmount ? 1 : 0)
             }
-            details
+            .frame(maxWidth: .infinity).padding(.top, 8)
+
+            if side == .buy {
+                chips((settings.quickBuyUsd ?? [10, 25, 50, 100]).map { ("$" + Fmt.n($0), $0) } + [("Max", maxCash)], selected: usd) { amount = String(format: $0 == maxCash ? "%.2f" : "%g", $0) }
+            } else {
+                chips((settings.quickSellPct ?? [25, 50, 100]).map { (Fmt.n($0) + "%", $0) }, selected: pct ?? -1) { pct = $0 }
+            }
+            notes
             if side == .buy { Numpad { key in
                 switch key {
                 case "⌫": amount = String(amount.dropLast())
@@ -118,10 +133,7 @@ struct TradeSheetView: View {
                     if amount.count < 8, !amount.contains(".") || d < 2 { amount = amount == "0" ? key : amount + key }
                 }
             } }
-            if let e = store.error, store.phase == .failed {
-                Text(e).font(.sub).foregroundStyle(Theme.red).frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 14).padding(.vertical, 12).background(Theme.redT, in: .rect(cornerRadius: 12))
-            }
+            errorBox
             Spacer(minLength: 0)
             primary
         }
@@ -129,8 +141,8 @@ struct TradeSheetView: View {
 
     private func chips(_ items: [(String, Double)], selected: Double, pick: @escaping (Double) -> Void) -> some View {
         HStack(spacing: 8) {
-            ForEach(items, id: \.1) { label, v in
-                let on = v == selected
+            ForEach(items, id: \.0) { label, v in
+                let on = abs(v - selected) < 0.005
                 Button { pick(v) } label: {
                     Text(label).font(.system(size: 14, weight: .semibold)).monospacedDigit()
                         .foregroundStyle(on ? skin.accent : Theme.ink)
@@ -142,129 +154,174 @@ struct TradeSheetView: View {
         }
     }
 
-    @ViewBuilder private var details: some View {
-        let q = store.quote
-        VStack(alignment: .leading, spacing: 8) {
-            if asset.isStock, let mark = q?.markUsd {
-                HStack(spacing: 4) {
-                    Text("\(asset.isPreIPO ? "Fair value" : "Nasdaq") \(Fmt.usd(mark))").foregroundStyle(Theme.muted)
-                    Text("·").foregroundStyle(Theme.faint)
-                    Text("here \(Fmt.pct(q?.premiumPct, 2))").foregroundStyle(Theme.ink)
-                }
-                .font(.sub).monospacedDigit()
+    /// The two things a first-timer must know: a big premium, or a big price impact. Nothing else up front.
+    @ViewBuilder private var notes: some View {
+        if let q = store.quote {
+            if side == .buy, asset.isStock, let p = q.premiumPct, p > 5 {
+                note("Trading \(String(format: "%.0f", p))% above \(asset.isPreIPO ? "its fair value" : "the Nasdaq price").")
             }
-            HStack(spacing: 4) {
-                Text("Fee \(Fmt.usd(q?.fee?.usd ?? 0)) · Gas free").font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
-                Spacer()
-                priorityChip
-            }
-            if let rent = q?.rent?.usd, rent > 0 {
-                Text("One-time network fee \(Fmt.usd(rent)) to hold \(asset.symbol)").font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
-            }
-            if let p = q?.premiumPct, p > 5, side == .buy {
-                Text("You're paying \(String(format: "%.1f", p))% over the \(asset.isPreIPO ? "fair value" : "Nasdaq price").")
-                    .font(.sub).foregroundStyle(Theme.amber).frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12).padding(.vertical, 10).background(Theme.amberT, in: .rect(cornerRadius: 10))
+            if let i = q.priceImpactPct, i > 2 {
+                note("Large order: price impact \(String(format: "%.1f", i))%. You get less per dollar.")
             }
         }
     }
 
-    private var priorityChip: some View {
-        Menu {
-            ForEach(["normal", "fast", "turbo"], id: \.self) { p in
-                if p != "turbo" || usd >= 50 || side == .sell {
-                    Button { store.priority = p } label: { Label(p.capitalized, systemImage: store.priority == p ? "checkmark" : "") }
-                }
-            }
-        } label: {
-            HStack(spacing: 4) { Image(systemName: "bolt.fill").font(.system(size: 11)); Text(store.priority.capitalized) }
-                .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.ink)
-                .padding(.horizontal, 10).frame(height: 28).background(Theme.surface2, in: .capsule)
+    private func note(_ text: String) -> some View {
+        Text(text).font(.sub).foregroundStyle(Theme.amber).frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12).padding(.vertical, 10).background(Theme.amberT, in: .rect(cornerRadius: 10))
+    }
+
+    @ViewBuilder private var errorBox: some View {
+        if let e = store.error, store.phase == .failed {
+            Text(e).font(.sub).foregroundStyle(Theme.red).frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14).padding(.vertical, 12).background(Theme.redT, in: .rect(cornerRadius: 12))
         }
     }
 
     @ViewBuilder private var primary: some View {
         switch store.phase {
-        case .insufficient:
-            BigButton(label: "Deposit to buy", style: .white) { dismiss(); app.sheet = .deposit }
-        case .quoting:
-            BigButton(label: "Getting quote…", style: .off) {}
+        case .insufficient: BigButton(label: "Deposit to buy", style: .white) { dismiss(); app.sheet = .deposit }
+        case .quoting: BigButton(label: "Getting price…", style: .off) {}
         case .ready:
             let label = side == .buy ? "\(verb) $\(amount) of \(asset.symbol)" : "Sell \(Fmt.n(pct ?? 0))% of \(asset.symbol)"
             BigButton(label: label, style: side == .sell ? .sell : .buy) {
-                if settings.confirmBeforeTrade ?? true { confirming = true } else { Task { await run() } }
+                if settings.confirmBeforeTrade ?? true { reviewing = true } else { Task { await run() } }
             }
         case .signing: BigButton(label: "Signing…", style: .off) {}
         case .submitting: BigButton(label: "Submitting…", style: .off) {}
         case .confirming: BigButton(label: "Confirming…", style: .off) {}
-        case .failed:
-            BigButton(label: "Try again", style: .ghost) { requote() }
-        default:
-            BigButton(label: side == .buy ? "Enter an amount" : "Pick an amount", style: .off) {}
+        case .failed: BigButton(label: "Try again", style: .ghost) { requote() }
+        default: BigButton(label: side == .buy ? "Enter an amount" : "Pick an amount", style: .off) {}
         }
     }
 
-    // MARK: Review / done
+    // MARK: Details (shared by review + success)
+
+    @State private var showDetails = false
+
+    @ViewBuilder private func details(_ q: Quote) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button { withAnimation(.easeOut(duration: 0.15)) { showDetails.toggle() } } label: {
+                HStack(spacing: 4) {
+                    Text("Details").font(.sub).foregroundStyle(Theme.muted)
+                    Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.muted)
+                        .rotationEffect(.degrees(showDetails ? 90 : 0))
+                }
+            }
+            .buttonStyle(.plain)
+            if showDetails {
+                KCard {
+                    if side == .buy { KV("Buys of \(asset.symbol)", Fmt.usd(q.swapUsd ?? q.outUsd)) }
+                    KV("ApeMe fee", Fmt.usd(q.fee?.usd ?? 0))
+                    if (q.rent?.accounts ?? 0) > 0 { KV("One-time network fee", Fmt.usd(q.rent?.usd ?? 0)) }
+                    KV("Gas", "Free")
+                    KV("Price impact") {
+                        Text(String(format: "%.2f%%", q.priceImpactPct ?? 0)).foregroundStyle((q.priceImpactPct ?? 0) > 2 ? Theme.amber : Theme.ink)
+                    }
+                    KV("Max price move", "\(Double(q.slippageBps ?? 100) / 100)%")
+                    if asset.isStock, let m = q.markUsd { KV(asset.isPreIPO ? "Fair value" : "Nasdaq price", Fmt.usd(m)) }
+                }
+            }
+        }
+    }
+
+    // MARK: Review
 
     private var review: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                IconButton(symbol: "chevron.left", label: "Back") { confirming = false }.disabled(busy)
+                IconButton(symbol: "chevron.left", label: "Back") { reviewing = false }.disabled(busy)
                 Spacer(); Text("Review").h3Text(); Spacer()
                 IconButton(symbol: "xmark", label: "Close") { dismiss() }.disabled(busy)
             }
-            Text(side == .buy ? "\(verb) $\(amount) of \(asset.symbol)" : "Sell \(Fmt.n(pct ?? 0))% of \(asset.symbol)").h1Text().padding(.top, 6)
-            KCard {
-                KV("You pay", side == .buy ? Fmt.usd(store.quote?.inUsd) : Fmt.qty(store.holding.map { $0.amount * (pct ?? 0) / 100 } ?? 0, symbol: asset.symbol))
-                KV("You get", "≈ " + store.youGet)
-                if asset.isStock, let m = store.quote?.markUsd { KV(asset.isPreIPO ? "Fair value" : "Nasdaq", Fmt.usd(m)) }
-                KV("Fee", Fmt.usd(store.quote?.fee?.usd ?? 0))
-                if let rent = store.quote?.rent?.usd, rent > 0 { KV("One-time network fee", Fmt.usd(rent)) }
-                if side == .buy, let t = store.quote?.totalChargeUsd, t > 0 { KV("Total from cash", Fmt.usd((store.quote?.inUsd ?? 0) + t)) }
-                KV("Gas", "Free · ApeMe pays")
-                KV("Slippage", "\(Double(store.quote?.slippageBps ?? 100) / 100)%")
-                KV("Account", Fmt.short(app.walletAddress))
+            VStack(spacing: 10) {
+                assetImage(56)
+                Text(side == .buy ? "\(verb) \(store.youGet)" : "Sell \(Fmt.qty(sellQty, symbol: asset.symbol))").h1Text().multilineTextAlignment(.center)
             }
-            if let e = store.error, store.phase == .failed {
-                Text(e).font(.sub).foregroundStyle(Theme.red).frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 14).padding(.vertical, 12).background(Theme.redT, in: .rect(cornerRadius: 12))
+            .frame(maxWidth: .infinity).padding(.top, 14)
+            if let q = store.quote {
+                KCard {
+                    if side == .buy {
+                        KV("You pay", Fmt.usd(q.inUsd))
+                        KV("You get", "≈ " + store.youGet)
+                    } else {
+                        KV("You get", store.youGet)
+                        KV("Includes fee", Fmt.usd(q.fee?.usd ?? 0))
+                    }
+                }
+                if let i = q.priceImpactPct, i > 2 { note("Large order: price impact \(String(format: "%.1f", i))%. You get less per dollar.") }
+                details(q)
             }
+            errorBox
             Spacer(minLength: 0)
             switch store.phase {
             case .signing: BigButton(label: "Signing…", style: .off) {}
             case .submitting: BigButton(label: "Submitting…", style: .off) {}
             case .confirming: HStack { ProgressView().tint(Theme.ink); Text("Confirming on Solana…").font(.system(size: 15, weight: .semibold)) }.frame(maxWidth: .infinity).frame(height: 52)
-            case .failed: BigButton(label: "Try again", style: .ghost) { confirming = false; requote() }
-            default: BigButton(label: "Confirm", style: side == .sell ? .sell : .buy) { Task { await run() } }
+            case .failed: BigButton(label: "Try again", style: .ghost) { reviewing = false; requote() }
+            default: BigButton(label: side == .buy ? "Pay \(Fmt.usd(store.quote?.inUsd))" : "Confirm sale", style: side == .sell ? .sell : .buy) { Task { await run() } }
             }
         }
+    }
+
+    /// The quote expired and the new price moved more than 1%: show the new numbers, ask once more.
+    private var requoted: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack { Spacer(); IconButton(symbol: "xmark", label: "Close") { dismiss() } }
+            VStack(spacing: 10) {
+                assetImage(56)
+                Text("Price changed").h1Text()
+                Text("Your quote expired and the price moved. Here's the new deal.").font(.sub).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity).padding(.top, 14)
+            if let q = store.replacement {
+                KCard {
+                    if side == .buy { KV("You pay", Fmt.usd(q.inUsd)) }
+                    KV("You get", side == .buy ? "≈ " + youGet(q) : Fmt.usd(q.outUsd))
+                }
+            }
+            Spacer(minLength: 0)
+            BigButton(label: side == .buy ? "Pay \(Fmt.usd(store.replacement?.inUsd))" : "Confirm sale", style: side == .sell ? .sell : .buy) {
+                guard let w = app.auth.activeWallet else { return }
+                Task { await store.acceptReplacement(wallet: w) { Task { await app.loadWallet(fresh: true) } } }
+            }
+            BigButton(label: "Cancel", style: .ghost) { dismiss() }
+        }
+    }
+
+    private func youGet(_ q: Quote) -> String {
+        if let d = q.outDecimals, let raw = Double(q.outAmount) { return Fmt.qty(raw / pow(10, Double(d)) * (q.multiplier ?? 1), symbol: asset.symbol) }
+        return store.youGet
     }
 
     private func run() async {
-        guard let w = app.auth.activeWallet, let taker = app.walletAddress else { store.error = "Sign in first."; return }
-        await store.execute(wallet: w, taker: taker, cashUsd: app.cashUsd) {
-            Task { await app.loadWallet(fresh: true) }
-        }
+        guard let w = app.auth.activeWallet else { store.error = "Sign in first."; return }
+        await store.execute(wallet: w) { Task { await app.loadWallet(fresh: true) } }
     }
 
+    // MARK: Done
+
     private var done: some View {
-        VStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack { Spacer(); IconButton(symbol: "xmark", label: "Close") { dismiss() } }
-            VStack(spacing: 16) {
+            VStack(spacing: 14) {
                 Image(systemName: "checkmark").font(.system(size: 26, weight: .bold)).foregroundStyle(Theme.ground)
                     .frame(width: 56, height: 56).background(Theme.green, in: .circle)
-                Text(side == .buy ? "You own \(store.youGet)" : "Sold for \(store.youGet)").h1Text().multilineTextAlignment(.center)
-                if let sig = store.signature {
-                    Link(destination: URL(string: "https://solscan.io/tx/\(sig)")!) {
-                        Text("View on Solscan ↗").font(.sub.weight(.semibold)).foregroundStyle(Theme.ink)
-                    }
-                }
-                #if DEBUG
-                Text("req \(store.requestId ?? "—")\n\(store.signature ?? "")").font(.system(size: 10)).foregroundStyle(Theme.faint).multilineTextAlignment(.center).textSelection(.enabled)
-                #endif
+                Text(side == .buy ? "You own \(store.youGet)" : "Sold \(Fmt.qty(sellQty, symbol: asset.symbol))").h1Text().multilineTextAlignment(.center)
+                Text("\(side == .buy ? "Paid \(Fmt.usd(store.quote?.inUsd))" : "You got \(store.youGet)") · \(Date.now.formatted(date: .omitted, time: .shortened))")
+                    .font(.system(size: 15)).monospacedDigit().foregroundStyle(Theme.muted)
             }
-            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity).padding(.top, 14)
+            if let q = store.quote { details(q) }
+            Spacer(minLength: 0)
             BigButton(label: "Done", style: .white) { dismiss() }
+            if let sig = store.signature, let url = URL(string: "https://solscan.io/tx/\(sig)") {
+                Link(destination: url) { Text("View on Solscan ↗").font(.sub.weight(.semibold)).foregroundStyle(Theme.muted) }
+                    .frame(maxWidth: .infinity)
+            }
+            #if DEBUG
+            Text("req \(store.requestId ?? "—")").font(.system(size: 10)).foregroundStyle(Theme.faint).frame(maxWidth: .infinity).textSelection(.enabled)
+            #endif
         }
     }
 }

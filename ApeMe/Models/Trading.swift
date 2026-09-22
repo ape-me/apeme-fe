@@ -3,7 +3,7 @@ import Foundation
 /// `POST /v1/swap/quote`
 struct Quote: Codable, Hashable {
     struct Fee: Codable, Hashable { let bps: Int?; let amountRaw: String?; let mint: String?; let usd: Double? }
-    struct Rent: Codable, Hashable { let usd: Double?; let amountRaw: String?; let lamports: Int? }
+    struct Rent: Codable, Hashable { let usd: Double?; let amountRaw: String?; let lamports: Int?; let accounts: Int?; let paidBy: String? }
     struct Gas: Codable, Hashable { let paidBy: String?; let priority: String?; let lamports: Int?; let rentLamports: Int? }
     struct Signers: Codable, Hashable { let feePayer: String?; let user: String? }
     let requestId: String
@@ -16,6 +16,8 @@ struct Quote: Codable, Hashable {
     let minOut: String?
     let inUsd: Double?
     let outUsd: Double?
+    /// What is actually swapped after fee + rent come out of `inUsd`.
+    let swapUsd: Double?
     let priceImpactPct: Double?
     let slippageBps: Int?
     let fee: Fee?

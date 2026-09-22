@@ -2,42 +2,51 @@ import Foundation
 import PrivySDK
 import Observation
 
-/// One trade: quote on every amount change (debounced), sign with Privy, submit, poll `/v1/tx`.
+/// One trade: quote on every amount change (debounced), keep it fresh, sign with Privy, submit, poll `/v1/tx`.
+/// Fee model: the typed amount is the total that leaves the wallet; fee + rent come out of it.
 @Observable @MainActor
 final class TradeStore {
-    enum Phase: Equatable { case idle, quoting, ready, insufficient, signing, submitting, confirming, confirmed, failed }
+    enum Phase: Equatable { case idle, quoting, ready, insufficient, signing, submitting, confirming, confirmed, failed, requoted }
     enum Side { case buy, sell }
 
     let side: Side
-    let mint: String            // the stock / meme mint
+    let mint: String
     let symbol: String
-    let priceUsd: Double?       // display price of the asset, for "You get ≈"
-    let holding: Holding?       // sell only
+    let priceUsd: Double?
+    let holding: Holding?
 
     var phase: Phase = .idle
     var quote: Quote?
+    /// A fresh quote after expiry whose price moved more than 1% — the user has to look again.
+    var replacement: Quote?
     var error: String?
     var requestId: String?
     var signature: String?
     var priority: String
 
     private var debounce: Task<Void, Never>?
+    private var expiry: Task<Void, Never>?
     private var lastRequest: String?
+    private var lastRaw: String?
+    private var taker: String?
 
     init(side: Side, mint: String, symbol: String, priceUsd: Double?, holding: Holding?, priority: String) {
         self.side = side; self.mint = mint; self.symbol = symbol; self.priceUsd = priceUsd; self.holding = holding; self.priority = priority
     }
 
-    /// Buy: `usd` in dollars. Sell: `rawAmount` in the holding's raw units.
+    // MARK: Quote
+
+    /// Buy: `usd` in dollars (the total debit). Sell: `rawAmount` in the holding's raw units.
     func requote(usd: Double? = nil, rawAmount: String? = nil, taker: String?, cashUsd: Double) {
-        debounce?.cancel()
-        quote = nil; error = nil
+        debounce?.cancel(); expiry?.cancel()
+        quote = nil; replacement = nil; error = nil
         guard let taker else { phase = .idle; return }
+        self.taker = taker
         let raw: String
         switch side {
         case .buy:
             guard let usd, usd > 0 else { phase = .idle; return }
-            if usd > cashUsd { phase = .insufficient; return }
+            if usd > cashUsd + 0.000001 { phase = .insufficient; return }
             raw = String(Int64((usd * 1_000_000).rounded()))
         case .sell:
             guard let rawAmount, rawAmount != "0" else { phase = .idle; return }
@@ -45,36 +54,58 @@ final class TradeStore {
         }
         phase = .quoting
         let key = raw + priority
-        lastRequest = key
+        lastRequest = key; lastRaw = raw
         debounce = Task {
-            try? await Task.sleep(for: .milliseconds(300))
+            try? await Task.sleep(for: .milliseconds(600))
             guard !Task.isCancelled else { return }
-            await fetchQuote(raw: raw, taker: taker, key: key, cashUsd: cashUsd)
+            await fetchQuote(raw: raw, key: key)
         }
     }
 
-    private func fetchQuote(raw: String, taker: String, key: String, cashUsd: Double) async {
+    private func fetchQuote(raw: String, key: String) async {
+        guard let taker else { return }
         do {
-            let q = try await API.shared.quote(inputMint: side == .buy ? "usdc" : mint,
-                                               outputMint: side == .buy ? mint : "usdc",
+            let q = try await API.shared.quote(inputMint: side == .buy ? "usdc" : mint, outputMint: side == .buy ? mint : "usdc",
                                                amountRaw: raw, taker: taker, priority: priority)
             guard lastRequest == key else { return }
-            quote = q; requestId = q.requestId
-            // Fee + one-time rent come out of cash on top of the amount.
-            if side == .buy, (q.inUsd ?? 0) + (q.totalChargeUsd ?? q.fee?.usd ?? 0) > cashUsd { phase = .insufficient } else { phase = .ready }
+            quote = q; requestId = q.requestId; phase = .ready
+            armExpiry()
         } catch {
             guard lastRequest == key else { return }
             phase = .failed; self.error = Self.message(error)
         }
     }
 
-    /// "You get" — assets for a buy, dollars for a sell.
+    /// Quotes live 60 s. Refresh silently 10 s before, so the tx blockhash is still good when the user taps Pay.
+    private func armExpiry() {
+        expiry?.cancel()
+        guard let q = quote, let exp = q.expiresAt else { return }
+        let wait = max(1, Double(exp) - Date.now.timeIntervalSince1970 - 10)
+        expiry = Task {
+            try? await Task.sleep(for: .seconds(wait))
+            guard !Task.isCancelled, phase == .ready else { return }
+            await refresh()
+        }
+    }
+
+    /// Also called when the app returns to the foreground.
+    func refresh() async {
+        guard phase == .ready, let raw = lastRaw, let key = lastRequest else { return }
+        await fetchQuote(raw: raw, key: key)
+    }
+
+    private var isFresh: Bool {
+        guard let exp = quote?.expiresAt else { return true }
+        return Double(exp) - Date.now.timeIntervalSince1970 > 3
+    }
+
+    // MARK: Display
+
     var youGet: String {
         guard let q = quote else { return "—" }
         switch side {
         case .sell: return Fmt.usd(q.outUsd)
         case .buy:
-            // Exact from the quote; fall back to $ ÷ price if the fields are missing.
             if let d = q.outDecimals, let raw = Double(q.outAmount) {
                 return Fmt.qty(raw / pow(10, Double(d)) * (q.multiplier ?? 1), symbol: symbol)
             }
@@ -85,8 +116,15 @@ final class TradeStore {
 
     // MARK: Execute
 
-    func execute(wallet: any PrivySDKSolanaWallet, taker: String, cashUsd: Double, onConfirmed: @escaping () -> Void) async {
+    func execute(wallet: any EmbeddedSolanaWallet, onConfirmed: @escaping () -> Void) async {
         guard var q = quote else { return }
+        expiry?.cancel()
+        // Stale locally: re-quote first, and only auto-continue when the price barely moved.
+        if !isFresh {
+            guard let nq = try? await requoteNow() else { phase = .failed; error = "Quote expired. Try again."; return }
+            if !Self.within1pct(q, nq) { replacement = nq; phase = .requoted; return }
+            q = nq; quote = nq
+        }
         var retried = false
         while true {
             do {
@@ -98,23 +136,41 @@ final class TradeStore {
                 phase = .confirming
                 let status = try await poll(r.signature)
                 if status.status == "confirmed" { phase = .confirmed; onConfirmed(); return }
-                if status.error == "expired", !retried, let nq = try? await requoteNow(taker: taker) { q = nq; retried = true; continue }
+                if status.error == "expired", !retried, let nq = try? await requoteNow() {
+                    if !Self.within1pct(q, nq) { replacement = nq; phase = .requoted; return }
+                    q = nq; quote = nq; retried = true; continue
+                }
                 phase = .failed; error = status.error.map { "Trade failed: \($0)" } ?? "Trade failed."
                 return
             } catch APIError.http(410, _) where !retried {
-                guard let nq = try? await requoteNow(taker: taker) else { phase = .failed; error = "Quote expired. Try again."; return }
-                q = nq; retried = true; continue
+                guard let nq = try? await requoteNow() else { phase = .failed; error = "Quote expired. Try again."; return }
+                if !Self.within1pct(q, nq) { replacement = nq; phase = .requoted; return }
+                q = nq; quote = nq; retried = true; continue
+            } catch APIError.http(422, let msg) where msg.lowercased().contains("slippage") {
+                _ = try? await requoteNow()
+                phase = .failed; error = "Price moved. Try again."; return
             } catch {
                 phase = .failed; self.error = Self.message(error); return
             }
         }
     }
 
-    private func requoteNow(taker: String) async throws -> Quote {
-        guard let old = quote else { throw APIError.http(410, "quote_expired") }
-        let q = try await API.shared.quote(inputMint: old.side == "buy" ? "usdc" : mint, outputMint: old.side == "buy" ? mint : "usdc",
-                                           amountRaw: old.inAmount, taker: taker, priority: priority)
-        quote = q; return q
+    /// User looked at the new numbers and accepted them.
+    func acceptReplacement(wallet: any EmbeddedSolanaWallet, onConfirmed: @escaping () -> Void) async {
+        guard let nq = replacement else { return }
+        quote = nq; replacement = nil; phase = .ready
+        await execute(wallet: wallet, onConfirmed: onConfirmed)
+    }
+
+    private static func within1pct(_ a: Quote, _ b: Quote) -> Bool {
+        guard let x = Double(a.outAmount), let y = Double(b.outAmount), x > 0 else { return false }
+        return abs(y - x) / x <= 0.01
+    }
+
+    private func requoteNow() async throws -> Quote {
+        guard let old = quote, let taker else { throw APIError.http(410, "quote_expired") }
+        return try await API.shared.quote(inputMint: old.side == "buy" ? "usdc" : mint, outputMint: old.side == "buy" ? mint : "usdc",
+                                          amountRaw: old.inAmount, taker: taker, priority: priority)
     }
 
     private func poll(_ sig: String) async throws -> TxStatus {
@@ -141,5 +197,3 @@ final class TradeStore {
         return "No connection. Try again."
     }
 }
-
-typealias PrivySDKSolanaWallet = PrivySDK.EmbeddedSolanaWallet
