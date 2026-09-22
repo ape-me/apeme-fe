@@ -84,7 +84,9 @@ While open: poll `/v1/wallet/:address` every 5 s; when `cashUsd` rises show a to
 
 Layout: amount in **$** with quick chips from `settings.quickBuyUsd` ($10 / $25 / $50 / $100) + custom. Under it "You get ≈ 0.4346 NVDAx". Line: **"Nasdaq $224.05 · here +0.09%"** (from quote `markUsd`, `premiumPct`; for memes hide the line). Row: "Fee $0.01 · Gas free". ⚡ priority chip (default from settings; turbo only offered when amount ≥ $50). Warning band if `premiumPct > 5`: "You're paying X% over the Nasdaq price." Primary button "Buy $25 of NVDAx". If `settings.confirmBeforeTrade`, a confirm step.
 
-`POST /v1/swap/quote` — call on every amount change, debounced 300 ms. `amount` is raw USDC (× 1,000,000).
+**Fee model (final, 22 Sep):** on a buy the typed amount is the **total** that leaves the wallet. Our 1% fee and the one-time token-account rent (if any) come out of it, the rest is swapped. "You pay $25.00" = `inUsd`; "You get" from `outAmount`; Details: ApeMe fee `fee.usd`, One-time network fee `rent.usd` (only when `rent.accounts > 0`), "Buys $24.50 of NVDAx" = `swapUsd`. Insufficient check: `inUsd > cashUsd`. A "Max" chip is simply `cashUsd`. On a sell, `outUsd` is already net of the fee.
+
+`POST /v1/swap/quote` — call on chip tap / keyboard done (or debounced ≥ 600 ms; every call builds a real tx). `amount` is raw USDC (× 1,000,000).
 ```json
 { "inputMint": "usdc", "outputMint": "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh", "amount": "25000000", "taker": "<active account address>", "priority": "normal" }
 ```
@@ -92,8 +94,10 @@ Response
 ```json
 { "requestId": "8f0c3a2e-…", "side": "buy", "inputMint": "EPjF…Dt1v", "outputMint": "Xsc9…9qEh", "symbol": "NVDAX",
   "inAmount": "25000000", "outAmount": "10864675", "minOut": "10756028",
-  "inUsd": 25.0, "outUsd": 24.75, "priceImpactPct": 0.0, "slippageBps": 100,
+  "inUsd": 25.0, "outUsd": 24.51, "swapUsd": 24.51, "priceImpactPct": 0.0, "slippageBps": 100,
   "fee": { "bps": 100, "amountRaw": "250000", "mint": "EPjF…Dt1v", "usd": 0.25 },
+  "rent": { "accounts": 1, "lamports": 2039280, "usd": 0.24, "amountRaw": "240000", "paidBy": "user", "note": "one-time network fee to open the token account, charged in USDC" },
+  "totalChargeUsd": 0.49,
   "gas": { "paidBy": "apeme", "priority": "normal", "lamports": 10469, "rentLamports": 2039280 },
   "premiumPct": 0.09, "markUsd": 224.05,
   "transaction": "<base64 unsigned v0 tx>", "signers": { "feePayer": "95VX…XjYu", "user": "<taker>" }, "expiresAt": 1790010060 }
@@ -101,6 +105,12 @@ Response
 "You get" = `outAmount / 10^decimals × multiplier` for stocks (decimals + multiplier from `/v1/stocks/:mint`), `outAmount / 10^decimals` for memes.
 Errors (422 unless noted): `usdc_only` · `no_route` · `amount_too_small` · 404 `token not found` · 403 `taker is not one of your wallets` · 503 `gas_wallet_not_configured` (should never happen; tell Joey).
 Insufficient cash is a client check: `inUsd > cashUsd` → disable Buy, show "Deposit".
+
+**Quote expiry — handle it, users do walk away.** A quote is valid for 60 s (`expiresAt`, unix). Rules:
+- Review screen: show the countdown or just re-quote silently when `expiresAt − now < 10 s` and on every foreground.
+- Submit after expiry → 410 `quote_expired`: re-quote with the same inputs, if the new `outAmount` is within 1% of the old one submit straight away, otherwise show the new numbers and ask again.
+- Price moved beyond slippage at execution → 422 `slippage`: "Price moved. Try again." with a fresh quote.
+- The signed tx is only valid for its blockhash (~60–90 s); never reuse a signature from an expired quote.
 
 Sign (user is a signer, not the fee payer; two signature slots):
 ```swift
