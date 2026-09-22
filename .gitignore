@@ -6,3 +6,5 @@ DerivedData/
 *.ipa
 *.dSYM.zip
 .env
+docs/proto/apeme-prototype.html
+docs/proto/apeme-v3.html
