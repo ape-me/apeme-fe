@@ -258,7 +258,17 @@ struct TradeSheetView: View {
             case .signing: BigButton(label: "Signing…", style: .off) {}
             case .submitting: BigButton(label: "Submitting…", style: .off) {}
             case .confirming: HStack { ProgressView().tint(Theme.ink); Text("Confirming on Solana…").font(.system(size: 15, weight: .semibold)) }.frame(maxWidth: .infinity).frame(height: 52)
-            case .failed: BigButton(label: "Try again", style: .ghost) { reviewing = false; requote() }
+            case .quoting: BigButton(label: "Getting price…", style: .off) {}
+            case .failed:
+                VStack(spacing: 10) {
+                    if store.slippageFails >= 2 {
+                        Text("Thin market. Raise “Max price move” in Trading settings to 3% and try again.").font(.sub).foregroundStyle(Theme.muted).frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    BigButton(label: "Try again", style: side == .sell ? .sell : .buy) {
+                        guard let w = app.auth.activeWallet else { return }
+                        Task { await store.retry(wallet: w) { Task { await app.loadWallet(fresh: true) } } }
+                    }
+                }
             default: BigButton(label: side == .buy ? "Pay \(Fmt.usd(store.quote?.inUsd))" : "Confirm sale", style: side == .sell ? .sell : .buy) { Task { await run() } }
             }
         }

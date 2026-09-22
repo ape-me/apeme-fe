@@ -23,6 +23,8 @@ final class TradeStore {
     var requestId: String?
     var signature: String?
     var priority: String
+    /// Consecutive 422 slippage failures — after two, the sheet suggests a wider tolerance.
+    var slippageFails = 0
 
     private var debounce: Task<Void, Never>?
     private var expiry: Task<Void, Never>?
@@ -122,6 +124,7 @@ final class TradeStore {
         // Stale locally: re-quote first, and only auto-continue when the price barely moved.
         if !isFresh {
             guard let nq = try? await requoteNow() else { phase = .failed; error = "Quote expired. Try again."; return }
+            quote = nq; requestId = nq.requestId
             if !Self.within1pct(q, nq) { replacement = nq; phase = .requoted; return }
             q = nq; quote = nq
         }
@@ -147,12 +150,26 @@ final class TradeStore {
                 if !Self.within1pct(q, nq) { replacement = nq; phase = .requoted; return }
                 q = nq; quote = nq; retried = true; continue
             } catch APIError.http(422, let msg) where msg.lowercased().contains("slippage") {
-                _ = try? await requoteNow()
-                phase = .failed; error = "Price moved. Try again."; return
+                // Re-quote in place so Review already shows the new numbers; Try again pays with them.
+                slippageFails += 1
+                if let nq = try? await requoteNow() { quote = nq; requestId = nq.requestId; armExpiry() }
+                phase = .failed; error = slippageFails >= 2 ? "Price keeps moving faster than your 1% limit." : "Price moved. Try again."; return
             } catch {
                 phase = .failed; self.error = Self.message(error); return
             }
         }
+    }
+
+    /// "Try again" on Review: make sure the quote is fresh, then pay — never back to the amount step.
+    func retry(wallet: any EmbeddedSolanaWallet, onConfirmed: @escaping () -> Void) async {
+        error = nil
+        if quote == nil || !isFresh {
+            guard let raw = lastRaw, let key = lastRequest else { return }
+            phase = .quoting
+            await fetchQuote(raw: raw, key: key)
+            guard phase == .ready else { return }
+        } else { phase = .ready }
+        await execute(wallet: wallet, onConfirmed: onConfirmed)
     }
 
     /// User looked at the new numbers and accepted them.
