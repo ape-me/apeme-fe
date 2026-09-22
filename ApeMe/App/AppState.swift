@@ -85,6 +85,8 @@ final class AppState {
         if let w = try? await API.shared.wallet(address, activity: 30, fresh: fresh, bustCache: bustCache) { wallet = w }
     }
 
+    var cashUsd: Double { wallet?.cashUsd ?? 0 }
+
     /// After /v1/tx says confirmed the fill is visible on the next read: one fresh wallet read, then re-arm live prices.
     func settleWallet() {
         Task {
