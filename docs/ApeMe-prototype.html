@@ -317,7 +317,8 @@ async function requestData(path){
  catch(e){failedPaths.add(path);state.online=false;updateDataStatus();const old=cache.get(path);if(old)return old.d;const snap=snapshotFor(path);if(snap)return snap;throw e;}
  finally{clearTimeout(timeout);pending.delete(path);}})();pending.set(path,work);return work;
 }
-/* Assets that must never reach the screen, whatever the API returns. Not a hard-coded stock
+/* Assets that must never reach the screen, whatever the API returns. The BE excludes SPCXX at
+   source now, so this is a guard rather than the mechanism. Not a hard-coded stock
    list — everything else renders as the BE sends it — this is the one deny-list. */
 const HIDDEN=new Set(['SPCXX']);
 const visible=d=>{ if(!d||typeof d!=='object') return d;
