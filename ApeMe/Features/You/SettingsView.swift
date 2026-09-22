@@ -25,7 +25,6 @@ struct SettingsView: View {
                         chips([("normal", "Normal"), ("fast", "Fast"), ("turbo", "Turbo")], selected: s.priority ?? "normal") { s.priority = $0; save(["priority": $0]) }
                     }
                     KCard {
-                        toggle("Confirm before trade", s.confirmBeforeTrade ?? true) { s.confirmBeforeTrade = $0; save(["confirmBeforeTrade": $0]) }
                         toggle("Hide dust (< $0.01)", s.hideDust ?? false) { s.hideDust = $0; save(["hideDust": $0]) }
                     }
                     if let error { Text(error).font(.sub).foregroundStyle(Theme.red) }
