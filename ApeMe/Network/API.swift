@@ -65,9 +65,8 @@ actor API {
         try await fetch("/movers?limit=\(limit)", ttl: 15)
     }
     func wallet(_ address: String, activity: Int = 30, fresh: Bool = false, bustCache: Bool = false) async throws -> Wallet {
-        // `bustCache` adds a nonce so the edge serves the origin, right after a trade.
-        let bust = bustCache ? "&_=\(Int(Date.now.timeIntervalSince1970 * 1000))" : ""
-        return try await fetch("/wallet/\(address)?activity=\(activity)\(bust)", ttl: fresh ? 0 : 3)
+        // `bustCache` → `fresh=1`: the BE skips its edge cache. Once after a confirmed trade, and on pull-to-refresh.
+        try await fetch("/wallet/\(address)?activity=\(activity)\(bustCache ? "&fresh=1" : "")", ttl: fresh ? 0 : 3)
     }
     func ticker(memes: Int = 10, stonks: Int = 1) async throws -> TickerResponse {
         try await fetch("/ticker?memes=\(memes)&stonks=\(stonks)", ttl: 30)
