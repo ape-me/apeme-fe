@@ -35,6 +35,15 @@ struct TradeSheetView: View {
                                                  priority: Auth.shared.settings.priority ?? "normal"))
     }
 
+    /// Back on the review step after a failed attempt, same store, same numbers.
+    init(resume r: TradeResume) {
+        self.side = r.side; self.asset = r.asset
+        _store = State(initialValue: r.store)
+        _amount = State(initialValue: r.amount)
+        _pct = State(initialValue: r.pct)
+        _reviewing = State(initialValue: true)
+    }
+
     private var verb: String { side == .sell ? "Sell" : asset.isStock ? "Buy" : "Ape" }
     private var usd: Double { Double(amount) ?? 0 }
     private var settings: Me.Settings { app.auth.settings }
@@ -63,8 +72,7 @@ struct TradeSheetView: View {
         .onChange(of: amount) { _, _ in requote() }
         .onChange(of: pct) { _, _ in requote() }
         .onChange(of: scenePhase) { _, p in if p == .active { Task { await store.refresh() } } }
-        .onChange(of: store.error) { _, e in if let e, store.phase == .failed { app.show(e, error: true) } }
-        .onChange(of: store.phase) { _, p in if p == .confirmed { Haptic.success() } }
+        .onChange(of: store.error) { _, e in if let e, store.phase == .failed, app.tradeInFlight == nil, !reviewing { app.show(e, error: true) } }
     }
 
     private func requote() {
@@ -315,13 +323,11 @@ struct TradeSheetView: View {
                     } else if store.phase == .failed {
                         VStack(spacing: 10) {
                             BigButton(label: "Try again", style: side == .sell ? .sell : .buy) {
-                                guard let w = app.auth.activeWallet else { return }
-                                Task { await store.retry(wallet: w) { app.settleWallet() } }
+                                Haptic.medium(); store.error = nil; requote()
                             }
                             if store.slippageFails >= 1, (store.slippageBps ?? 0) < 300 {
                                 BigButton(label: "Retry with 3% price move", style: .ghost) {
-                                    guard let w = app.auth.activeWallet else { return }
-                                    Task { await store.retryWider(wallet: w) { app.settleWallet() } }
+                                    Haptic.medium(); store.error = nil; store.slippageBps = max(300, store.slippageBps ?? 0); requote()
                                 }
                             }
                         }
@@ -371,7 +377,9 @@ struct TradeSheetView: View {
             Spacer(minLength: 0)
             BigButton(label: side == .buy ? "Pay \(Fmt.usd(store.replacement?.inUsd))" : "Confirm sale", style: side == .sell ? .sell : .buy) {
                 guard let w = app.auth.activeWallet else { return }
-                Task { await store.acceptReplacement(wallet: w) { app.settleWallet() } }
+                Haptic.medium()
+                store.takeReplacement()
+                app.runTrade(TradeResume(store: store, side: side, asset: asset, amount: amount, pct: pct), wallet: w)
             }
             BigButton(label: "Cancel", style: .ghost) { dismiss() }
         }
@@ -382,9 +390,10 @@ struct TradeSheetView: View {
         return store.youGet
     }
 
+    /// Hands the trade to AppState, which closes this sheet and reports through the toast.
     private func run() async {
         guard let w = app.auth.activeWallet else { store.error = "Sign in first."; return }
-        await store.execute(wallet: w) { app.settleWallet() }
+        app.runTrade(TradeResume(store: store, side: side, asset: asset, amount: amount, pct: pct), wallet: w)
     }
 
     // MARK: Done

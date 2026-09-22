@@ -1,4 +1,5 @@
 import SwiftUI
+import PrivySDK
 import Observation
 
 /// Mode, wallet, watchlists, navigation. Persisted bits go through UserDefaults directly so
@@ -19,6 +20,8 @@ final class AppState {
     var sheet: TradeSheet?
     var toast: String?
     var toastIsError = false
+    /// Spinner toast that stays until replaced (a trade in flight).
+    var toastPending = false
     var wallet: Wallet?
     var stocksByMint: [String: Stock] = [:]
     var online = true
@@ -163,14 +166,44 @@ final class AppState {
 
     // MARK: Feedback
 
-    func show(_ message: String, error: Bool = false) {
+    func show(_ message: String, error: Bool = false, pending: Bool = false) {
         if error { Haptic.error() }
         toastIsError = error
+        toastPending = pending
         toast = message
+        if pending { toastTask?.cancel(); return }
         toastTask?.cancel()
         toastTask = Task { [error] in
             try? await Task.sleep(for: .seconds(error ? 3.5 : 2.2))
             if !Task.isCancelled { toast = nil }
+        }
+    }
+
+    // MARK: Trades run behind the sheet
+
+    var tradeInFlight: TradeResume?
+
+    /// Buy now / Sell now: close the sheet, show a spinner toast, execute, then a green toast — or a red one and the sheet comes back.
+    func runTrade(_ r: TradeResume, wallet: any PrivySDK.EmbeddedSolanaWallet) {
+        guard tradeInFlight == nil else { return }
+        tradeInFlight = r
+        sheet = nil
+        let what = r.side == .buy ? r.store.youGet : Fmt.qty(r.sellQty, symbol: r.asset.symbol)
+        show("\(r.side == .buy ? "Buying" : "Selling") \(what)…", pending: true)
+        Task {
+            await r.store.execute(wallet: wallet) { [weak self] in self?.settleWallet() }
+            tradeInFlight = nil
+            switch r.store.phase {
+            case .confirmed:
+                Haptic.success()
+                show("\(r.side == .buy ? "Bought" : "Sold") \(what)")
+            case .requoted:
+                show("Price changed — take a look", error: true)
+                sheet = .resume(r)
+            default:
+                show(r.store.error ?? "Trade didn't go through. Nothing was charged.", error: true)
+                sheet = .resume(r)
+            }
         }
     }
 

@@ -189,11 +189,10 @@ final class TradeStore {
         await retry(wallet: wallet, onConfirmed: onConfirmed)
     }
 
-    /// User looked at the new numbers and accepted them.
-    func acceptReplacement(wallet: any EmbeddedSolanaWallet, onConfirmed: @escaping () -> Void) async {
+    /// User looked at the new numbers and accepted them; the caller executes.
+    func takeReplacement() {
         guard let nq = replacement else { return }
-        quote = nq; replacement = nil; phase = .ready
-        await execute(wallet: wallet, onConfirmed: onConfirmed)
+        quote = nq; requestId = nq.requestId; replacement = nil; phase = .ready
     }
 
     private static func within1pct(_ a: Quote, _ b: Quote) -> Bool {

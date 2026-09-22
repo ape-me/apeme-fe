@@ -30,6 +30,7 @@ struct RootView: View {
             case .sell(let h): TradeSheetView(side: .sell, asset: .holding(h))
             case .deposit: DepositSheet()
             case .tx(let a): TxSheet(activity: a)
+            case .resume(let r): TradeSheetView(resume: r)
             case .position(let h): PositionSheet(holding: h)
             case .login: LoginSheet()
             }
@@ -47,7 +48,7 @@ private struct ToastOverlay: ViewModifier {
         content
             .overlay(alignment: .top) {
                 if let t = app.toast {
-                    ToastView(text: t, error: app.toastIsError)
+                    ToastView(text: t, error: app.toastIsError, pending: app.toastPending)
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }

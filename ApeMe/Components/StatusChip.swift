@@ -41,15 +41,18 @@ struct EmptyState<Content: View>: View {
 struct ToastView: View {
     let text: String
     var error = false
+    var pending = false
+    private var tint: Color { pending ? Theme.ink : error ? Theme.red : Theme.green }
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: error ? "xmark.circle.fill" : "checkmark.circle.fill").font(.system(size: 14, weight: .semibold))
+            if pending { ProgressView().tint(Theme.muted).scaleEffect(0.8) }
+            else { Image(systemName: error ? "xmark.circle.fill" : "checkmark.circle.fill").font(.system(size: 14, weight: .semibold)) }
             Text(text).font(.system(size: 13, weight: .semibold)).multilineTextAlignment(.center)
         }
-        .foregroundStyle(error ? Theme.red : Theme.green)
+        .foregroundStyle(tint)
         .padding(.horizontal, 14).frame(minHeight: 38)
-        .background(error ? Theme.redT : Theme.greenT, in: .capsule)
-        .overlay(Capsule().stroke((error ? Theme.red : Theme.green).opacity(0.25), lineWidth: 1))
+        .background(pending ? Theme.surface2 : error ? Theme.redT : Theme.greenT, in: .capsule)
+        .overlay(Capsule().stroke((pending ? Theme.line : tint.opacity(0.25)), lineWidth: 1))
         .padding(.horizontal, 20).padding(.top, 8)
     }
 }
