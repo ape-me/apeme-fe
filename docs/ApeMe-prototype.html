@@ -579,7 +579,7 @@ SCREENS.home={
   html(p,skin){ const ape=skin==='ape'; return `<div class="scroll" id="hs">
     <div class="pad" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:16px"><div class="h1">${ape?'Floors':'Home'}</div>${modeToggle()}</div>
     <div id="strip" style="margin-top:10px"></div><div class="hstrip" id="hstrip" hidden></div><div class="hr"></div>
-    <div class="tabs" id="hometabs" style="padding-inline:20px;margin-top:6px">${ape?'<button data-ht="preipo" class="on">Pre-IPO</button><button data-ht="new">New launches</button><button data-ht="kings">Kings</button>':'<button data-ht="news" class="on">News</button><button data-ht="preipo">Pre-IPO</button><button data-ht="movers">Movers</button><button data-ht="explore">Explore</button><button data-ht="watch">Watchlist</button>'}</div>
+    <div class="tabs" id="hometabs" style="padding-inline:20px;margin-top:6px">${ape?'<button data-ht="preipo" class="on">Pre-IPO</button><button data-ht="new">New launches</button><button data-ht="kings">Kings</button>':investTabsHtml()}</div>
     <div id="body"><div class="sec"><div class="skel" style="height:220px"></div><div class="skel" style="height:64px"></div><div class="skel" style="height:64px"></div></div></div></div>`; },
   async mount(el,p,skin){
     const ape=skin==='ape', body=el.querySelector('#body'); bindMode(el);
@@ -626,7 +626,7 @@ SCREENS.home={
       const pg=el.querySelector('#pager'); if(pg){ const ds=[...el.querySelectorAll('#pdots i')]; pg.addEventListener('scroll',()=>{ const i=Math.round(pg.scrollLeft/(pg.firstElementChild.offsetWidth+12)); ds.forEach((d,j)=>d.classList.toggle('on',j===i)); },{passive:true}); } };
     const syncStrip=t=>{ const box=el.querySelector('#hstrip'); if(box) box.hidden=(t==='news')||!box.dataset.filled; };
     el.querySelectorAll('[data-ht]').forEach(b=>b.onclick=()=>{ el.querySelectorAll('[data-ht]').forEach(x=>x.classList.toggle('on',x===b)); syncStrip(b.dataset.ht); show(b.dataset.ht); });
-    await show('news');
+    await show(investTabOrder()[0]);
   }
 };
 /* --- markets --- */
@@ -1312,6 +1312,17 @@ async function paintNewsList(mount,path,symbol){
       }catch(e){ more.textContent='Try again'; } };
   };
   render();
+}
+
+/* Watching something is the clearest thing a user ever tells us about what they care about, so
+   once the list has anything in it, it leads and Home opens there. Empty, it sits at the back. */
+function investTabOrder(){
+  return state.watch.length ? ['watch','preipo','movers','news','explore']
+                            : ['preipo','movers','news','explore','watch'];
+}
+function investTabsHtml(){
+  const L={preipo:'Pre-IPO',movers:'Movers',news:'News',explore:'Explore',watch:'Watchlist'};
+  return investTabOrder().map((k,i)=>`<button data-ht="${k}"${i?'':' class="on"'}>${L[k]}</button>`).join('');
 }
 
 /* ============ boot ============ */

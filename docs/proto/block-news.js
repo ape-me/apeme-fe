@@ -160,3 +160,14 @@ async function paintNewsList(mount,path,symbol){
   };
   render();
 }
+
+/* Watching something is the clearest thing a user ever tells us about what they care about, so
+   once the list has anything in it, it leads and Home opens there. Empty, it sits at the back. */
+function investTabOrder(){
+  return state.watch.length ? ['watch','preipo','movers','news','explore']
+                            : ['preipo','movers','news','explore','watch'];
+}
+function investTabsHtml(){
+  const L={preipo:'Pre-IPO',movers:'Movers',news:'News',explore:'Explore',watch:'Watchlist'};
+  return investTabOrder().map((k,i)=>`<button data-ht="${k}"${i?'':' class="on"'}>${L[k]}</button>`).join('');
+}

@@ -4,9 +4,15 @@ import Observation
 @Observable @MainActor
 final class HomeStore {
     enum InvestTab: String, CaseIterable, Identifiable {
-        case news, preipo, movers, explore, watch
+        case preipo, movers, news, explore, watch
         var id: String { rawValue }
-        var label: String { switch self { case .news: "News"; case .preipo: "Pre-IPO"; case .movers: "Movers"; case .explore: "Explore"; case .watch: "Watchlist" } }
+        var label: String { switch self { case .preipo: "Pre-IPO"; case .movers: "Movers"; case .news: "News"; case .explore: "Explore"; case .watch: "Watchlist" } }
+
+        /// Watching something is the clearest thing a user ever tells us about what they care
+        /// about, so once the list has anything in it, it leads. Empty, it sits at the back.
+        static func ordered(watching: Bool) -> [InvestTab] {
+            watching ? [.watch, .preipo, .movers, .news, .explore] : [.preipo, .movers, .news, .explore, .watch]
+        }
     }
     enum ApeTab: String, CaseIterable, Identifiable {
         case preipo, new, kings
@@ -22,7 +28,8 @@ final class HomeStore {
     var watched: [Stock] = []
     var loading = true
     var error: String?
-    var investTab: InvestTab = .news
+    var investTab: InvestTab = .preipo
+    private var pickedFirstTab = false
     var apeTab: ApeTab = .preipo
     var moversSide = 0          // 0 gainers, 1 losers
     var exploreId: String?
@@ -57,6 +64,12 @@ final class HomeStore {
     }
 
     func load(app: AppState) async {
+        // Home opens on the watchlist for anyone who has one, and only on the first load —
+        // after that wherever the user last tapped is theirs to keep.
+        if !pickedFirstTab {
+            investTab = InvestTab.ordered(watching: !app.watch.isEmpty)[0]
+            pickedFirstTab = true
+        }
         // Paint whatever is cached first, then refresh.
         if preipo.isEmpty, let c: StocksResponse = await API.shared.cached("/stocks?issuer=prestocks") {
             preipo = c.stocks; loading = false

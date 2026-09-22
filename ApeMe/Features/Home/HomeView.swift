@@ -57,7 +57,7 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         } else {
 ScrollView(.horizontal) {
-                UnderlineTabs(items: HomeStore.InvestTab.allCases, selected: store.investTab, label: \.label) { store.investTab = $0 }
+                UnderlineTabs(items: HomeStore.InvestTab.ordered(watching: !app.watch.isEmpty), selected: store.investTab, label: \.label) { store.investTab = $0 }
                     .padding(.horizontal, 20)
             }
             .scrollIndicators(.hidden)
