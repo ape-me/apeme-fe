@@ -248,7 +248,11 @@ struct TradeSheetView: View {
                     if side == .buy { KV("Buys of \(asset.symbol)", Fmt.cash(q.swapUsd ?? q.outUsd)) }
                     KV("ApeMe fee", Fmt.cash(q.fee?.usd ?? 0))
                     if let f = q.issuerFee, let bps = f.bps, bps > 0 { KV("Issuer fee \(String(format: "%g", Double(bps) / 100))%", Fmt.cash(f.usd ?? 0)) }
-                    if (q.rent?.accounts ?? 0) > 0 { KV("One-time network fee", Fmt.cash(q.rent?.usd ?? 0)) }
+                    if let rent = rentUsd(q) {
+                        KV("One-time network fee", Fmt.cash(rent))
+                        Text("Charged by Solana to open \(asset.symbol) in your wallet, not by ApeMe. Never again for this token.")
+                            .font(.system(size: 12)).foregroundStyle(Theme.faint).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 10)
+                    }
                     KV("Gas", "Free")
                     KV("Price impact") {
                         Text(String(format: "%.2f%%", q.priceImpactPct ?? 0)).foregroundStyle((q.priceImpactPct ?? 0) > 2 ? Theme.amber : Theme.ink)
@@ -284,13 +288,18 @@ struct TradeSheetView: View {
                 .padding(.top, 28)
                 if let i = q.priceImpactPct, i > 2 { note("Large order: price impact \(String(format: "%.1f", i))%. You get less per dollar.").padding(.top, 14) }
                 if side == .buy, asset.isStock, let p = q.premiumPct, p > 5 { note("Trading \(String(format: "%.0f", p))% above \(asset.isPreIPO ? "its fair value" : "the Nasdaq price").").padding(.top, 14) }
+                if let rent = rentUsd(q) {
+                    Text("First time holding \(asset.symbol): \(Fmt.cash(rent)) of this is a one-time network fee to open the token in your wallet. Next time it's just \(Fmt.cash(feesTotal(q) - rent)).")
+                        .font(.sub).foregroundStyle(Theme.muted).lineSpacing(2).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 14)
+                }
                 errorBox.padding(.top, 14)
                 Spacer(minLength: 20)
                 // Footer: total on the left, details underneath, one button.
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(side == .buy ? "\(Fmt.cash(q.inUsd)) total" : "\(Fmt.cash(q.outUsd)) you get").font(.system(size: 20, weight: .semibold)).tracking(-0.4).monospacedDigit()
-                        Text("incl. \(Fmt.cash(feesTotal(q))) fees").font(.sub).foregroundStyle(Theme.muted)
+                        if let rent = rentUsd(q) { Text("incl. \(Fmt.cash(feesTotal(q) - rent)) fees + \(Fmt.cash(rent)) one-time").font(.sub).foregroundStyle(Theme.muted) }
+                        else { Text("incl. \(Fmt.cash(feesTotal(q))) fees").font(.sub).foregroundStyle(Theme.muted) }
                     }
                     Spacer()
                     HStack(spacing: 6) {
@@ -333,6 +342,12 @@ struct TradeSheetView: View {
     private func row(_ k: String, _ v: String) -> some View {
         HStack { Text(k).font(.system(size: 15)).foregroundStyle(Theme.muted); Spacer(); Text(v).font(.system(size: 15, weight: .semibold)).monospacedDigit() }
             .frame(height: 52)
+    }
+
+    /// Solana's token-account rent, only when this trade opens the account.
+    private func rentUsd(_ q: Quote) -> Double? {
+        guard (q.rent?.accounts ?? 0) > 0, let r = q.rent?.usd, r > 0 else { return nil }
+        return r
     }
 
     private func feesTotal(_ q: Quote) -> Double {
