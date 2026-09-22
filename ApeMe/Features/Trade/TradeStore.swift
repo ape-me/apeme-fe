@@ -207,11 +207,12 @@ final class TradeStore {
                                           amountRaw: old.inAmount, taker: taker, priority: priority, slippageBps: slippageBps)
     }
 
+    /// Every 2 s: the BE rebroadcasts the signed tx on each poll while it's still pending.
     private func poll(_ sig: String) async throws -> TxStatus {
-        for _ in 0..<90 {
+        for _ in 0..<45 {
             let s = try await API.shared.tx(sig)
             if s.status == "confirmed" || s.status == "failed" { return s }
-            try await Task.sleep(for: .seconds(1))
+            try await Task.sleep(for: .seconds(2))
         }
         return TxStatus(signature: sig, status: "failed", slot: nil, confirmations: nil, error: "timeout")
     }
