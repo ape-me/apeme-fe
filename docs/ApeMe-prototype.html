@@ -774,16 +774,16 @@ const acct={
   holds(mint){ return acct.wallet().holdings.find(h=>h.mint===mint&&h.kind!=='cash'); },
   /* quote to the BE shape */
   quote({side,item,usd,pct,holding,priority}){
-    const price=item.priceUsd||holding?.priceUsd||1; const fee=(side==='buy'?usd:(holding.valueUsd*pct/100))*0.01; const rent=side==='buy'&&!acct.holds(item.mint)?0.25:0;
-    const outUsd=side==='buy'?usd-fee:(holding.valueUsd*pct/100)-fee;
-    return { requestId:'8f0c3a2e-'+Math.random().toString(16).slice(2,8), side, symbol:item.symbol, inUsd:side==='buy'?usd:holding.valueUsd*pct/100, outUsd,
-      outQty:side==='buy'?outUsd/price:null, fee:{usd:fee,bps:100}, rent:{usd:rent}, totalChargeUsd:fee+rent, gas:{paidBy:'apeme',priority}, slippageBps:acct.settings().slippageBps,
-      premiumPct:item.premiumPct??0.09, markUsd:item.markUsd||price*0.999, expiresAt:Math.floor(Date.now()/1000)+60 };
+    const price=item.priceUsd||holding?.priceUsd||1; const first=side==='buy'&&!acct.holds(item.mint);
+    if(side==='buy'){ const inUsd=usd, fee=inUsd*0.01, rent=first?0.25:0, swapUsd=Math.max(0,inUsd-fee-rent); const impact=inUsd>200?2.4:inUsd>50?0.6:0.1; const outUsd=swapUsd*(1-impact/100);
+      return { requestId:'8f0c3a2e-'+Math.random().toString(16).slice(2,8), side, symbol:item.symbol, inUsd, swapUsd, outUsd, outQty:outUsd/price, fee:{usd:fee,bps:100}, rent:{usd:rent,accounts:first?1:0}, totalChargeUsd:fee+rent, priceImpactPct:impact, gas:{paidBy:'apeme',priority}, slippageBps:acct.settings().slippageBps, premiumPct:item.premiumPct??0.09, markUsd:item.markUsd||price*0.999, expiresAt:Date.now()/1000+60 }; }
+    const gross=holding.valueUsd*pct/100, fee=gross*0.01, impact=gross>200?2.4:0.2, outUsd=(gross-fee)*(1-impact/100);
+    return { requestId:'8f0c3a2e-'+Math.random().toString(16).slice(2,8), side, symbol:item.symbol, inUsd:gross, swapUsd:gross, outUsd, outQty:null, fee:{usd:fee,bps:100}, rent:{usd:0,accounts:0}, totalChargeUsd:fee, priceImpactPct:impact, gas:{paidBy:'apeme',priority}, slippageBps:acct.settings().slippageBps, premiumPct:item.premiumPct??0.09, markUsd:item.markUsd||price*0.999, expiresAt:Date.now()/1000+60 };
   },
   /* apply a confirmed trade to the mock wallet */
   settle(q,item,holding){
     const w=acct.wallet(); const price=item.priceUsd||holding?.priceUsd||1;
-    if(q.side==='buy'){ w.holdings[0].valueUsd=+(w.holdings[0].valueUsd-q.inUsd-q.totalChargeUsd).toFixed(2); w.holdings[0].amount=w.holdings[0].valueUsd;
+    if(q.side==='buy'){ w.holdings[0].valueUsd=+(w.holdings[0].valueUsd-q.inUsd).toFixed(2); w.holdings[0].amount=w.holdings[0].valueUsd;
       let h=acct.holds(item.mint); if(!h){ h={mint:item.mint,kind:item.kind==='meme'||item.quoteMint?'meme':'stock',symbol:item.symbol,name:item.name,image:item.logo||item.image,quoteSymbol:item.quoteMint?state.stocksByMint[item.quoteMint]?.symbol:undefined,amount:0,raw:'0',decimals:item.quoteMint?6:8,priceUsd:price,valueUsd:0,change24h:item.change24h,costUsd:0,pnlUsd:0,pnlPct:0}; w.holdings.push(h); }
       h.amount+=q.outQty; h.valueUsd=+(h.amount*price).toFixed(2); h.costUsd=(h.costUsd||0)+q.inUsd; h.raw=String(Math.round(h.amount*10**h.decimals));
       w.activity.unshift({sig:'5Kd'+Math.random().toString(36).slice(2,12)+'…',ts:Math.floor(Date.now()/1000),type:'buy',status:'confirmed',source:'apeme',symbol:item.symbol,image:item.logo||item.image,stockSymbol:h.quoteSymbol,amount:q.outQty,usd:q.inUsd,feeUsd:q.fee.usd,rentUsd:q.rent.usd});
@@ -837,27 +837,32 @@ function tradeSheet({side,item,stock,holding}){
   const set=(html,mount)=>{ sheet.innerHTML='<div class="grab"></div>'+html; mount?.(); };
   const usd=()=>Number(amount)||0;
   const youGet=()=>!q?'—':side==='sell'?fmt.usd(q.outUsd):fmt.qty(q.outQty,item.symbol);
-  const requote=()=>{ clearTimeout(timer); q=null; if(side==='buy'?usd()<=0:pct==null){ phase='idle'; paint(); return; } if(side==='buy'&&usd()>cash){ phase='insufficient'; paint(); return; } phase='quoting'; paint();
-    timer=setTimeout(()=>{ q=acct.quote({side,item,usd:usd(),pct,holding,priority}); if(side==='sell') q.pct=pct; phase=(side==='buy'&&q.inUsd+q.totalChargeUsd>cash)?'insufficient':'ready'; paint(); },180); };
+  let expiryT=null;
+  const armExpiry=()=>{ clearTimeout(expiryT); if(!q) return; expiryT=setTimeout(()=>{ if(!w.isConnected||phase!=='ready') return; q=acct.quote({side,item,usd:usd(),pct,holding,priority}); if(side==='sell') q.pct=pct; armExpiry(); paint(); },50000); };
+  const requote=()=>{ clearTimeout(timer); clearTimeout(expiryT); q=null; if(side==='buy'?usd()<=0:pct==null){ phase='idle'; paint(); return; } if(side==='buy'&&usd()>cash){ phase='insufficient'; paint(); return; } phase='quoting'; paint();
+    timer=setTimeout(()=>{ q=acct.quote({side,item,usd:usd(),pct,holding,priority}); if(side==='sell') q.pct=pct; phase='ready'; armExpiry(); paint(); },600); };
   const header=()=>`<div class="sheet-title"><div style="display:flex;align-items:center;gap:10px">${isStock?logo({symbol:item.symbol,logo:item.logo||item.image},28):avatar({symbol:item.symbol,image:item.logo||item.image},'m')}<div><div class="h3">${verb} ${esc(item.symbol)}</div><div class="sub mono">${side==='sell'?`You hold ${fmt.qty(holding.amount,item.symbol)} · ${fmt.usd(holding.valueUsd)}`:`Cash ${fmt.usd(cash)}`}</div></div></div><button class="iconbtn" data-close aria-label="Close">${I.x}</button></div>`;
-  const total=()=>q?q.inUsd+q.totalChargeUsd:0;
-  const detailsCard=()=>`<details class="dets"><summary class="sub" style="display:flex;align-items:center;gap:4px;cursor:pointer;list-style:none">Details ${I.chev.replace('width="16"','width="12"').replace('height="16"','height="12"')}</summary><div class="kcard" style="margin-top:8px">${isStock?kv(stock?.issuer==='prestocks'?'Fair value':'Nasdaq price',fmt.usd(q.markUsd)):''}${kv('ApeMe fee',fmt.usd(q.fee.usd))}${q.rent.usd>0?kv('One-time network fee',fmt.usd(q.rent.usd)):''}${kv('Gas','Free')}${kv('Max price move',(q.slippageBps/100)+'%')}</div></details>`;
+  const total=()=>q?q.inUsd:0;
+  const detailsCard=()=>`<details class="dets"><summary class="sub" style="display:flex;align-items:center;gap:4px;cursor:pointer;list-style:none">Details ${I.chev.replace('width="16"','width="12"').replace('height="16"','height="12"')}</summary><div class="kcard" style="margin-top:8px">${side==='buy'?kv(`Buys of ${esc(item.symbol)}`,fmt.usd(q.swapUsd)):''}${kv('ApeMe fee',fmt.usd(q.fee.usd))}${q.rent.accounts>0?kv('One-time network fee',fmt.usd(q.rent.usd)):''}${kv('Gas','Free')}${kv('Price impact',`<span style="color:var(--${q.priceImpactPct>2?'amber':'ink'})">${q.priceImpactPct.toFixed(2)}%</span>`)}${kv('Max price move',(q.slippageBps/100)+'%')}${isStock?kv(stock?.issuer==='prestocks'?'Fair value':'Nasdaq price',fmt.usd(q.markUsd)):''}</div></details>`;
+  const impactNote=()=>q&&q.priceImpactPct>2?`<div class="notice">Large order: price impact ${q.priceImpactPct.toFixed(1)}%. You get less per dollar.</div>`:'';
   const primary=()=>{ const m={insufficient:['Deposit to buy','white'],quoting:['Getting price…','off'],signing:['Signing…','off'],submitting:['Submitting…','off'],confirming:['Confirming…','off'],failed:['Try again','ghost'],idle:[side==='buy'?'Enter an amount':'Pick an amount','off']};
     const [l,c]=phase==='ready'?[side==='buy'?`${verb} $${amount} of ${esc(item.symbol)}`:`Sell ${pct}% of ${esc(item.symbol)}`,side==='sell'?'sell':'buy']:m[phase]; return `<button class="btn ${c==='buy'?'buy':c==='sell'?'sellb':c}" id="go">${l}</button>`; };
   const form=()=>set(`${header()}
     <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 0 0">${side==='buy'?`<div class="amountbig" style="align-items:center;gap:10px"><img src="${USDC_LOGO}" width="36" height="36" style="border-radius:999px" alt="USDC"><span id="amt">${amount||'0'}</span></div>`:`<div class="amountbig"><span id="amt">${pct==null?'—':pct+'%'}</span></div>`}<div class="sub mono" style="font-size:15px;visibility:${(side==='buy'?usd()>0:pct!=null)?'visible':'hidden'}">You get ≈ <b style="color:var(--ink)">${phase==='quoting'?'…':youGet()}</b></div></div>
-    <div class="presets">${(side==='buy'?st.quickBuyUsd:st.quickSellPct).map(v=>`<button data-p="${v}" class="${(side==='buy'?usd():pct)===v?'on':''}">${side==='buy'?'$'+v:v+'%'}</button>`).join('')}</div>
+    <div class="presets">${(side==='buy'?[...st.quickBuyUsd,'max']:st.quickSellPct).map(v=>`<button data-p="${v}" class="${(side==='buy'?(v==='max'?usd()===Math.floor(cash*100)/100:usd()===v):pct===v)?'on':''}">${side==='buy'?(v==='max'?'Max':'$'+v):v+'%'}</button>`).join('')}</div>
+    ${impactNote()}
     ${q&&side==='buy'&&q.premiumPct>5?`<div class="notice">Trading ${q.premiumPct.toFixed(0)}% above ${stock?.issuer==='prestocks'?'its fair value':'the Nasdaq price'}.</div>`:''}
     ${side==='buy'?`<div class="numpad">${['1','2','3','4','5','6','7','8','9','.','0','⌫'].map(k=>`<button data-k="${k}">${k==='⌫'?I.del:k}</button>`).join('')}</div>`:''}
     ${phase==='failed'?`<div class="errbox">Price moved. Try again.</div>`:''}
     <div style="flex:1"></div>${primary()}`,()=>{
-    sheet.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{ if(side==='buy') amount=String(b.dataset.p); else pct=Number(b.dataset.p); requote(); });
+    sheet.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{ if(side==='buy') amount=b.dataset.p==='max'?String(Math.floor(cash*100)/100):String(b.dataset.p); else pct=Number(b.dataset.p); requote(); });
     sheet.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{ const k=b.dataset.k; if(k==='⌫') amount=amount.slice(0,-1); else if(k==='.'){ if(!amount.includes('.')) amount=(amount||'0')+'.'; } else if(amount.length<8&&(!amount.includes('.')||amount.split('.')[1].length<2)) amount=amount==='0'?k:amount+k; requote(); });
     sheet.querySelector('#go').onclick=()=>{ if(phase==='insufficient'){ w.close(); depositSheet(); } else if(phase==='failed') requote(); else if(phase==='ready'){ if(st.confirmBeforeTrade){ review=true; paint(); } else run(); } };
   });
   const reviewV=()=>set(`<div class="sheet-title"><button class="iconbtn" id="b1" aria-label="Back">${I.back}</button><div class="h3">Review</div><button class="iconbtn" data-close aria-label="Close">${I.x}</button></div>
     <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 0 6px;text-align:center">${isStock?logo({symbol:item.symbol,logo:item.logo||item.image},56):avatar({symbol:item.symbol,image:item.logo||item.image},'l')}<div class="h1" style="text-wrap:balance">${side==='buy'?`${verb} ${youGet()}`:`Sell ${fmt.qty(holding.amount*pct/100,item.symbol)}`}</div></div>
-    <div class="kcard">${side==='buy'?kv('You pay',fmt.usd(total()))+kv('Includes fees',fmt.usd(q.totalChargeUsd)):kv('You get',youGet())+kv('Fees',fmt.usd(q.fee.usd))}</div>
+    <div class="kcard">${side==='buy'?kv('You pay',fmt.usd(q.inUsd))+kv('You get','≈ '+youGet()):kv('You get',youGet())+kv('Includes fee',fmt.usd(q.fee.usd))}</div>
+    ${impactNote()}
     ${detailsCard()}
     ${phase==='failed'?`<div class="errbox">Price moved. Try again.</div>`:''}
     <div style="flex:1"></div>
