@@ -35,7 +35,7 @@ struct RootView: View {
         }
         .overlay(alignment: .bottom) {
             if let t = app.toast {
-                ToastView(text: t)
+                ToastView(text: t, error: app.toastIsError)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }

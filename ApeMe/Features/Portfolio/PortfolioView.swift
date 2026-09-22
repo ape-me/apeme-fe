@@ -218,7 +218,7 @@ struct ActivityRow: View {
     }
     private var sub: String {
         let a = activity
-        if a.status == "failed" { return "Failed · \(a.error ?? "unknown")" }
+        if a.status == "failed" { return "Failed · " + TradeStore.chainMessage(a.error).replacingOccurrences(of: " Nothing was charged.", with: "") }
         if a.status == "pending" { return "Confirming on Solana…" }
         if a.kind == "deposit" { return "From \(Fmt.short(a.from))" }
         var parts: [String] = []
@@ -310,7 +310,7 @@ struct TxSheet: View {
             KCard {
                 KV("Date", Fmt.dateTime(activity.ts))
                 KV("Status") { Text(ok ? "Succeeded" : pending ? "Pending" : "Failed").foregroundStyle(ok ? Theme.green : pending ? Theme.muted : Theme.red) }
-                if let e = activity.error { KV("Reason", e) }
+                if activity.status == "failed" { KV("Reason", TradeStore.chainMessage(activity.error)) }
                 if let f = activity.feeUsd { KV("Fee", Fmt.usd(f)) }
                 if let from = activity.from { KV("From", Fmt.short(from)) }
                 KV("Network", "Solana")

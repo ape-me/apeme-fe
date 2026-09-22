@@ -153,7 +153,7 @@ final class TradeStore {
                     if !Self.within1pct(q, nq) { replacement = nq; phase = .requoted; return }
                     q = nq; quote = nq; retried = true; continue
                 }
-                phase = .failed; error = "Trade didn't go through. Nothing was charged." + (status.error.map { " (\($0))" } ?? "")
+                phase = .failed; error = Self.chainMessage(status.error); quote = nil
                 return
             } catch APIError.http(410, _) where !retried {
                 guard let nq = try? await requoteNow() else { phase = .failed; error = "Quote expired. Try again."; return }
@@ -162,10 +162,9 @@ final class TradeStore {
             } catch APIError.http(422, let msg) where msg.lowercased().contains("slippage") {
                 // Re-quote in place so Review already shows the new numbers; Try again pays with them.
                 slippageFails += 1
-                if let nq = try? await requoteNow() { quote = nq; requestId = nq.requestId; armExpiry() }
-                phase = .failed; error = "Price moved. Nothing was charged."; return
+                phase = .failed; error = "Price moved. Nothing was charged."; quote = nil; return
             } catch {
-                phase = .failed; self.error = Self.message(error); return
+                phase = .failed; self.error = Self.message(error); quote = nil; return
             }
         }
     }
@@ -173,6 +172,7 @@ final class TradeStore {
     /// "Try again" on Review: make sure the quote is fresh, then pay — never back to the amount step.
     func retry(wallet: any EmbeddedSolanaWallet, onConfirmed: @escaping () -> Void) async {
         error = nil
+        quote = nil   // a quote that failed on chain is dead on the BE too
         if quote == nil || !isFresh {
             guard let raw = lastRaw, let key = lastRequest else { return }
             phase = .quoting; lastRequest = key
@@ -217,6 +217,15 @@ final class TradeStore {
         return TxStatus(signature: sig, status: "failed", slot: nil, confirmations: nil, error: "timeout")
     }
 
+    /// On-chain failure reasons → one sentence. Never show program JSON.
+    static func chainMessage(_ raw: String?) -> String {
+        let r = (raw ?? "").lowercased()
+        if r.contains("slippage") || r.contains("6001") || r.contains("custom\":6") { return "Price moved. Nothing was charged." }
+        if r.contains("expired") || r.contains("blockhash") { return "Took too long to land. Nothing was charged." }
+        if r.contains("insufficient") { return "Not enough cash. Nothing was charged." }
+        return "Trade didn't go through. Nothing was charged."
+    }
+
     static func message(_ error: Error) -> String {
         if case APIError.http(let code, let msg) = error {
             let m = msg.lowercased()
@@ -226,8 +235,10 @@ final class TradeStore {
             if m.contains("no_route") { return "No route for this trade right now." }
             if m.contains("invite_required") { return "Enter your invite code first." }
             if code == 429 { return "Too many trades this hour. Take a breath." }
-            if m.contains("not one of your wallets") { return "This wallet isn't linked to your account yet. \(msg)" }
-            return msg
+            if m.contains("not one of your wallets") { return "This wallet isn't linked to your account yet." }
+            if m.contains("already") || m.contains("expired") { return "That quote is stale. Getting a new one…" }
+            if m.contains("no_route") { return "No route for this trade right now." }
+            return "Trade didn't go through. Nothing was charged."
         }
         return "No connection. Try again."
     }

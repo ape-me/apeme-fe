@@ -63,6 +63,7 @@ struct TradeSheetView: View {
         .onChange(of: amount) { _, _ in requote() }
         .onChange(of: pct) { _, _ in requote() }
         .onChange(of: scenePhase) { _, p in if p == .active { Task { await store.refresh() } } }
+        .onChange(of: store.error) { _, e in if let e, store.phase == .failed { app.show(e, error: true) } }
     }
 
     private func requote() {
@@ -200,17 +201,13 @@ struct TradeSheetView: View {
             .padding(.horizontal, 12).padding(.vertical, 10).background(Theme.amberT, in: .rect(cornerRadius: 10))
     }
 
+    /// Errors go to the toast; the sheet only keeps the debug request id.
     @ViewBuilder private var errorBox: some View {
-        if let e = store.error, store.phase == .failed {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(e).font(.sub).foregroundStyle(Theme.red)
-                #if DEBUG
-                if let r = store.requestId { Text("req \(r)").font(.system(size: 10)).foregroundStyle(Theme.faint).textSelection(.enabled) }
-                #endif
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 14).padding(.vertical, 12).background(Theme.redT, in: .rect(cornerRadius: 12))
+        #if DEBUG
+        if store.phase == .failed, let r = store.requestId {
+            Text("req \(r)").font(.system(size: 10)).foregroundStyle(Theme.faint).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
         }
+        #endif
     }
 
     @ViewBuilder private var primary: some View {
@@ -280,7 +277,7 @@ struct TradeSheetView: View {
             .frame(maxWidth: .infinity).padding(.top, 26)
             if let q = store.quote {
                 VStack(spacing: 0) {
-                    row("Receive", side == .buy ? "≈ " + store.youGet : Fmt.qty(sellQty, symbol: asset.symbol))
+                    row(side == .buy ? "Receive" : "Selling", side == .buy ? "≈ " + store.youGet : Fmt.qty(sellQty, symbol: asset.symbol))
                     Divider().overlay(Theme.line)
                     if asset.isStock, let m = q.markUsd { row(asset.isPreIPO ? "Fair value" : "Nasdaq price", Fmt.usd(m)); Divider().overlay(Theme.line) }
                     row("Account", Fmt.short(app.walletAddress))

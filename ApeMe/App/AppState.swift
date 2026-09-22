@@ -18,6 +18,7 @@ final class AppState {
     var path: [Route] = []
     var sheet: TradeSheet?
     var toast: String?
+    var toastIsError = false
     var wallet: Wallet?
     var stocksByMint: [String: Stock] = [:]
     var online = true
@@ -160,11 +161,12 @@ final class AppState {
 
     // MARK: Feedback
 
-    func show(_ message: String) {
+    func show(_ message: String, error: Bool = false) {
+        toastIsError = error
         toast = message
         toastTask?.cancel()
-        toastTask = Task {
-            try? await Task.sleep(for: .seconds(2.2))
+        toastTask = Task { [error] in
+            try? await Task.sleep(for: .seconds(error ? 3.5 : 2.2))
             if !Task.isCancelled { toast = nil }
         }
     }

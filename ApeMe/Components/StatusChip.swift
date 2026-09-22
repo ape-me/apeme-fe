@@ -39,10 +39,12 @@ struct EmptyState<Content: View>: View {
 /// Small, quiet, centered above the tab bar. Reads as a confirmation, not an alert.
 struct ToastView: View {
     let text: String
+    var error = false
     var body: some View {
         Text(text)
             .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(Theme.ink)
+            .foregroundStyle(error ? Theme.red : Theme.ink)
+            .multilineTextAlignment(.center)
             .padding(.horizontal, 14).frame(height: 36)
             .background(Theme.surface2, in: .capsule)
             .overlay(Capsule().stroke(Theme.line, lineWidth: 1))
