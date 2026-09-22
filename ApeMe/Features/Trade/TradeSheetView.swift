@@ -289,8 +289,7 @@ struct TradeSheetView: View {
                     row(side == .buy ? "Receive" : "Selling", side == .buy ? "≈ \(store.youGet) · \(Fmt.cash(q.swapUsd ?? q.outUsd))" : Fmt.qty(sellQty, symbol: asset.symbol))
                     Divider().overlay(Theme.line)
                     if asset.isStock, let m = q.markUsd { row(asset.isPreIPO ? "Fair value" : "Nasdaq price", Fmt.usd(m)); Divider().overlay(Theme.line) }
-                    if let rent = rentUsd(q) { row("Fees", "\(Fmt.cash(feesTotal(q) - rent)) + \(Fmt.cash(rent)) one-time") }
-                    else { row("Fees", Fmt.cash(feesTotal(q))) }
+                    feesRow(q)
                 }
                 .padding(.top, 28)
                 if let i = q.priceImpactPct, i > 2 { note("Thin market: you're paying \(String(format: "%.1f", i))% above the current price.").padding(.top, 14) }
@@ -340,6 +339,18 @@ struct TradeSheetView: View {
                 .padding(.top, 14)
             }
         }
+    }
+
+    /// Every fee, named: ours, the issuer's (PreStocks only), and Solana's one-time rent.
+    private func feesRow(_ q: Quote) -> some View {
+        var parts: [String] = ["ApeMe \(String(format: "%g", Double(q.fee?.bps ?? 100) / 100))% \(Fmt.cash(q.fee?.usd ?? 0))"]
+        if let f = q.issuerFee, let bps = f.bps, bps > 0 { parts.append("Issuer \(String(format: "%g", Double(bps) / 100))% \(Fmt.cash(f.usd ?? 0))") }
+        if let rent = rentUsd(q) { parts.append("\(Fmt.cash(rent)) one-time network fee") }
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack { Text("Fees").font(.system(size: 15)).foregroundStyle(Theme.muted); Spacer(); Text(Fmt.cash(feesTotal(q))).font(.system(size: 15, weight: .semibold)).monospacedDigit() }
+            Text(parts.joined(separator: " · ")).font(.sub).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 12)
     }
 
     private func row(_ k: String, _ v: String) -> some View {
