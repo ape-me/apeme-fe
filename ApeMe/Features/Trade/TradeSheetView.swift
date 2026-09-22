@@ -72,6 +72,11 @@ struct TradeSheetView: View {
         .onChange(of: amount) { _, _ in requote() }
         .onChange(of: pct) { _, _ in requote() }
         .onChange(of: scenePhase) { _, p in if p == .active { Task { await store.refresh() } } }
+        .onChange(of: store.phase) { old, p in
+            // Soft ticks while the price loads, one firmer tick when it lands.
+            if p == .quoting { Haptic.selection() }
+            if old == .quoting, p == .ready { Haptic.light() }
+        }
         .onChange(of: store.error) { _, e in if let e, store.phase == .failed, app.tradeInFlight == nil, !reviewing { app.show(e, error: true) } }
     }
 
@@ -92,18 +97,19 @@ struct TradeSheetView: View {
     // MARK: Amount
 
     private var header: some View {
-        HStack {
-            HStack(spacing: 10) {
-                assetImage(28)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(verb) \(asset.symbol)").h3Text()
-                    Text(side == .sell ? "You hold \(Fmt.qty(store.holding?.amount ?? 0, symbol: asset.symbol)) · \(Fmt.usd(store.holding?.valueUsd))" : "Cash \(Fmt.usd(cash))")
-                        .font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
+        HStack(alignment: .center) {
+            HStack(spacing: 14) {
+                assetImage(48)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("\(verb) \(asset.symbol)").h2Text()
+                    Text(side == .sell ? "You hold \(Fmt.qty(store.holding?.amount ?? 0, symbol: asset.symbol)) · \(Fmt.usd(store.holding?.valueUsd))" : "Cash \(Fmt.cash(cash))")
+                        .font(.system(size: 15)).monospacedDigit().foregroundStyle(Theme.muted)
                 }
             }
             Spacer()
             IconButton(symbol: "xmark", label: "Close") { dismiss() }.disabled(busy)
         }
+        .padding(.top, 14)
     }
 
     @ViewBuilder private func assetImage(_ size: CGFloat) -> some View {
@@ -119,10 +125,11 @@ struct TradeSheetView: View {
                     Image("usdc").resizable().frame(width: 36, height: 36).clipShape(.circle)
                     Text(amount.isEmpty ? "0" : amount).font(.amount).tracking(-2.8).monospacedDigit().foregroundStyle(Theme.ink)
                 }
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     if side == .buy {
                         Text("You get ≈").foregroundStyle(Theme.muted)
-                        Text(store.phase == .quoting ? "…" : store.youGet).foregroundStyle(Theme.ink).fontWeight(.semibold)
+                        if store.phase == .quoting { Shimmer().frame(width: 128, height: 16) }
+                        else { Text(store.youGet).foregroundStyle(Theme.ink).fontWeight(.semibold).contentTransition(.numericText()) }
                     } else {
                         Text("≈ \(Fmt.qty(sellQty, symbol: asset.symbol))").foregroundStyle(Theme.ink).fontWeight(.semibold)
                         if sellValue > 0 { Text("· \(Fmt.n(min(100, usd / sellValue * 100).rounded()))%").foregroundStyle(Theme.muted) }

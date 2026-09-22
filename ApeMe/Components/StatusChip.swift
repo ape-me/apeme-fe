@@ -123,3 +123,20 @@ struct HR: View {
         Rectangle().fill(Theme.line).frame(height: 1).padding(.horizontal, full ? 0 : 20)
     }
 }
+
+/// Moving highlight over a muted bar — "the number is on its way".
+struct Shimmer: View {
+    @State private var x: CGFloat = -1
+    var body: some View {
+        RoundedRectangle(cornerRadius: 6).fill(Theme.surface2)
+            .overlay(
+                GeometryReader { g in
+                    LinearGradient(colors: [.clear, Theme.ink.opacity(0.35), .clear], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: g.size.width * 0.6)
+                        .offset(x: x * g.size.width)
+                }
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .onAppear { withAnimation(.linear(duration: 0.9).repeatForever(autoreverses: false)) { x = 1.2 } }
+    }
+}
