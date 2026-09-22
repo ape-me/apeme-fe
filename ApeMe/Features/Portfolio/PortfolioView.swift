@@ -171,9 +171,10 @@ struct ActivityList: View {
 
     private var groups: [(String, [Activity])] {
         var out: [(String, [Activity])] = []
-        let pending = activity.filter { $0.status == "pending" }
+        let sorted = activity.sorted { $0.ts > $1.ts }   // newest first, whatever order the BE sent
+        let pending = sorted.filter { $0.status == "pending" }
         if !pending.isEmpty { out.append(("Pending", pending)) }
-        for a in activity where a.status != "pending" {
+        for a in sorted where a.status != "pending" {
             let l = Self.dayLabel(a.ts)
             if let i = out.firstIndex(where: { $0.0 == l }) { out[i].1.append(a) } else { out.append((l, [a])) }
         }
