@@ -78,7 +78,7 @@ struct SettingsView: View {
     }
 
     private func toggle(_ title: String, _ on: Bool, set: @escaping (Bool) -> Void) -> some View {
-        Button { set(!on) } label: {
+        Button { Haptic.light(); set(!on) } label: {
             HStack { Text(title).font(.system(size: 15, weight: .medium)); Spacer(); SwitchShape(on: on, tint: Skin(mode: app.mode ?? .invest).accent) }
                 .frame(minHeight: 52).contentShape(.rect)
         }

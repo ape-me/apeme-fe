@@ -64,6 +64,7 @@ struct TradeSheetView: View {
         .onChange(of: pct) { _, _ in requote() }
         .onChange(of: scenePhase) { _, p in if p == .active { Task { await store.refresh() } } }
         .onChange(of: store.error) { _, e in if let e, store.phase == .failed { app.show(e, error: true) } }
+        .onChange(of: store.phase) { _, p in if p == .confirmed { Haptic.success() } }
     }
 
     private func requote() {
@@ -154,7 +155,7 @@ struct TradeSheetView: View {
         HStack(spacing: 8) {
             ForEach(items, id: \.0) { label, sub, v in
                 let on = abs(v - selected) < 0.006
-                Button { pick(v) } label: {
+                Button { Haptic.selection(); pick(v) } label: {
                     VStack(spacing: 2) {
                         Text(label).font(.system(size: 14, weight: .semibold))
                         if let sub { Text(sub).font(.system(size: 11, weight: .medium)).foregroundStyle(on ? skin.accent.opacity(0.8) : Theme.muted) }
@@ -327,7 +328,7 @@ struct TradeSheetView: View {
                     } else if store.phase == .quoting {
                         BigButton(label: "Getting price…", style: .off) {}
                     } else {
-                        BigButton(label: side == .buy ? "Buy now" : "Sell now", style: side == .sell ? .sell : .buy) { Task { await run() } }
+                        BigButton(label: side == .buy ? "Buy now" : "Sell now", style: side == .sell ? .sell : .buy) { Haptic.medium(); Task { await run() } }
                     }
                 }
                 .padding(.top, 14)

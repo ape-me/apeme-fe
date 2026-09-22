@@ -64,6 +64,7 @@ struct InviteView: View {
             defer { busy = false }
             do {
                 try await app.auth.redeemInvite(code)
+                Haptic.success()
                 app.show("You're in")
             } catch APIError.http(let status, _) {
                 error = switch status {

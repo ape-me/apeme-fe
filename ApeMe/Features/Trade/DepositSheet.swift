@@ -56,7 +56,7 @@ struct DepositSheet: View {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(5))
                 await app.loadWallet(fresh: true)
-                if let b = baseline, app.cashUsd > b + 0.005 { app.show("Received \(Fmt.usd(app.cashUsd - b))"); dismiss(); return }
+                if let b = baseline, app.cashUsd > b + 0.005 { Haptic.success(); app.show("Received \(Fmt.usd(app.cashUsd - b))"); dismiss(); return }
             }
         }
     }

@@ -131,6 +131,7 @@ struct LoginForm: View {
             do {
                 try await work()
                 if !stay {
+                    Haptic.success()
                     app.onboarded = true
                     await app.loadWallet()
                     onDone()

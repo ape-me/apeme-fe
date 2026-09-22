@@ -26,17 +26,11 @@ struct MarketsView: View {
     private var search: some View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass").foregroundStyle(Theme.muted)
-            TextField(app.isApe ? "Search floors or paste a mint" : "Search stocks", text: $store.query)
+            TextField(app.isApe ? "Search floors" : "Search stocks", text: $store.query)
                 .font(.body15).foregroundStyle(Theme.ink)
                 .autocorrectionDisabled().textInputAutocapitalization(.never)
-            Button("Paste") {
-                if let v = UIPasteboard.general.string { store.query = v.trimmingCharacters(in: .whitespaces) }
-                else { app.show("Nothing to paste") }
-            }
-            .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.ink)
-            .padding(.horizontal, 12).frame(height: 32).background(Theme.surface2, in: .capsule)
         }
-        .padding(.leading, 16).padding(.trailing, 8).frame(height: 46)
+        .padding(.horizontal, 16).frame(height: 46)
         .background(Theme.surface, in: .capsule)
     }
 

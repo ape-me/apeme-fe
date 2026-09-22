@@ -70,6 +70,7 @@ final class AppState {
     func openStock(_ mint: String) { push(isApe ? .floor(mint) : .stock(mint)) }
 
     func toggleMode() {
+        Haptic.light()
         mode = isApe ? .invest : .ape
         wallet = nil
         root(tab)
@@ -132,6 +133,7 @@ final class AppState {
     }
 
     func signOut() async {
+        Haptic.rigid()
         await auth.logout()
         wallet = nil
         path.removeAll()
@@ -162,6 +164,7 @@ final class AppState {
     // MARK: Feedback
 
     func show(_ message: String, error: Bool = false) {
+        if error { Haptic.error() }
         toastIsError = error
         toast = message
         toastTask?.cancel()
@@ -172,6 +175,7 @@ final class AppState {
     }
 
     func copy(_ value: String) {
+        Haptic.light()
         UIPasteboard.general.string = value
         show("Copied to clipboard")
     }
