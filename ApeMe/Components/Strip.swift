@@ -73,6 +73,7 @@ struct UnderlineTabs<T: Hashable & Identifiable>: View {
                     Text(label(it))
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(on ? Theme.ink : Theme.faint)
+                        .lineLimit(1).fixedSize(horizontal: true, vertical: false)
                         .padding(.horizontal, 4)
                         .frame(maxWidth: fill ? .infinity : nil)
                         .frame(height: 40)

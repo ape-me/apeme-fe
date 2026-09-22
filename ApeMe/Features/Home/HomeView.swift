@@ -50,9 +50,12 @@ struct HomeView: View {
                 .padding(.horizontal, 20).padding(.top, 6)
                 .frame(maxWidth: .infinity, alignment: .leading)
         } else {
-            UnderlineTabs(items: HomeStore.InvestTab.allCases, selected: store.investTab, label: \.label) { store.investTab = $0 }
-                .padding(.horizontal, 20).padding(.top, 6)
-                .frame(maxWidth: .infinity, alignment: .leading)
+ScrollView(.horizontal) {
+                UnderlineTabs(items: HomeStore.InvestTab.allCases, selected: store.investTab, label: \.label) { store.investTab = $0 }
+                    .padding(.horizontal, 20)
+            }
+            .scrollIndicators(.hidden)
+            .padding(.top, 6)
         }
     }
 

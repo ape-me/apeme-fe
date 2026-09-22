@@ -57,6 +57,7 @@ struct NewsRow: View {
                     .font(.system(size: 15, weight: .semibold)).tracking(-0.2)
                     .foregroundStyle(Theme.ink).lineSpacing(2).lineLimit(2)
                     .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                badges
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(.rect)
@@ -65,6 +66,7 @@ struct NewsRow: View {
         .padding(.vertical, 14)
     }
 
+    /// One line that never wraps: the symbol and the time hold their width, the source gives way.
     private var meta: some View {
         HStack(spacing: 5) {
             if showSymbol {
@@ -74,17 +76,30 @@ struct NewsRow: View {
                         if let c = item.change24h { Text(Fmt.arrow(c, 2)).foregroundStyle(Theme.change(c)) }
                     }
                     .font(.system(size: 12, weight: .bold)).monospacedDigit()
+                    .lineLimit(1).fixedSize(horizontal: true, vertical: false)
                 }
                 .buttonStyle(.plain)
                 dot
             }
-            Text(item.source).lineLimit(1)
-            if let ts = item.publishedAt { dot; Text("\(Fmt.ago(ts)) ago") }
-            if let i = item.impactBadge { NewsBadge.impact(i).padding(.leading, 2) }
-            if let d = item.direction { NewsBadge.direction(d) }
+            Text(item.source).lineLimit(1).truncationMode(.tail)
+            if let ts = item.publishedAt {
+                dot
+                Text("\(Fmt.ago(ts)) ago").fixedSize(horizontal: true, vertical: false)
+            }
             Spacer(minLength: 0)
         }
         .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.muted)
+    }
+
+    /// Badges sit under the headline, where there is always room to spell them out.
+    @ViewBuilder private var badges: some View {
+        if item.impactBadge != nil || item.direction != nil {
+            HStack(spacing: 6) {
+                if let i = item.impactBadge { NewsBadge.impact(i) }
+                if let d = item.direction { NewsBadge.direction(d) }
+            }
+            .padding(.top, 1)
+        }
     }
 
     private var dot: some View { Text("·").foregroundStyle(Theme.faint) }

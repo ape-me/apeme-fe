@@ -2,12 +2,16 @@ import SwiftUI
 import SafariServices
 
 /// The headline, the summary, and a way into the article — which lives on the publisher's site,
-/// so it opens in Safari Reader inside ApeMe rather than kicking the user out to Safari.
+/// so it opens in Safari inside ApeMe rather than kicking the user out to another app.
 struct ArticleSheet: View {
     let item: NewsItem
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
     @State private var reading = false
+
+    /// Plenty of headlines arrive with neither a summary nor a photo. A full-height sheet for
+    /// three lines of text is the empty box the user saw, so the sheet sizes to what it holds.
+    private var thin: Bool { (item.summary?.isEmpty ?? true) && item.photoURL == nil }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -40,8 +44,10 @@ struct ArticleSheet: View {
                     }
                 }
                 .padding(.top, 14).padding(.bottom, 20)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollIndicators(.hidden)
+            .scrollBounceBehavior(.basedOnSize)
             BigButton(label: "Trade \(item.symbol)", style: .buy) {
                 Haptic.medium()
                 dismiss()
@@ -52,11 +58,11 @@ struct ArticleSheet: View {
             }
         }
         .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 18)
-        .presentationDetents([.large])
+        .presentationDetents(thin ? [.medium, .large] : [.large])
         .presentationBackground(Theme.surface)
         .presentationDragIndicator(.visible)
         .fullScreenCover(isPresented: $reading) {
-            if let url = item.link { SafariReader(url: url).ignoresSafeArea() }
+            if let url = item.link { SafariPage(url: url).ignoresSafeArea() }
         }
     }
 
@@ -77,13 +83,13 @@ struct ArticleSheet: View {
     }
 }
 
-/// Safari with Reader on where the page supports it. The user taps Done and is back in ApeMe.
-struct SafariReader: UIViewControllerRepresentable {
+/// The publisher's page as they built it — no Reader. The user taps Done and is back in ApeMe.
+struct SafariPage: UIViewControllerRepresentable {
     let url: URL
 
     func makeUIViewController(context: Context) -> SFSafariViewController {
         let cfg = SFSafariViewController.Configuration()
-        cfg.entersReaderIfAvailable = true
+        cfg.entersReaderIfAvailable = false
         let vc = SFSafariViewController(url: url, configuration: cfg)
         vc.preferredBarTintColor = UIColor(Theme.ground)
         vc.preferredControlTintColor = UIColor(Theme.ink)
