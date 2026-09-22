@@ -10,8 +10,8 @@ const MOCK={
     referred:[{userId:'did:privy:a1',handle:'sam',joinedAt:1790012000,volumeUsd:120.5},{userId:'did:privy:b2',handle:null,joinedAt:1790013000,volumeUsd:0}], payouts:[] },
   wallets:{ [MOCK_ADDR]:{ address:MOCK_ADDR, cashUsd:500, solUsd:0, costUsd:123.20, pnlUsd:-0.64, pendingSwaps:0,
       holdings:[ {mint:'EPjF',kind:'cash',symbol:'USDC',name:'Cash',image:USDC_LOGO,amount:500,raw:'500000000',decimals:6,priceUsd:1,valueUsd:500},
-        {mint:'Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh',kind:'stock',symbol:'NVDAX',name:'NVIDIA',image:'https://www.stonkfun.xyz/api/asset/quote-logo/Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh',amount:0.5249,raw:'52490000',decimals:8,priceUsd:227.58,valueUsd:119.46,change24h:1.91,costUsd:118.20,pnlUsd:1.26,pnlPct:1.07},
-        {mint:'9xhMStAAufkH5jA5nevaGy6M9fCsQ74BZnsXyo93DkfA',kind:'meme',symbol:'ACORNELIUS',name:'acornelius',image:'https://metadata.j7tracker.io/images/40e647c75d0b46fc',quoteSymbol:'OPENAI',amount:1240000,raw:'1240000000000',decimals:6,priceUsd:0.0000025,valueUsd:3.10,change24h:-12.4,costUsd:5,pnlUsd:-1.9,pnlPct:-38} ],
+        {mint:'Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh',kind:'stock',symbol:'NVDAX',name:'NVIDIA',image:'https://www.stonkfun.xyz/api/asset/quote-logo/Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh',amount:0.5249,raw:'52490000',decimals:8,priceUsd:227.58,valueUsd:119.46,change24h:1.91,costUsd:118.20,avgEntryUsd:225.19,feesUsd:1.19,pnlUsd:1.26,pnlPct:1.07},
+        {mint:'9xhMStAAufkH5jA5nevaGy6M9fCsQ74BZnsXyo93DkfA',kind:'meme',symbol:'ACORNELIUS',name:'acornelius',image:'https://metadata.j7tracker.io/images/40e647c75d0b46fc',quoteSymbol:'OPENAI',amount:1240000,raw:'1240000000000',decimals:6,priceUsd:0.0000025,valueUsd:3.10,change24h:-12.4,costUsd:5,avgEntryUsd:0.0000040,feesUsd:0.05,pnlUsd:-1.9,pnlPct:-38} ],
       activity:[ {sig:'4oETxJB7q2mW8dLp1sK9vN3cR6tY5bH0aZfG7jXe5Vmn4',ts:Math.floor(Date.now()/1000)-300,type:'buy',status:'confirmed',source:'apeme',symbol:'NVDAX',image:'https://www.stonkfun.xyz/api/asset/quote-logo/Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh',stockSymbol:null,amount:0.5249,usd:1.00,feeUsd:0.01},
         {sig:'2bQz7kLm9pRt4vXn1cWy6sHd8eJf3aGu5oPi0rTl2Kx',ts:Math.floor(Date.now()/1000)-1500,type:'deposit',status:'confirmed',source:'chain',symbol:'USDC',image:USDC_LOGO,usd:500.00,from:'7ov6HkP2rQm8Lz3bWx1nYc5dVe9sFt4aGj6uNi0pR8oEh'},
         {sig:null,ts:Math.floor(Date.now()/1000)-3600,type:'buy',status:'failed',source:'apeme',symbol:'ACORNELIUS',image:'https://metadata.j7tracker.io/images/40e647c75d0b46fc',stockSymbol:'OPENAI',amount:0,usd:5,error:'slippage'} ] },
@@ -25,19 +25,30 @@ const acct={
   settings(){ return MOCK.me.settings; },
   holds(mint){ return acct.wallet().holdings.find(h=>h.mint===mint&&h.kind!=='cash'); },
   /* quote to the BE shape */
-  quote({side,item,usd,pct,holding,priority}){
+  quote({side,item,usd,holding,priority,pre,slippageBps}){
     const price=item.priceUsd||holding?.priceUsd||1; const first=side==='buy'&&!acct.holds(item.mint);
-    if(side==='buy'){ const inUsd=usd, fee=inUsd*0.01, rent=first?0.25:0, swapUsd=Math.max(0,inUsd-fee-rent); const impact=inUsd>200?2.4:inUsd>50?0.6:0.1; const outUsd=swapUsd*(1-impact/100);
-      return { requestId:'8f0c3a2e-'+Math.random().toString(16).slice(2,8), side, symbol:item.symbol, inUsd, swapUsd, outUsd, outQty:outUsd/price, fee:{usd:fee,bps:100}, rent:{usd:rent,accounts:first?1:0}, totalChargeUsd:fee+rent, priceImpactPct:impact, gas:{paidBy:'apeme',priority}, slippageBps:acct.settings().slippageBps, premiumPct:item.premiumPct??0.09, markUsd:item.markUsd||price*0.999, expiresAt:Date.now()/1000+60 }; }
-    const gross=holding.valueUsd*pct/100, fee=gross*0.01, impact=gross>200?2.4:0.2, outUsd=(gross-fee)*(1-impact/100);
-    return { requestId:'8f0c3a2e-'+Math.random().toString(16).slice(2,8), side, symbol:item.symbol, inUsd:gross, swapUsd:gross, outUsd, outQty:null, fee:{usd:fee,bps:100}, rent:{usd:0,accounts:0}, totalChargeUsd:fee, priceImpactPct:impact, gas:{paidBy:'apeme',priority}, slippageBps:acct.settings().slippageBps, premiumPct:item.premiumPct??0.09, markUsd:item.markUsd||price*0.999, expiresAt:Date.now()/1000+60 };
+    const impact=usd>200?2.4:usd>50?0.6:0.1;
+    const suggested=Math.min(500,Math.max(50,Math.round(impact*100)+50));
+    const base={ requestId:'8f0c3a2e-'+Math.random().toString(16).slice(2,8), side, symbol:item.symbol, priceImpactPct:impact,
+      gas:{paidBy:'apeme',priority}, slippageBps:slippageBps||suggested, suggestedSlippageBps:suggested,
+      premiumPct:item.premiumPct??0.09, markUsd:item.markUsd||price*0.999, expiresAt:Date.now()/1000+45 };
+    if(side==='buy'){
+      /* the typed amount is the TOTAL debit: our fee, the issuer's skim and rent all come out of it */
+      const inUsd=usd, fee=inUsd*0.01, rent=first?0.24:0, issuer=pre?(inUsd-fee-rent)*0.01:0;
+      const swapUsd=Math.max(0,inUsd-fee-rent-issuer), outUsd=swapUsd*(1-impact/100);
+      return {...base, inUsd, swapUsd, outUsd, outQty:outUsd/price, fee:{usd:fee,bps:100},
+        issuerFee:{usd:issuer,bps:pre?100:0}, rent:{usd:rent,accounts:first?1:0}, totalChargeUsd:fee+rent}; }
+    const gross=usd, fee=gross*0.01, issuer=pre?gross*0.01:0, outUsd=(gross-fee-issuer)*(1-impact/100);
+    return {...base, inUsd:gross, swapUsd:gross, outUsd, outQty:null, fee:{usd:fee,bps:100},
+      issuerFee:{usd:issuer,bps:pre?100:0}, rent:{usd:0,accounts:0}, totalChargeUsd:fee};
   },
   /* apply a confirmed trade to the mock wallet */
   settle(q,item,holding){
     const w=acct.wallet(); const price=item.priceUsd||holding?.priceUsd||1;
     if(q.side==='buy'){ w.holdings[0].valueUsd=+(w.holdings[0].valueUsd-q.inUsd).toFixed(2); w.holdings[0].amount=w.holdings[0].valueUsd;
       let h=acct.holds(item.mint); if(!h){ h={mint:item.mint,kind:item.kind==='meme'||item.quoteMint?'meme':'stock',symbol:item.symbol,name:item.name,image:item.logo||item.image,quoteSymbol:item.quoteMint?state.stocksByMint[item.quoteMint]?.symbol:undefined,amount:0,raw:'0',decimals:item.quoteMint?6:8,priceUsd:price,valueUsd:0,change24h:item.change24h,costUsd:0,pnlUsd:0,pnlPct:0}; w.holdings.push(h); }
-      h.amount+=q.outQty; h.valueUsd=+(h.amount*price).toFixed(2); h.costUsd=(h.costUsd||0)+q.inUsd; h.raw=String(Math.round(h.amount*10**h.decimals));
+      h.amount+=q.outQty; h.valueUsd=+(h.amount*price).toFixed(2); h.costUsd=(h.costUsd||0)+q.swapUsd; h.feesUsd=(h.feesUsd||0)+q.fee.usd+(q.issuerFee?.usd||0)+q.rent.usd;
+      h.avgEntryUsd=h.amount>0?h.costUsd/h.amount:null; h.pnlUsd=h.valueUsd-h.costUsd; h.pnlPct=h.costUsd>0?h.pnlUsd/h.costUsd*100:0; h.raw=String(Math.round(h.amount*10**h.decimals));
       w.activity.unshift({sig:'5Kd'+Math.random().toString(36).slice(2,12)+'…',ts:Math.floor(Date.now()/1000),type:'buy',status:'confirmed',source:'apeme',symbol:item.symbol,image:item.logo||item.image,stockSymbol:h.quoteSymbol,amount:q.outQty,usd:q.inUsd,feeUsd:q.fee.usd,rentUsd:q.rent.usd});
     } else { const part=holding.amount*q.pct/100; holding.amount-=part; holding.valueUsd=+(holding.amount*price).toFixed(2); holding.raw=String(Math.round(holding.amount*10**holding.decimals));
       if(holding.amount<=1e-9) w.holdings.splice(w.holdings.indexOf(holding),1);
@@ -82,51 +93,143 @@ function txSheet(a){
 /* ---- buy / sell ---- */
 function buyFlow(kind,item,stock){ tradeSheet({side:'buy',item,stock}); }
 function sellFlow(mint){ const h=acct.holds(mint); if(!h){ toast("You don't hold any yet"); return; } tradeSheet({side:'sell',item:{mint:h.mint,symbol:h.symbol,priceUsd:h.priceUsd,logo:h.image,kind:h.kind},holding:h}); }
-function tradeSheet({side,item,stock,holding}){
-  const isStock=holding?holding.kind==='stock':!item.quoteMint; const verb=side==='sell'?'Sell':isStock?'Buy':'Ape'; const st=acct.settings(); const cash=acct.wallet().cashUsd;
-  let amount='', pct=null, priority=st.priority||'normal', q=null, phase='idle', timer=null, review=false;
+/* Amount → Review order → Buy now. Nothing is fetched until Review; the fill lands in a toast. */
+function tradeSheet({side,item,stock,holding,resume}){
+  const isStock=holding?holding.kind==='stock':!item.quoteMint;
+  const verb=side==='sell'?'Sell':isStock?'Buy':'Ape';
+  const pre=isStock&&((stock&&stock.issuer==='prestocks')||state.stocksByMint[item.mint]?.issuer==='prestocks');
+  const st=acct.settings(); const cash=acct.wallet().cashUsd;
+  let amount=resume?.amount||'', q=resume?.q||null, phase=resume?.phase||'idle', reviewing=!!resume,
+      dets=false, slipFails=resume?.slipFails||0, slipBps=resume?.slipBps||null, timer=null, expiryT=null;
   const w=openSheet('<div class="grab"></div>'); const sheet=w.querySelector('.sheet'); sheet.classList.add('tall');
   const set=(html,mount)=>{ sheet.innerHTML='<div class="grab"></div>'+html; mount?.(); };
   const usd=()=>Number(amount)||0;
-  const youGet=()=>!q?'—':side==='sell'?fmt.usd(q.outUsd):fmt.qty(q.outQty,item.symbol);
-  let expiryT=null;
-  const armExpiry=()=>{ clearTimeout(expiryT); if(!q) return; expiryT=setTimeout(()=>{ if(!w.isConnected||phase!=='ready') return; q=acct.quote({side,item,usd:usd(),pct,holding,priority}); if(side==='sell') q.pct=pct; armExpiry(); paint(); },50000); };
-  const requote=()=>{ clearTimeout(timer); clearTimeout(expiryT); q=null; if(side==='buy'?usd()<=0:pct==null){ phase='idle'; paint(); return; } if(side==='buy'&&usd()>cash){ phase='insufficient'; paint(); return; } phase='quoting'; paint();
-    timer=setTimeout(()=>{ q=acct.quote({side,item,usd:usd(),pct,holding,priority}); if(side==='sell') q.pct=pct; phase='ready'; armExpiry(); paint(); },600); };
-  const header=()=>`<div class="sheet-title"><div style="display:flex;align-items:center;gap:10px">${isStock?logo({symbol:item.symbol,logo:item.logo||item.image},28):avatar({symbol:item.symbol,image:item.logo||item.image},'m')}<div><div class="h3">${verb} ${esc(item.symbol)}</div><div class="sub mono">${side==='sell'?`You hold ${fmt.qty(holding.amount,item.symbol)} · ${fmt.usd(holding.valueUsd)}`:`Cash ${fmt.usd(cash)}`}</div></div></div><button class="iconbtn" data-close aria-label="Close">${I.x}</button></div>`;
-  const total=()=>q?q.inUsd:0;
-  const detailsCard=()=>`<details class="dets"><summary class="sub" style="display:flex;align-items:center;gap:4px;cursor:pointer;list-style:none">Details ${I.chev.replace('width="16"','width="12"').replace('height="16"','height="12"')}</summary><div class="kcard" style="margin-top:8px">${side==='buy'?kv(`Buys of ${esc(item.symbol)}`,fmt.usd(q.swapUsd)):''}${kv('ApeMe fee',fmt.usd(q.fee.usd))}${q.rent.accounts>0?kv('One-time network fee',fmt.usd(q.rent.usd)):''}${kv('Gas','Free')}${kv('Price impact',`<span style="color:var(--${q.priceImpactPct>2?'amber':'ink'})">${q.priceImpactPct.toFixed(2)}%</span>`)}${kv('Max price move',(q.slippageBps/100)+'%')}${isStock?kv(stock?.issuer==='prestocks'?'Fair value':'Nasdaq price',fmt.usd(q.markUsd)):''}</div></details>`;
-  const impactNote=()=>q&&q.priceImpactPct>2?`<div class="notice">Large order: price impact ${q.priceImpactPct.toFixed(1)}%. You get less per dollar.</div>`:'';
-  const primary=()=>{ const m={insufficient:['Deposit to buy','white'],quoting:['Getting price…','off'],signing:['Signing…','off'],submitting:['Submitting…','off'],confirming:['Confirming…','off'],failed:['Try again','ghost'],idle:[side==='buy'?'Enter an amount':'Pick an amount','off']};
-    const [l,c]=phase==='ready'?[side==='buy'?`${verb} $${amount} of ${esc(item.symbol)}`:`Sell ${pct}% of ${esc(item.symbol)}`,side==='sell'?'sell':'buy']:m[phase]; return `<button class="btn ${c==='buy'?'buy':c==='sell'?'sellb':c}" id="go">${l}</button>`; };
+  const held=()=>holding?.valueUsd||0;
+  const sellQty=()=>held()>0?holding.amount*Math.min(usd(),held())/held():0;
+  const youGet=()=>!q?'—':side==='sell'?fmt.cash(q.outUsd):fmt.qty(q.outQty,item.symbol);
+  const rent=()=>q&&q.rent.accounts>0&&q.rent.usd>0?q.rent.usd:null;
+  const fees=()=>q?q.fee.usd+(q.issuerFee?.usd||0)+(q.rent.accounts>0?q.rent.usd:0):0;
+  const AVC={22:'b',36:'t',48:'h',64:'xl'};
+  const pic=n=>isStock?logo({symbol:item.symbol,logo:item.logo||item.image},n):avatar({symbol:item.symbol,image:item.logo||item.image},AVC[n]||'');
+  const markLabel=pre?'Fair value':'Nasdaq price';
+  const price=item.priceUsd||holding?.priceUsd;
+
+  /* the quote only exists on the review step, and it renews itself 10s before it dies */
+  const armExpiry=()=>{ clearTimeout(expiryT); if(!q) return; expiryT=setTimeout(()=>{ if(w.isConnected&&reviewing&&phase==='ready') fetchQuote(true); },35000); };
+  const fetchQuote=silent=>{ clearTimeout(timer); clearTimeout(expiryT);
+    if(!silent){ q=null; phase='quoting'; paint(); }
+    timer=setTimeout(()=>{ if(!w.isConnected) return;
+      q=acct.quote({side,item,usd:usd(),holding,priority:st.priority||'normal',pre,slippageBps:slipBps});
+      phase='ready'; armExpiry(); paint(); },700); };
+
+  /* ---- amount ---- */
+  const header=()=>`<div class="sheet-title" style="padding-top:14px"><div style="display:flex;align-items:center;gap:14px">${pic(48)}<div><div class="h2">${verb} ${esc(item.symbol)}</div><div class="sub mono" style="font-size:15px">${side==='sell'?`You hold ${fmt.qty(holding.amount,item.symbol)} · ${fmt.cash(held())}`:`Cash ${fmt.cash(cash)}`}</div></div></div><button class="iconbtn" data-close aria-label="Close">${I.x}</button></div>`;
+
+  const chips=()=>{ const items=side==='buy'
+      ?[...(st.quickBuyUsd||[10,25,50,100]).map(v=>['$'+v,null,v]),['Max',null,Math.floor(cash*100)/100]]
+      :(st.quickSellPct||[25,50,100]).map(p=>[p+'%',fmt.usd(held()*p/100),held()*p/100]);
+    return `<div class="presets">${items.map(([l,sub,v])=>`<button data-v="${v}" class="${Math.abs(v-usd())<0.006&&usd()>0?'on':''}"${sub?' style="height:52px"':''}>${l}${sub?`<span class="csub">${sub}</span>`:''}</button>`).join('')}</div>`; };
+
+  /* purely local: nothing is fetched until they ask to review */
+  const primary=()=>{
+    if(usd()<=0) return '<button class="btn off">Enter an amount</button>';
+    if(side==='buy'&&usd()>cash+1e-6) return '<button class="btn white" id="dep">Deposit to buy</button>';
+    if(side==='sell'&&usd()>held()+0.005) return `<button class="btn white" id="all">You hold ${fmt.cash(held())} · Sell all</button>`;
+    return `<button class="btn ${side==='sell'?'sellb':'buy'}" id="go">Review order</button>`; };
+
   const form=()=>set(`${header()}
-    <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 0 0">${side==='buy'?`<div class="amountbig" style="align-items:center;gap:10px"><img src="${USDC_LOGO}" width="36" height="36" style="border-radius:999px" alt="USDC"><span id="amt">${amount||'0'}</span></div>`:`<div class="amountbig"><span id="amt">${pct==null?'—':pct+'%'}</span></div>`}<div class="sub mono" style="font-size:15px;visibility:${(side==='buy'?usd()>0:pct!=null)?'visible':'hidden'}">You get ≈ <b style="color:var(--ink)">${phase==='quoting'?'…':youGet()}</b></div></div>
-    <div class="presets">${(side==='buy'?[...st.quickBuyUsd,'max']:st.quickSellPct).map(v=>`<button data-p="${v}" class="${(side==='buy'?(v==='max'?usd()===Math.floor(cash*100)/100:usd()===v):pct===v)?'on':''}">${side==='buy'?(v==='max'?'Max':'$'+v):v+'%'}</button>`).join('')}</div>
-    ${impactNote()}
-    ${q&&side==='buy'&&q.premiumPct>5?`<div class="notice">Trading ${q.premiumPct.toFixed(0)}% above ${stock?.issuer==='prestocks'?'its fair value':'the Nasdaq price'}.</div>`:''}
-    ${side==='buy'?`<div class="numpad">${['1','2','3','4','5','6','7','8','9','.','0','⌫'].map(k=>`<button data-k="${k}">${k==='⌫'?I.del:k}</button>`).join('')}</div>`:''}
-    ${phase==='failed'?`<div class="errbox">Price moved. Try again.</div>`:''}
-    <div style="flex:1"></div>${primary()}`,()=>{
-    sheet.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{ if(side==='buy') amount=b.dataset.p==='max'?String(Math.floor(cash*100)/100):String(b.dataset.p); else pct=Number(b.dataset.p); requote(); });
-    sheet.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{ const k=b.dataset.k; if(k==='⌫') amount=amount.slice(0,-1); else if(k==='.'){ if(!amount.includes('.')) amount=(amount||'0')+'.'; } else if(amount.length<8&&(!amount.includes('.')||amount.split('.')[1].length<2)) amount=amount==='0'?k:amount+k; requote(); });
-    sheet.querySelector('#go').onclick=()=>{ if(phase==='insufficient'){ w.close(); depositSheet(); } else if(phase==='failed') requote(); else if(phase==='ready'){ if(st.confirmBeforeTrade){ review=true; paint(); } else run(); } };
+    <div style="flex:1;min-height:8px"></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+      <div class="amountbig" style="align-items:center;gap:10px"><img src="${USDC_LOGO}" width="36" height="36" style="border-radius:999px" alt="USDC"><span>${esc(amount||'0')}</span></div>
+      ${side==='sell'&&usd()>0&&held()>0?`<div class="sub mono" style="font-size:15px">≈ ${fmt.qty(sellQty(),item.symbol)} · ${Math.round(Math.min(100,usd()/held()*100))}%</div>`:''}
+    </div>
+    <div style="flex:1;min-height:8px"></div>
+    ${chips()}
+    <div style="flex:1;min-height:8px"></div>
+    <div class="numpad">${['1','2','3','4','5','6','7','8','9','.','0','⌫'].map(k=>`<button data-k="${k}">${k==='⌫'?I.del:k}</button>`).join('')}</div>
+    <div style="flex:1;min-height:12px"></div>
+    ${primary()}`,()=>{
+    sheet.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{ const v=Number(b.dataset.v); amount=v.toFixed(2).replace(/\.00$/,''); q=null; phase='idle'; paint(); });
+    sheet.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{ const k=b.dataset.k;
+      if(k==='⌫') amount=amount.slice(0,-1);
+      else if(k==='.'){ if(!amount.includes('.')) amount=(amount||'0')+'.'; }
+      else if(amount.length<8&&(!amount.includes('.')||amount.split('.')[1].length<2)) amount=amount==='0'?k:amount+k;
+      q=null; phase='idle'; paint(); });
+    sheet.querySelector('#dep')?.addEventListener('click',()=>{ w.close(); depositSheet(); });
+    sheet.querySelector('#all')?.addEventListener('click',()=>{ amount=(Math.floor(held()*100)/100).toFixed(2); paint(); });
+    sheet.querySelector('#go')?.addEventListener('click',()=>{ reviewing=true; fetchQuote(false); });
   });
-  const reviewV=()=>set(`<div class="sheet-title"><button class="iconbtn" id="b1" aria-label="Back">${I.back}</button><div class="h3">Review</div><button class="iconbtn" data-close aria-label="Close">${I.x}</button></div>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 0 6px;text-align:center">${isStock?logo({symbol:item.symbol,logo:item.logo||item.image},56):avatar({symbol:item.symbol,image:item.logo||item.image},'l')}<div class="h1" style="text-wrap:balance">${side==='buy'?`${verb} ${youGet()}`:`Sell ${fmt.qty(holding.amount*pct/100,item.symbol)}`}</div></div>
-    <div class="kcard">${side==='buy'?kv('You pay',fmt.usd(q.inUsd))+kv('You get','≈ '+youGet()):kv('You get',youGet())+kv('Includes fee',fmt.usd(q.fee.usd))}</div>
-    ${impactNote()}
-    ${detailsCard()}
-    ${phase==='failed'?`<div class="errbox">Price moved. Try again.</div>`:''}
-    <div style="flex:1"></div>
-    ${phase==='confirming'?`<div class="btn off"><span class="spin"></span> Confirming on Solana…</div>`:phase==='signing'?`<div class="btn off">Signing…</div>`:phase==='submitting'?`<div class="btn off">Submitting…</div>`:phase==='failed'?`<button class="btn ghost" id="again">Try again</button>`:`<button class="btn ${side==='sell'?'sellb':'buy'}" id="confirm">${side==='buy'?`Pay ${fmt.usd(total())}`:'Confirm sale'}</button>`}`,()=>{
-    sheet.querySelector('#b1').onclick=()=>{ review=false; paint(); }; sheet.querySelector('#confirm')?.addEventListener('click',run); sheet.querySelector('#again')?.addEventListener('click',()=>{ review=false; requote(); }); });
-  const done=()=>set(`<div class="sheet-title"><span style="width:40px"></span><span></span><button class="iconbtn" data-close aria-label="Close">${I.x}</button></div>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:18px 0 6px;text-align:center"><div class="check">${I.check}</div><div class="h1" style="text-wrap:balance">${side==='buy'?`You own ${youGet()}`:`Sold ${fmt.qty(holding.amount*pct/100,item.symbol)}`}</div><div class="sub mono" style="font-size:15px">${side==='buy'?`Paid ${fmt.usd(total())}`:`You got ${youGet()}`} · ${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div></div>
-    ${detailsCard()}
-    <div style="flex:1"></div>
-    <button class="btn white" data-close>Done</button><button class="lnk" id="scan" style="font-size:13px;text-align:center;color:var(--muted)">View on Solscan ↗</button>`,()=>{ sheet.querySelector('#scan').onclick=()=>toast('Opens solscan.io/tx/5Kd…'); });
-  const run=async()=>{ const step=(p,ms)=>new Promise(r=>{ phase=p; paint(); setTimeout(r,ms); }); await step('signing',700); await step('submitting',500); await step('confirming',1600); acct.settle(q,item,holding); phase='confirmed'; paint(); const oc=w.close; w.close=()=>{ oc(); if(state.tab==='portfolio'&&state.stack.length===1) setTimeout(()=>render(false),170); }; };
-  const paint=()=>{ if(!w.isConnected) return; if(phase==='confirmed') done(); else if(review) reviewV(); else form(); };
+
+  /* ---- review ---- */
+  const row=(k,v)=>`<div style="height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px"><span style="font-size:15px;color:var(--muted)">${k}</span><b class="mono" style="font-size:15px;font-weight:600">${v}</b></div>`;
+  const hr='<div style="height:1px;background:var(--line)"></div>';
+
+  /* every fee, named: ours, the issuer's, and Solana's one-time rent */
+  const feesRow=()=>{ const parts=[`ApeMe ${q.fee.bps/100}% ${fmt.cash(q.fee.usd)}`];
+    if(q.issuerFee?.bps>0) parts.push(`Issuer ${q.issuerFee.bps/100}% ${fmt.cash(q.issuerFee.usd)}`);
+    if(rent()) parts.push(`${fmt.cash(rent())} one-time network fee`);
+    return `<div style="padding:12px 0"><div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:15px;color:var(--muted)">Fees</span><b class="mono" style="font-size:15px;font-weight:600">${fmt.cash(fees())}</b></div><div style="font-size:13px;color:var(--faint);margin-top:4px">${parts.join(' · ')}</div></div>`; };
+
+  const detailsBlock=()=>`<div><button class="lnk" id="dets" style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--muted)">Details<span style="display:inline-flex;transform:rotate(${dets?90:0}deg);transition:transform .15s">${I.chev.replace('width="16"','width="12"').replace('height="16"','height="12"')}</span></button>
+    ${dets?`<div class="kcard" style="margin-top:8px">${side==='buy'?kv(`Buys of ${esc(item.symbol)}`,fmt.cash(q.swapUsd)):''}${kv('ApeMe fee',fmt.cash(q.fee.usd))}${q.issuerFee?.bps>0?kv(`Issuer fee ${q.issuerFee.bps/100}%`,fmt.cash(q.issuerFee.usd)):''}${rent()?kv('One-time network fee',fmt.cash(rent()))+`<div style="font-size:12px;color:var(--faint);padding:10px 0;line-height:16px">Charged by Solana to open ${esc(item.symbol)} in your wallet, not by ApeMe. Never again for this token.</div>`:''}${kv('Gas','Free')}${kv('Price impact',`<span style="color:var(--${q.priceImpactPct>2?'amber':'ink'})">${q.priceImpactPct.toFixed(2)}%</span>`)}${kv('Max price move',(q.slippageBps/100)+'%')}</div>`:''}</div>`;
+
+  const waiting=()=>`<div style="padding-top:28px">
+      <div style="height:52px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:15px;color:var(--muted)">${side==='buy'?'Receive':'Selling'}</span><span class="skel" style="width:140px;height:16px"></span></div>
+      ${hr}${row('Account',fmt.short(acct.active()))}</div>
+    <div style="height:24px"></div><span class="skel" style="display:block;width:120px;height:22px"></span><span class="skel" style="display:block;width:90px;height:12px;margin-top:8px"></span>
+    <div style="flex:1;min-height:14px"></div>
+    ${phase==='failed'?`<button class="btn ${side==='sell'?'sellb':'buy'}" id="again">Try again</button>`:'<button class="btn off">Getting price…</button>'}`;
+
+  const quoted=()=>`<div style="padding-top:28px">
+      ${row(side==='buy'?'Receive':'Selling',side==='buy'?`≈ ${youGet()} · ${fmt.cash(q.swapUsd)}`:fmt.qty(sellQty(),item.symbol))}
+      ${isStock&&q.markUsd?hr+row(markLabel,fmt.usd(q.markUsd)):''}
+      ${hr}${feesRow()}</div>
+    ${q.priceImpactPct>2?`<div class="notice" style="margin-top:14px">Thin market: you're paying ${q.priceImpactPct.toFixed(1)}% above the current price.</div>`:''}
+    ${side==='buy'&&isStock&&q.premiumPct>5?`<div class="notice" style="margin-top:14px">Trading ${q.premiumPct.toFixed(0)}% above ${pre?'its fair value':'the Nasdaq price'}.</div>`:''}
+    ${rent()?`<div class="sub" style="margin-top:14px;line-height:19px">First time holding ${esc(item.symbol)}: ${fmt.cash(rent())} of this is a one-time network fee to open the token in your wallet. Next time it's just ${fmt.cash(fees()-rent())}.</div>`:''}
+    <div style="height:28px"></div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+      <div><div style="font-size:20px;font-weight:600;letter-spacing:-.025em;font-variant-numeric:tabular-nums">${side==='buy'?`${fmt.cash(q.inUsd)} total`:`${fmt.cash(q.outUsd)} you get`}</div>
+        <div class="sub" style="margin-top:2px">${side==='buy'?`${fmt.cash(q.swapUsd)} of ${esc(item.symbol)} · ${fmt.cash(fees())} fees`:`after ${fmt.cash(fees())} fees`}</div></div>
+      <div style="display:flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;background:var(--surface2);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;flex-shrink:0"><img src="${USDC_LOGO}" width="18" height="18" style="border-radius:999px" alt="">USDC · ${fmt.cash(cash)}</div>
+    </div>
+    <div style="height:14px"></div>${detailsBlock()}
+    <div style="flex:1;min-height:14px"></div>
+    ${phase==='failed'
+      ?`<button class="btn ${side==='sell'?'sellb':'buy'}" id="again">Try again</button>${slipFails>=1&&q.slippageBps<300?`<button class="btn ghost" id="wider" style="margin-top:10px">Retry with 3% price move</button>`:''}`
+      :phase==='quoting'?'<button class="btn off">Getting price…</button>'
+      :`<button class="btn ${side==='sell'?'sellb':'buy'}" id="pay">${side==='buy'?'Buy now':'Sell now'}</button>`}`;
+
+  const reviewV=()=>set(`<div class="sheet-title"><button class="iconbtn" id="back" aria-label="Back">${I.back}</button><span></span><button class="iconbtn" data-close aria-label="Close">${I.x}</button></div>
+    <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:26px;text-align:center">${pic(64)}<div class="h1" style="text-wrap:balance">${side==='buy'?verb:'Sell'} $${esc(amount)} of ${esc(item.symbol)}</div><div class="sub mono" style="font-size:15px">${esc(item.symbol)} price ${fmt.usd(price)}</div></div>
+      ${q?quoted():waiting()}
+    </div>`,()=>{
+    sheet.querySelector('#back').onclick=()=>{ clearTimeout(timer); clearTimeout(expiryT); reviewing=false; q=null; phase='idle'; paint(); };
+    sheet.querySelector('#dets')?.addEventListener('click',()=>{ dets=!dets; paint(); });
+    sheet.querySelector('#pay')?.addEventListener('click',run);
+    sheet.querySelector('#again')?.addEventListener('click',()=>{ phase='idle'; fetchQuote(false); });
+    sheet.querySelector('#wider')?.addEventListener('click',()=>{ slipBps=300; phase='idle'; fetchQuote(false); });
+  });
+
+  /* the sheet gets out of the way; the fill arrives as a toast */
+  const run=()=>{
+    const what=side==='buy'?youGet():fmt.qty(sellQty(),item.symbol);
+    const img={symbol:item.symbol,url:item.logo||item.image,isStock};
+    const demoFail=Math.abs(usd()-13)<0.005;   /* $13 always fails, so the recovery path is demoable */
+    const snap={amount,q,slipFails:slipFails+1,slipBps};
+    clearTimeout(expiryT); w.close();
+    toast(`${side==='buy'?'Buying':'Selling'} ${what}…`,{pending:true,image:img});
+    setTimeout(()=>{
+      if(demoFail){ toast('Price moved more than your limit. Nothing was charged.',{error:true,image:img});
+        tradeSheet({side,item,stock,holding,resume:{...snap,phase:'failed'}}); return; }
+      if(side==='sell') q.pct=held()>0?Math.min(100,usd()/held()*100):100;
+      acct.settle(q,item,holding);
+      toast(`${side==='buy'?'Bought':'Sold'} ${what}`,{image:img});
+      if(state.tab==='portfolio'&&state.stack.length===1) render(false);
+    },2200); };
+
+  const paint=()=>{ if(!w.isConnected) return; reviewing?reviewV():form(); };
   paint();
 }
 
@@ -146,16 +249,21 @@ SCREENS.portfolio={
     el.querySelector('#acc').onclick=accountsSheet; const body=el.querySelector('#body'); const ape=skin==='ape'; const w=acct.wallet(); const st=acct.settings(); let tab=state._wtab||'positions';
     el.querySelector('#hist').onclick=()=>{ tab='activity'; state._wtab=tab; paint(); };
     const positions=w.holdings.filter(h=>(h.kind==='stock'||h.kind==='meme')&&(!st.hideDust||h.valueUsd>=0.01)).sort((a,b)=>b.valueUsd-a.valueUsd);
-    const pnlPct=w.costUsd>0?w.pnlUsd/w.costUsd*100:null;
-    const posRow=h=>`<button class="row m" ${h.kind==='meme'?`data-token="${h.mint}"`:`data-stock="${h.mint}"`}><span style="position:relative">${h.kind==='meme'?avatar(h):logo({symbol:h.symbol,logo:h.image})}<span class="badge grey" style="position:absolute;right:-6px;bottom:-4px;padding:2px 5px;font-size:9px;background:var(--surface2)">${h.kind==='meme'?'MEME':'STOCK'}</span></span><div class="grow"><div class="t"><span class="sym">${esc(h.symbol)}</span>${h.quoteSymbol?`<span class="faint" style="font-size:11px;font-weight:500">on ${esc(h.quoteSymbol)}</span>`:''}</div><div class="s mono">${fmt.qty(h.amount,h.symbol)}</div></div><div class="r"><div class="px">${fmt.usd(h.valueUsd)}</div><div class="ch ${fmt.cls(h.pnlUsd??h.change24h)}">${h.pnlUsd!=null?(h.pnlUsd>=0?'+':'−')+fmt.usd(Math.abs(h.pnlUsd)):fmt.arrow(h.change24h,1)}</div></div></button>`;
+    let pnlPct=w.costUsd>0?w.pnlUsd/w.costUsd*100:null;
+    const posRow=h=>`<button class="row m" ${h.kind==='meme'?`data-token="${h.mint}"`:`data-stock="${h.mint}"`}><span style="position:relative">${h.kind==='meme'?avatar(h):logo({symbol:h.symbol,logo:h.image})}<span class="badge grey" style="position:absolute;right:-6px;bottom:-4px;padding:2px 5px;font-size:9px;background:var(--surface2)">${h.kind==='meme'?'MEME':'STOCK'}</span></span><div class="grow"><div class="t"><span class="sym">${esc(h.symbol)}</span>${h.quoteSymbol?`<span class="faint" style="font-size:11px;font-weight:500">on ${esc(h.quoteSymbol)}</span>`:''}</div><div class="s mono">${fmt.qty(h.amount,h.symbol)}</div></div><div class="r"><div class="px">${fmt.usd(h.valueUsd)}</div><div class="ch ${h.costUsd==null?'faint':fmt.cls(h.pnlUsd)}">${h.costUsd!=null&&h.pnlUsd!=null?fmt.signedCash(h.pnlUsd):'—'}</div></div></button>`;
     const actTitle=a=>({buy:`Bought ${esc(a.symbol)}`,sell:`Sold ${esc(a.symbol)}`,deposit:'Received USDC',withdraw:'Sent USDC'})[a.type]||a.type;
     const actSub=a=>a.status==='failed'?`<span class="dn">Failed · ${esc(a.error||'unknown')}</span>`:a.status==='pending'?'Confirming on Solana…':a.type==='deposit'?`From ${fmt.short(a.from)}`:a.type==='withdraw'?`To ${fmt.short(a.to)}`:`${a.stockSymbol?'on '+esc(a.stockSymbol)+' · ':''}${fmt.usd(a.usd)}${a.feeUsd!=null?' · fee '+fmt.usd(a.feeUsd):''}`;
     const actAmt=a=>a.status==='failed'?'':a.type==='buy'?`<span class="up">+${fmt.qty(a.amount,a.symbol)}</span>`:a.type==='sell'?`<span>−${fmt.qty(a.amount,a.symbol)}</span>`:a.type==='deposit'?`<span class="up">+${fmt.usd(a.usd)}</span>`:`<span>−${fmt.usd(a.usd)}</span>`;
     const actIcon=a=>{ const img=a.symbol==='USDC'?`<img src="${USDC_LOGO}" alt="">`:(a.image?`<img src="${esc(imgSrc(a.image))}" alt="" onerror="this.style.display='none'">`:esc(a.symbol.slice(0,2))); const badge=a.status==='failed'?`<span style="background:var(--red);color:#fff">${I.x.replace('width="16"','width="10"').replace('height="16"','height="10"')}</span>`:a.type==='deposit'?`<span style="background:var(--green);color:#0a0b0d">↓</span>`:a.type==='withdraw'?`<span style="background:var(--surface2);color:var(--ink)">↑</span>`:a.type==='buy'?`<span style="background:var(--green);color:#0a0b0d">+</span>`:`<span style="background:var(--red);color:#fff">−</span>`; return `<span class="av actav">${img}${badge}</span>`; };
     const actRow=a=>`<button class="row m" data-tx="${w.activity.indexOf(a)}">${actIcon(a)}<div class="grow"><div class="t"><span class="sym">${actTitle(a)}</span></div><div class="s">${actSub(a)}</div></div><div class="r"><div class="px mono">${actAmt(a)}</div>${a.status==='pending'?'<span class="spin"></span>':''}</div></button>`;
     const dayLabel=ts=>{ const d=new Date(ts*1000), n=new Date(); const same=(x,y)=>x.toDateString()===y.toDateString(); if(same(d,n)) return 'Today'; const y=new Date(n); y.setDate(n.getDate()-1); if(same(d,y)) return 'Yesterday'; return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:d.getFullYear()!==n.getFullYear()?'numeric':undefined}); };
-    const activity=()=>{ if(!w.activity.length) return '<div class="empty"><b>Nothing yet.</b><span class="sub">Your deposits and trades show up here.</span></div>'; const groups=[]; const pend=w.activity.filter(a=>a.status==='pending'); if(pend.length) groups.push(['Pending',pend]); for(const a of w.activity.filter(a=>a.status!=='pending')){ const l=dayLabel(a.ts); const g=groups.find(x=>x[0]===l); if(g) g[1].push(a); else groups.push([l,[a]]); } return groups.map(([l,items])=>`<div class="eyebrow" style="margin-top:18px">${l}</div><div class="card">${items.map(actRow).join('')}</div>`).join(''); };
-    const paint=()=>{ const inv=w.totalUsd-w.cashUsd; body.innerHTML=`<div style="margin-top:8px"><div class="sub">Portfolio value</div><div class="hero" style="margin-top:2px">${fmt.cents(inv)}</div><div class="mono" style="margin-top:6px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">${w.pnlUsd!=null&&positions.length?`<span class="${fmt.cls(w.pnlUsd)}">${(w.pnlUsd>=0?'+':'−')+fmt.usd(Math.abs(w.pnlUsd))}</span>${pnlPct!=null?`<span class="chip ${w.pnlUsd>=0?'up':'dn'} ${fmt.cls(w.pnlUsd)}" style="height:22px;padding:0 7px;border-radius:999px;display:inline-flex;align-items:center;background:var(--${w.pnlUsd>=0?'greenT':'redT'})">${fmt.arrow(pnlPct,2)}</span>`:''}<span class="faint">·</span><span class="muted" style="font-weight:500">Invested ${fmt.usd(w.costUsd)}</span>`:'<span class="muted">Nothing invested yet</span>'}</div></div>
+    const activity=()=>{ if(!w.activity.length) return '<div class="empty"><b>Nothing yet.</b><span class="sub">Your deposits and trades show up here.</span></div>'; const groups=[]; w.activity.sort((a,b)=>(b.ts||0)-(a.ts||0)); const pend=w.activity.filter(a=>a.status==='pending'); if(pend.length) groups.push(['Pending',pend]); for(const a of w.activity.filter(a=>a.status!=='pending')){ const l=dayLabel(a.ts); const g=groups.find(x=>x[0]===l); if(g) g[1].push(a); else groups.push([l,[a]]); } return groups.map(([l,items])=>`<div class="eyebrow" style="margin-top:18px">${l}</div><div class="card">${items.map(actRow).join('')}</div>`).join(''); };
+    const paint=()=>{ const inv=w.totalUsd-w.cashUsd;
+      const costed=positions.filter(h=>h.costUsd!=null);
+      w.costUsd=costed.reduce((s,h)=>s+h.costUsd,0);
+      w.pnlUsd=costed.length?costed.reduce((s,h)=>s+(h.valueUsd-h.costUsd),0):null;
+      pnlPct=w.costUsd>0&&w.pnlUsd!=null?w.pnlUsd/w.costUsd*100:null;
+      body.innerHTML=`<div style="margin-top:8px"><div class="sub">Portfolio value</div><div class="hero" style="margin-top:2px">${fmt.cents(inv)}</div><div class="mono" style="margin-top:6px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">${w.pnlUsd!=null&&positions.length?`<span class="${fmt.cls(w.pnlUsd)}">${fmt.signedCash(w.pnlUsd)}</span>${pnlPct!=null?`<span class="chip ${w.pnlUsd>=0?'up':'dn'} ${fmt.cls(w.pnlUsd)}" style="height:22px;padding:0 7px;border-radius:999px;display:inline-flex;align-items:center;background:var(--${w.pnlUsd>=0?'greenT':'redT'})">${fmt.arrow(pnlPct,2)}</span>`:''}<span class="faint">·</span><span class="muted" style="font-weight:500">Invested ${fmt.cash(w.costUsd)}</span>`:'<span class="muted">Nothing invested yet</span>'}</div></div>
       <div class="card pad" style="margin-top:18px;display:flex;align-items:center;gap:12px"><img src="${USDC_LOGO}" width="40" height="40" style="border-radius:999px" alt=""><div style="flex:1"><div class="sub">Cash · USDC</div><div class="mono" style="font-size:22px;font-weight:600;letter-spacing:-.03em;margin-top:2px">${fmt.usd(w.cashUsd)}</div></div><button class="pill" id="addcash">Deposit</button></div>
       <div style="display:flex;gap:8px;margin-top:16px"><button class="pill acc" data-act="dep">${I.plus}Deposit</button><button class="pill" data-act="wd" style="opacity:.5">Withdraw · soon</button></div>
       <div class="tabs" style="margin-top:22px"><button data-wt="positions" class="${tab==='positions'?'on':''}">Positions</button><button data-wt="activity" class="${tab==='activity'?'on':''}">Activity</button></div>
@@ -165,7 +273,7 @@ SCREENS.portfolio={
       body.querySelector('#addcash').onclick=depositSheet; body.querySelector('[data-act="dep"]').onclick=depositSheet; body.querySelector('[data-act="wd"]').onclick=()=>toast('Withdraw is coming soon');
       body.querySelectorAll('[data-tx]').forEach(b=>b.onclick=()=>txSheet(w.activity[+b.dataset.tx]));
       /* positions in the wallet open a sell/buy chooser instead of the page */
-      body.querySelectorAll('.row[data-stock],.row[data-token]').forEach(b=>{ const mint=b.dataset.stock||b.dataset.token; b.onclick=()=>{ const h=positions.find(x=>x.mint===mint); openSheet(`<div class="grab"></div><div class="sheet-title"><div style="display:flex;align-items:center;gap:10px">${h.kind==='meme'?avatar(h,'m'):logo({symbol:h.symbol,logo:h.image},28)}<div><div class="h3">${esc(h.symbol)}</div><div class="sub mono">${fmt.qty(h.amount,h.symbol)} · ${fmt.usd(h.valueUsd)}</div></div></div><button class="iconbtn" data-close aria-label="Close">${I.x}</button></div><div class="kcard">${kv('Value',fmt.usd(h.valueUsd))}${kv('Cost',h.costUsd!=null?fmt.usd(h.costUsd):'—')}${kv('P&L',h.pnlUsd!=null?`<span class="${fmt.cls(h.pnlUsd)}">${(h.pnlUsd>=0?'+':'−')+fmt.usd(Math.abs(h.pnlUsd))} (${fmt.pct(h.pnlPct,1)})</span>`:'—')}${kv('Price',fmt.usd(h.priceUsd))}</div><div class="btns"><button class="btn buy" id="b">Buy more</button><button class="btn sellb" id="s">Sell</button></div><button class="lnk" id="open" style="font-size:13px;text-align:center">Open ${h.kind==='meme'?'token':'stock'} page ${I.chev}</button>`,ws=>{ ws.querySelector('#b').onclick=()=>{ ws.close(); const st=state.stocksByMint[h.mint]; if(st) buyFlow('stock',st,st); else toast('Open the page to buy'); }; ws.querySelector('#s').onclick=()=>{ ws.close(); sellFlow(h.mint); }; ws.querySelector('#open').onclick=()=>{ ws.close(); if(h.kind==='meme'){ if(ape) push('token',{mint:h.mint}); else toast('Switch to Ape mode to open memes'); } else push(state.mode==='ape'?'floor':'stock',{mint:h.mint}); }; }); }; });
+      body.querySelectorAll('.row[data-stock],.row[data-token]').forEach(b=>{ const mint=b.dataset.stock||b.dataset.token; b.onclick=()=>{ const h=positions.find(x=>x.mint===mint); openSheet(`<div class="grab"></div><div class="sheet-title"><div style="display:flex;align-items:center;gap:10px">${h.kind==='meme'?avatar(h,'m'):logo({symbol:h.symbol,logo:h.image},28)}<div><div class="h3">${esc(h.symbol)}</div><div class="sub mono">${fmt.qty(h.amount,h.symbol)} · ${fmt.usd(h.valueUsd)}</div></div></div><button class="iconbtn" data-close aria-label="Close">${I.x}</button></div><div class="kcard">${kv(h.kind==='meme'?'Tokens':'Shares',fmt.qty(h.amount))}${kv('Entry',fmt.usd(h.avgEntryUsd??(h.costUsd!=null?h.costUsd/Math.max(h.amount,1e-12):null)))}${kv('Now',fmt.usd(h.priceUsd))}${kv('Profit',h.costUsd!=null&&h.pnlUsd!=null?`<span class="${fmt.cls(h.pnlUsd)}">${fmt.signedCash(h.pnlUsd)} (${fmt.pct(h.pnlPct,1)})</span>`:'<span class="faint">—</span>')}</div><div class="btns"><button class="btn buy" id="b">Buy</button><button class="btn sellb" id="s">Sell</button></div><button class="lnk" id="open" style="font-size:13px;text-align:center">Open ${h.kind==='meme'?'token':'stock'} page ${I.chev}</button>`,ws=>{ ws.querySelector('#b').onclick=()=>{ ws.close(); const st=state.stocksByMint[h.mint]; if(st) buyFlow('stock',st,st); else toast('Open the page to buy'); }; ws.querySelector('#s').onclick=()=>{ ws.close(); sellFlow(h.mint); }; ws.querySelector('#open').onclick=()=>{ ws.close(); if(h.kind==='meme'){ if(ape) push('token',{mint:h.mint}); else toast('Switch to Ape mode to open memes'); } else push(state.mode==='ape'?'floor':'stock',{mint:h.mint}); }; }); }; });
     };
     paint();
   }

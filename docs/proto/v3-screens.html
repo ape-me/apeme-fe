@@ -105,7 +105,7 @@ SCREENS.home={
 };
 /* --- markets --- */
 SCREENS.markets={
-  html(p,skin){ const ape=skin==='ape'; return `<div class="pad" style="padding-top:16px;display:flex;flex-direction:column;gap:14px"><div class="h1">${ape?'Floors':'Markets'}</div><label class="srch">${I.search}<input id="q" type="search" aria-label="Search" placeholder="${ape?'Search floors or paste a mint':'Search stocks'}"><button class="paste" id="paste">Paste</button></label></div>
+  html(p,skin){ const ape=skin==='ape'; return `<div class="pad" style="padding-top:16px;display:flex;flex-direction:column;gap:14px"><div class="h1">${ape?'Floors':'Markets'}</div><label class="srch">${I.search}<input id="q" type="search" aria-label="Search" placeholder="${ape?'Search floors or paste a mint':'Search stocks'}"></label></div>
     <div class="chips" id="fchips" style="padding-block:12px 4px"></div><div class="scroll"><div class="pad" id="list"><div class="skel" style="height:64px"></div></div></div>`; },
   async mount(el,p,skin){
     let stocks=[], cols=[]; try{ const [a,b,c]=await Promise.all([api('/stocks?issuer=prestocks'),api('/stocks?issuer=xstocks,backpack'),api('/collections',30000)]); stocks=[...a.stocks,...b.stocks]; cols=c.collections||[]; }catch(e){ el.querySelector('#list').innerHTML=`<div class="errbar">Couldn't load markets.</div>`; return; }
@@ -120,7 +120,6 @@ SCREENS.markets={
       el.querySelectorAll('[data-tag]').forEach(b=>b.onclick=()=>{f.tag=b.dataset.tag||null;draw();});
       el.querySelector('[data-sortbtn]').onclick=()=>openSheet(`<div class="grab"></div><div class="sheet-title"><div class="h2">Sort by</div><button class="iconbtn" data-close aria-label="Close">${I.x}</button></div><div class="card">${sortOpts.map(([k,l])=>`<button class="row" data-order="${k}" style="min-height:52px"><span style="flex:1;font-weight:500">${l}</span><span class="lnk">${f.sort===k?'✓':''}</span></button>`).join('')}</div>`,w=>w.querySelectorAll('[data-order]').forEach(b=>b.onclick=()=>{ f.sort=b.dataset.order; w.close(); draw(); })); };
     el.querySelector('#q').oninput=e=>{ q=e.target.value.trim().toLowerCase(); el.querySelector('#list').innerHTML=list(); bindRows(el); };
-    el.querySelector('#paste').onclick=async()=>{ try{ const v=await navigator.clipboard.readText(); const i=el.querySelector('#q'); i.value=v; i.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){ toast('Tap the field and paste'); el.querySelector('#q').focus(); } };
     draw();
   }
 };

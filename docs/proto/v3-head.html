@@ -14,7 +14,8 @@ button,input{font:inherit}button{border:0;padding:0;margin:0;background:none;col
 button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* iPhone 17 Pro Max: 440×956pt, Dynamic Island, 62pt top inset, 34pt home indicator */
 :root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}
-#phone{position:relative;width:100%;max-width:440px;height:100%;height:100dvh;margin:auto;overflow:hidden;background:#0a0b0d}
+#phone{position:relative;width:100%;max-width:440px;height:100%;height:100dvh;margin:auto;overflow:hidden;background:#0a0b0d;
+  --surface:#16181d;--surface2:#1e2126;--line:#23262c;--ink:#ffffff;--muted:#a6a6ae;--faint:#75757e;--green:#00d632;--red:#ff5c5c}
 .island,.statusbar,.homeind{display:none}
 @media(min-width:520px){
   :root{--sat:62px;--sab:34px}
@@ -65,7 +66,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .logo{width:40px;height:40px;border-radius:12px;background:var(--surface2);color:var(--ink);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;font-size:15px;font-weight:600}
 .logo img{width:100%;height:100%;object-fit:cover}
 .av{width:40px;height:40px;border-radius:999px;background:var(--surface2);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--muted)}
-.av img{width:100%;height:100%;object-fit:cover}.av.s{width:16px;height:16px;font-size:7px}.av.m{width:28px;height:28px;font-size:9px}.av.l{width:52px;height:52px}
+.av img{width:100%;height:100%;object-fit:cover}.av.s{width:16px;height:16px;font-size:7px}.av.b{width:22px;height:22px;font-size:8px}.av.m{width:28px;height:28px;font-size:9px}.av.t{width:36px;height:36px;font-size:11px}.av.h{width:48px;height:48px;font-size:14px}.av.l{width:52px;height:52px}.av.xl{width:64px;height:64px;font-size:18px}
 /* pills */
 .pill{height:36px;padding:0 14px;border-radius:999px;background:var(--surface2);color:var(--ink);font-size:13px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;flex-shrink:0;transition:background 160ms}
 .pill.on{background:var(--accentT);color:var(--accent)}
@@ -136,7 +137,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .stats>div{display:flex;flex-direction:column;gap:4px}
 .stats b{font-size:17px;font-weight:600;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
 .kv{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:46px;font-size:15px}
-.kv span:first-child{color:var(--muted);font-size:14px;font-weight:500}.kv b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;text-align:right;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%}
+.kv>span:first-child{color:var(--muted);font-size:14px;font-weight:500}.kv b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;text-align:right;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%}
 .kcard{background:var(--surface);border-radius:16px;padding:2px 16px}
 .kcard .kv{border-bottom:1px solid var(--line)}.kcard .kv:last-child{border-bottom:0}
 .kcard.pad{padding:16px}
@@ -193,13 +194,21 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .numpad button{height:54px;font-size:24px;font-weight:500;border-radius:12px;letter-spacing:-.02em}
 .numpad button:active{background:var(--surface2)}
 .presets{display:flex;gap:8px}
-.presets button{flex:1;height:44px;border-radius:12px;background:var(--surface);font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.presets button{flex:1;height:44px;border-radius:12px;background:var(--surface2);font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.presets button .csub{font-size:11px;font-weight:500;color:var(--muted)}
+.presets button.on .csub{color:var(--accent);opacity:.75}
 .presets button.on{background:var(--accentT);color:var(--accent)}
 .orderrow{display:flex;align-items:center;gap:12px;padding:14px 0}
 .orderrow .grow{flex:1;min-width:0}
 .orderrow .k{font-size:15px;font-weight:600}.orderrow .v{font-size:13px;color:var(--muted)}
 .notice{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:var(--amberT);color:var(--amber);font-size:13px;line-height:18px}
-.toast{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(76px + var(--sab));z-index:30;height:36px;padding:0 14px;display:flex;align-items:center;border-radius:999px;background:var(--surface2);border:1px solid var(--line);color:var(--ink);font-size:13px;font-weight:600;white-space:nowrap;animation:up .2s}.toast[hidden]{display:none}
+.toast{position:absolute;left:50%;transform:translateX(-50%);top:calc(10px + var(--sat));z-index:60;width:calc(100% - 40px);box-sizing:border-box;min-height:56px;padding:8px 18px 8px 10px;display:flex;align-items:center;gap:12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--ink);font-size:15px;font-weight:600;box-shadow:0 8px 18px rgba(0,0,0,.45);animation:drop .22s cubic-bezier(.2,.8,.2,1)}.toast[hidden]{display:none}
+.toast .tmsg{flex:1;min-width:0;line-height:19px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.toast .tdisc{width:32px;height:32px;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.toast .twrap{position:relative;flex-shrink:0;display:flex}
+.toast .tbadge{position:absolute;right:-3px;bottom:-3px;width:18px;height:18px;border-radius:999px;display:flex;align-items:center;justify-content:center;border:2px solid var(--surface);box-sizing:border-box}
+.toast .tbadge .spin{width:9px;height:9px;border-width:2px}
+@keyframes drop{from{opacity:0;transform:translate(-50%,-16px)}to{opacity:1;transform:translate(-50%,0)}}
 .pricetag{position:absolute;right:0;transform:translateY(-50%);padding:3px 8px;border-radius:999px;font-size:12px;font-weight:700;color:#0a0b0d;font-variant-numeric:tabular-nums;pointer-events:none}
 .ranges button.menu{width:auto;padding:0 10px}
 .stockhead{display:flex;align-items:center;gap:12px}.stockhead .sym{font-size:34px;line-height:38px;font-weight:700;letter-spacing:-.04em}.stockhead .nm{font-size:22px;font-weight:500;color:var(--muted);letter-spacing:-.02em}
@@ -253,8 +262,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 </style>
 </head>
 <body>
-<div id="phone"><div class="island"></div><div class="statusbar"><span>9:41</span><span class="r"><svg width="18" height="12" viewBox="0 0 18 12" fill="#fff"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg width="16" height="12" viewBox="0 0 24 18" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M2 6c6-5 14-5 20 0M5.5 10c4-3.3 9-3.3 13 0M9 14c1.7-1.4 4.3-1.4 6 0"/></svg><svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="4" fill="none" stroke="#fff" stroke-opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2.5" fill="#fff"/><rect x="25" y="4.5" width="1.5" height="4" rx=".7" fill="#fff" fill-opacity=".4"/></svg></span></div><div class="homeind"></div></div>
-<div id="toast" hidden></div>
+<div id="phone"><div class="island"></div><div class="statusbar"><span>9:41</span><span class="r"><svg width="18" height="12" viewBox="0 0 18 12" fill="#fff"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg width="16" height="12" viewBox="0 0 24 18" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M2 6c6-5 14-5 20 0M5.5 10c4-3.3 9-3.3 13 0M9 14c1.7-1.4 4.3-1.4 6 0"/></svg><svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="4" fill="none" stroke="#fff" stroke-opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2.5" fill="#fff"/><rect x="25" y="4.5" width="1.5" height="4" rx=".7" fill="#fff" fill-opacity=".4"/></svg></span></div><div class="homeind"></div><div id="toast" hidden></div></div>
 <script>
 /* ============ data ============ */
 const API='https://apme-be.iamjoey.workers.dev/v1';
@@ -279,6 +287,8 @@ const fmt={
     if(a>=1e9) return s+p+(a/1e9).toFixed(1)+'B'; if(a>=1e6) return s+p+(a/1e6).toFixed(1)+'M'; if(a>=1e3) return s+p+(a/1e3).toFixed(1)+'K';
     return s+p+a.toFixed(a>=100?0:2);},
   n(n){ return n==null?'—':Math.round(n).toLocaleString('en-US'); },
+  cash(n){ if(n==null||isNaN(n)) return '—'; if(n<0) return '−'+fmt.cash(-n); if(n>0&&n<0.005) return '<$0.01'; return '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); },
+  signedCash(n){ if(n==null||isNaN(n)) return '—'; const s=n<0?'−':'+', a=Math.abs(n); if(a>0&&a<0.005) return s+'<$0.01'; return s+'$'+a.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); },
   pct(n,d=2){ if(n==null||isNaN(n)) return '—'; const s=n>0?'+':n<0?'−':''; return s+Math.abs(n).toFixed(d)+'%'; },
   arrow(n,d=2){ if(n==null||isNaN(n)) return '—'; return (n>=0?'↑ ':'↓ ')+Math.abs(n).toFixed(d)+'%'; },
   cls(n){ return n==null?'faint':n>=0?'up':'dn'; },
@@ -339,7 +349,16 @@ function attachScrub(wrap,onPoint,onLeave){ const sc=lineChart.last; if(!wrap||!
   const leave=()=>{ wrap.classList.remove('live'); onLeave(); };
   wrap.addEventListener('pointermove',move); wrap.addEventListener('pointerdown',move); wrap.addEventListener('pointerleave',leave); wrap.addEventListener('pointerup',leave); wrap.addEventListener('pointercancel',leave); }
 function tabbar(){ const t=[['home',I.home],['markets',I.markets],['portfolio',I.wallet||I.port],['you',I.you]]; return `<nav class="tabbar">${t.map(([k,ic])=>`<button data-tab="${k}" aria-label="${k}" class="${k} ${state.tab===k?'on':''}">${ic}</button>`).join('')}</nav>`; }
-function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast'; t.hidden=false; clearTimeout(t._h); t._h=setTimeout(()=>t.hidden=true,2200); }
+const TCHK=svg('<path d="M4 12l5 5L20 6"/>',11,3.2), TXX=svg('<path d="M6 6l12 12M18 6L6 18"/>',10,3.2);
+/* toast(msg) or toast(msg,{error,pending,image:{symbol,url,isStock}}) — pending stays until the next toast */
+function toast(msg,o){ o=o||{}; const t=document.getElementById('toast'), err=!!o.error, pend=!!o.pending;
+  const glyph=pend?'<span class="spin"></span>':(err?TXX:TCHK);
+  const bg=pend?'var(--surface2)':`var(--${err?'red':'green'})`, fg=pend?'var(--ink)':(err?'#fff':'#0a0b0d');
+  const mark=cls=>`<span class="${cls}" style="background:${bg};color:${fg}">${glyph}</span>`;
+  t.innerHTML=(o.image?`<span class="twrap">${o.image.isStock?logo({symbol:o.image.symbol,logo:o.image.url},36):avatar({symbol:o.image.symbol,image:o.image.url},'t')}${mark('tbadge')}</span>`:mark('tdisc'))
+    +`<span class="tmsg">${esc(msg)}</span>`;
+  t.className='toast'; t.hidden=false; clearTimeout(t._h);
+  if(!pend) t._h=setTimeout(()=>t.hidden=true,err?3500:2200); }
 function toggleWatch(mint){ const i=state.watch.indexOf(mint); if(i>=0) state.watch.splice(i,1); else state.watch.push(mint); LSW('apeme.watch',JSON.stringify(state.watch)); toast(i>=0?'Removed from watchlist':'Watching'); }
 function updateDataStatus(){document.querySelectorAll('[data-data-status]').forEach(el=>{el.innerHTML=state.online?'<i class="dot live"></i> Live':'<i class="dot"></i> Snapshot · Sep 20';});}
 /* ============ shared pieces ============ */
