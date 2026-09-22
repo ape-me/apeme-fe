@@ -44,15 +44,18 @@ struct ToastView: View {
     var pending = false
     private var tint: Color { pending ? Theme.ink : error ? Theme.red : Theme.green }
     var body: some View {
-        HStack(spacing: 8) {
-            if pending { ProgressView().tint(Theme.muted).scaleEffect(0.8) }
-            else { Image(systemName: error ? "xmark.circle.fill" : "checkmark.circle.fill").font(.system(size: 14, weight: .semibold)) }
-            Text(text).font(.system(size: 13, weight: .semibold)).multilineTextAlignment(.center)
+        HStack(spacing: 12) {
+            Group {
+                if pending { ProgressView().tint(Theme.ink) }
+                else { Image(systemName: error ? "xmark" : "checkmark").font(.system(size: 15, weight: .bold)).foregroundStyle(error ? .white : Theme.ground) }
+            }
+            .frame(width: 32, height: 32).background(pending ? Theme.surface2 : tint, in: .circle)
+            Text(text).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ink).multilineTextAlignment(.leading).lineLimit(2)
         }
-        .foregroundStyle(tint)
-        .padding(.horizontal, 14).frame(minHeight: 38)
-        .background(pending ? Theme.surface2 : error ? Theme.redT : Theme.greenT, in: .capsule)
-        .overlay(Capsule().stroke((pending ? Theme.line : tint.opacity(0.25)), lineWidth: 1))
+        .padding(.leading, 10).padding(.trailing, 18).frame(minHeight: 56)
+        .background(Theme.surface, in: .capsule)
+        .overlay(Capsule().stroke(Theme.line, lineWidth: 1))
+        .shadow(color: .black.opacity(0.45), radius: 18, y: 8)
         .padding(.horizontal, 20).padding(.top, 8)
     }
 }
