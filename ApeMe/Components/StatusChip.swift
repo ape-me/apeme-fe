@@ -48,7 +48,7 @@ struct ToastView: View {
             .padding(.horizontal, 14).frame(height: 36)
             .background(Theme.surface2, in: .capsule)
             .overlay(Capsule().stroke(Theme.line, lineWidth: 1))
-            .padding(.bottom, 76)
+            .padding(.top, 8)
     }
 }
 

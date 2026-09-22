@@ -33,10 +33,10 @@ struct RootView: View {
             case .login: LoginSheet()
             }
         }
-        .overlay(alignment: .bottom) {
+        .overlay(alignment: .top) {
             if let t = app.toast {
                 ToastView(text: t, error: app.toastIsError)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .animation(.easeOut(duration: 0.25), value: app.toast)
