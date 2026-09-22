@@ -24,8 +24,8 @@ struct TradeSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @State private var store: TradeStore
-    @State private var amount = ""
-    @State private var pct: Double? = nil
+    @State private var amount = ""          // dollars typed (buy and sell)
+    @State private var pct: Double? = nil    // sell chip, for the label only
     @State private var reviewing = false
 
     init(side: TradeStore.Side, asset: Asset) {
@@ -41,7 +41,9 @@ struct TradeSheetView: View {
     private var cash: Double { app.cashUsd }
     private var maxCash: Double { floor(cash * 100) / 100 }
     private var busy: Bool { [.signing, .submitting, .confirming].contains(store.phase) }
-    private var sellQty: Double { (store.holding?.amount ?? 0) * (pct ?? 0) / 100 }
+    private var sellValue: Double { store.holding?.valueUsd ?? 0 }
+    private var sellQty: Double { sellValue > 0 ? (store.holding?.amount ?? 0) * min(usd, sellValue) / sellValue : 0 }
+    private var hasAmount: Bool { usd > 0 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -67,8 +69,10 @@ struct TradeSheetView: View {
         switch side {
         case .buy: store.requote(usd: usd, taker: app.walletAddress, cashUsd: cash)
         case .sell:
-            guard let h = store.holding, let raw = h.raw, let r = Decimal(string: raw), let p = pct else { store.requote(rawAmount: nil, taker: app.walletAddress, cashUsd: 0); return }
-            var v = r * Decimal(p) / 100
+            guard let h = store.holding, let raw = h.raw, let r = Decimal(string: raw), let value = h.valueUsd, value > 0, usd > 0 else { store.requote(rawAmount: nil, taker: app.walletAddress, cashUsd: 0); return }
+            // Whole position when they asked for all of it, so no dust is left behind.
+            if usd >= value - 0.005 || pct == 100 { store.requote(rawAmount: raw, taker: app.walletAddress, cashUsd: 0); return }
+            var v = r * Decimal(usd) / Decimal(value)
             var out = Decimal(); NSDecimalRound(&out, &v, 0, .down)
             store.requote(rawAmount: "\(out)", taker: app.walletAddress, cashUsd: 0)
         }
@@ -95,36 +99,40 @@ struct TradeSheetView: View {
         if asset.isStock { Logo(url: asset.imageURL, symbol: asset.symbol, size: size) } else { Avatar(url: asset.imageURL, symbol: asset.symbol, size: size) }
     }
 
-    private var hasAmount: Bool { side == .buy ? usd > 0 : pct != nil }
-
     private var form: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 0) {
             header
-            VStack(spacing: 6) {
-                if side == .buy {
-                    HStack(spacing: 10) {
-                        Image("usdc").resizable().frame(width: 36, height: 36).clipShape(.circle)
-                        Text(amount.isEmpty ? "0" : amount).font(.amount).tracking(-2.8).monospacedDigit().foregroundStyle(Theme.ink)
-                    }
-                } else {
-                    Text(pct.map { Fmt.n($0) + "%" } ?? "—").font(.amount).tracking(-2.8).monospacedDigit().foregroundStyle(Theme.ink)
+            Spacer(minLength: 12)
+            VStack(spacing: 8) {
+                HStack(spacing: 10) {
+                    Image("usdc").resizable().frame(width: 36, height: 36).clipShape(.circle)
+                    Text(amount.isEmpty ? "0" : amount).font(.amount).tracking(-2.8).monospacedDigit().foregroundStyle(Theme.ink)
                 }
                 HStack(spacing: 4) {
-                    Text("You get ≈").foregroundStyle(Theme.muted)
-                    Text(store.phase == .quoting ? "…" : store.youGet).foregroundStyle(Theme.ink).fontWeight(.semibold)
+                    if side == .buy {
+                        Text("You get ≈").foregroundStyle(Theme.muted)
+                        Text(store.phase == .quoting ? "…" : store.youGet).foregroundStyle(Theme.ink).fontWeight(.semibold)
+                    } else {
+                        Text("≈ \(Fmt.qty(sellQty, symbol: asset.symbol))").foregroundStyle(Theme.ink).fontWeight(.semibold)
+                        if sellValue > 0 { Text("· \(Fmt.n(min(100, usd / sellValue * 100).rounded()))% of your \(asset.symbol)").foregroundStyle(Theme.muted) }
+                    }
                 }
                 .font(.system(size: 15)).monospacedDigit()
                 .opacity(hasAmount ? 1 : 0)
             }
-            .frame(maxWidth: .infinity).padding(.top, 8)
-
+            .frame(maxWidth: .infinity)
+            Spacer(minLength: 12)
             if side == .buy {
-                chips((settings.quickBuyUsd ?? [10, 25, 50, 100]).map { ("$" + Fmt.n($0), $0) } + [("Max", maxCash)], selected: usd) { amount = String(format: $0 == maxCash ? "%.2f" : "%g", $0) }
+                chips((settings.quickBuyUsd ?? [10, 25, 50, 100]).map { ("$" + Fmt.n($0), nil, $0) } + [("Max", nil, maxCash)], selected: usd) { amount = String(format: $0 == maxCash ? "%.2f" : "%g", $0); pct = nil }
             } else {
-                chips((settings.quickSellPct ?? [25, 50, 100]).map { (Fmt.n($0) + "%", $0) }, selected: pct ?? -1) { pct = $0 }
+                chips((settings.quickSellPct ?? [25, 50, 100]).map { p in (Fmt.n(p) + "%", Fmt.usd(sellValue * p / 100), sellValue * p / 100) }, selected: usd) { v in
+                    amount = String(format: "%.2f", floor(v * 100) / 100); pct = abs(v - sellValue) < 0.005 ? 100 : nil
+                }
             }
-            notes
-            if side == .buy { Numpad { key in
+            notes.padding(.top, 12)
+            Spacer(minLength: 12)
+            Numpad { key in
+                pct = nil
                 switch key {
                 case "⌫": amount = String(amount.dropLast())
                 case ".": if !amount.contains(".") { amount = (amount.isEmpty ? "0" : amount) + "." }
@@ -132,26 +140,46 @@ struct TradeSheetView: View {
                     let d = amount.split(separator: ".", omittingEmptySubsequences: false).dropFirst().first?.count ?? 0
                     if amount.count < 8, !amount.contains(".") || d < 2 { amount = amount == "0" ? key : amount + key }
                 }
-            } }
-            errorBox
-            Spacer(minLength: 0)
+            }
+            errorBox.padding(.top, 12)
+            Spacer(minLength: 16)
             primary
         }
+        .frame(maxHeight: .infinity)
     }
 
-    private func chips(_ items: [(String, Double)], selected: Double, pick: @escaping (Double) -> Void) -> some View {
+    private func chips(_ items: [(String, String?, Double)], selected: Double, pick: @escaping (Double) -> Void) -> some View {
         HStack(spacing: 8) {
-            ForEach(items, id: \.0) { label, v in
-                let on = abs(v - selected) < 0.005
+            ForEach(items, id: \.0) { label, sub, v in
+                let on = abs(v - selected) < 0.006
                 Button { pick(v) } label: {
-                    Text(label).font(.system(size: 14, weight: .semibold)).monospacedDigit()
-                        .foregroundStyle(on ? skin.accent : Theme.ink)
-                        .frame(maxWidth: .infinity).frame(height: 44)
-                        .background(on ? skin.accentTint : Theme.surface2, in: .rect(cornerRadius: 12))
+                    VStack(spacing: 2) {
+                        Text(label).font(.system(size: 14, weight: .semibold))
+                        if let sub { Text(sub).font(.system(size: 11, weight: .medium)).foregroundStyle(on ? skin.accent.opacity(0.8) : Theme.muted) }
+                    }
+                    .monospacedDigit()
+                    .foregroundStyle(on ? skin.accent : Theme.ink)
+                    .frame(maxWidth: .infinity).frame(height: sub == nil ? 44 : 52)
+                    .background(on ? skin.accentTint : Theme.surface2, in: .rect(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    /// "Buy $25 · [logo] NVDAX" — the asset's mark in the button instead of a long name.
+    private func tradeButton(_ prefix: String, style: BigButton.Style, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Text(prefix)
+                assetImage(22)
+                Text(asset.symbol)
+            }
+            .font(.system(size: 17, weight: .semibold)).tracking(-0.2).foregroundStyle(.white)
+            .frame(maxWidth: .infinity).frame(height: 52)
+            .background(style == .sell ? AnyShapeStyle(Theme.sellGradient) : AnyShapeStyle(Theme.buyGradient), in: .capsule)
+        }
+        .buttonStyle(PressScale())
     }
 
     /// The two things a first-timer must know: a big premium, or a big price impact. Nothing else up front.
@@ -189,15 +217,14 @@ struct TradeSheetView: View {
         case .insufficient: BigButton(label: "Deposit to buy", style: .white) { dismiss(); app.sheet = .deposit }
         case .quoting: BigButton(label: "Getting price…", style: .off) {}
         case .ready:
-            let label = side == .buy ? "\(verb) $\(amount) of \(asset.symbol)" : "Sell \(Fmt.n(pct ?? 0))% of \(asset.symbol)"
-            BigButton(label: label, style: side == .sell ? .sell : .buy) {
+            tradeButton(side == .buy ? "\(verb) $\(amount) of" : "Sell $\(amount) of", style: side == .sell ? .sell : .buy) {
                 if settings.confirmBeforeTrade ?? true { reviewing = true } else { Task { await run() } }
             }
         case .signing: BigButton(label: "Signing…", style: .off) {}
         case .submitting: BigButton(label: "Submitting…", style: .off) {}
         case .confirming: BigButton(label: "Confirming…", style: .off) {}
         case .failed: BigButton(label: "Try again", style: .ghost) { requote() }
-        default: BigButton(label: side == .buy ? "Enter an amount" : "Pick an amount", style: .off) {}
+        default: BigButton(label: "Enter an amount", style: .off) {}
         }
     }
 
@@ -279,7 +306,7 @@ struct TradeSheetView: View {
                         }
                     }
                 }
-            default: BigButton(label: side == .buy ? "Pay \(Fmt.usd(store.quote?.inUsd))" : "Confirm sale", style: side == .sell ? .sell : .buy) { Task { await run() } }
+            default: BigButton(label: side == .buy ? "Pay \(Fmt.usd(store.quote?.inUsd))" : "Sell for \(Fmt.usd(store.quote?.outUsd))", style: side == .sell ? .sell : .buy) { Task { await run() } }
             }
         }
     }

@@ -10,10 +10,10 @@ struct Numpad: View {
                 Button { onKey(k) } label: {
                     Group {
                         if k == "⌫" { Image(systemName: "delete.left").font(.system(size: 20)) }
-                        else { Text(k).font(.system(size: 24, weight: .medium)) }
+                        else { Text(k).font(.system(size: 26, weight: .medium)) }
                     }
                     .foregroundStyle(Theme.ink)
-                    .frame(maxWidth: .infinity).frame(height: 54)
+                    .frame(maxWidth: .infinity).frame(height: 64)
                     .contentShape(.rect(cornerRadius: 12))
                 }
                 .buttonStyle(NumpadPress())

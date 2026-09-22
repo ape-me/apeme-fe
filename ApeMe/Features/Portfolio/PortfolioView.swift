@@ -356,7 +356,7 @@ struct PositionSheet: View {
                     }
                 }
                 HStack(spacing: 10) {
-                    BigButton(label: "Buy more", style: .buy) {
+                    BigButton(label: "Buy", style: .buy) {
                         dismiss()
                         if let s = app.stocksByMint[holding.mint] { app.trade(.buyStock(s)) } else { app.openStock(holding.mint) }
                     }
@@ -371,7 +371,7 @@ struct PositionSheet: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 18)
+            .padding(.horizontal, 20).padding(.top, 28).padding(.bottom, 18)
         }
         .scrollIndicators(.hidden)
         .presentationDetents([.medium])
