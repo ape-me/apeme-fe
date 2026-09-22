@@ -252,6 +252,7 @@ struct ActivityRow: View {
             HStack(spacing: 12) {
                 ZStack(alignment: .bottomTrailing) {
                     if activity.symbol == "USDC" { Image("usdc").resizable().frame(width: 40, height: 40).clipShape(.circle) }
+                    else if let st = app.stocksByMint[activity.mint] { Logo(url: activity.imageURL ?? st.logoURL, symbol: activity.symbol) }
                     else { Avatar(url: activity.imageURL, symbol: activity.symbol) }
                     let b = badge
                     Image(systemName: b.0).font(.system(size: 9, weight: .bold)).foregroundStyle(b.2)
