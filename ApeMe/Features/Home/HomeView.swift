@@ -10,10 +10,11 @@ struct HomeView: View {
             VStack(spacing: 0) {
                 header
                 strip
-                if !app.isApe {
-                    // The strip holds its space while /news/ticker lands, so the tabs below never jump.
-                    if store.headlines.isEmpty, store.headlinesLoading { HeadlineStripSkeleton().padding(.top, 12) }
-                    else { HeadlineStrip(items: store.headlines).padding(.top, 12) }
+                // The strip teases news from the other tabs; on News itself it is the same
+                // stories twice on one screen, so it stands down.
+                if !app.isApe, store.investTab != .news {
+                    if store.stripHeadlines.isEmpty, store.headlinesLoading { HeadlineStripSkeleton().padding(.top, 12) }
+                    else { HeadlineStrip(items: store.stripHeadlines).padding(.top, 12) }
                 }
                 HR().padding(.top, 8)
                 tabs
