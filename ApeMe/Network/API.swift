@@ -68,16 +68,17 @@ actor API {
         if let before { p += "&before=\(before)" }
         return try await fetch(p, ttl: 60)
     }
-    /// The Home feed. With `mints`, those stocks come first, newest-first inside each group.
-    func news(mints: [String] = [], limit: Int = 30, before: Int? = nil) async throws -> NewsResponse {
+    /// The Home feed, newest-first. With `mints`, those stocks come first. `perStock` caps how
+    /// many headlines one company may take (BE default 3), and `minImpact` filters by score —
+    /// `material` with `perStock: 1` is what the headline strip runs on.
+    func news(mints: [String] = [], limit: Int = 30, before: Int? = nil,
+              minImpact: String? = nil, perStock: Int? = nil) async throws -> NewsResponse {
         var p = "/news?limit=\(limit)"
         if !mints.isEmpty { p += "&mints=\(mints.joined(separator: ","))" }
         if let before { p += "&before=\(before)" }
+        if let minImpact { p += "&minImpact=\(minImpact)" }
+        if let perStock { p += "&perStock=\(perStock)" }
         return try await fetch(p, ttl: 60)
-    }
-    /// One curated headline per stock, material or better, biggest movers first.
-    func newsTicker() async throws -> NewsResponse {
-        try await fetch("/news/ticker", ttl: 60)
     }
     func collections() async throws -> CollectionsResponse {
         try await fetch("/collections", ttl: 30)

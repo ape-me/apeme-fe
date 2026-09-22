@@ -40,32 +40,6 @@ final class HomeStore {
     private var listener: Task<Void, Never>?
     private var stamp = 0
 
-    /// The strip wants fresh AND material AND one per stock, which neither endpoint gives alone:
-    /// /news/ticker ranks by today's price move so its median item is ~10h old, and /news is
-    /// minutes fresh but repeats one stock and carries shopping-deal filler. Blending them and
-    /// scoring impact against age gets all three.
-    var stripHeadlines: [NewsItem] {
-        let now = Date.now.timeIntervalSince1970
-        func score(_ i: NewsItem) -> Double? {
-            guard let ts = i.publishedAt else { return nil }
-            let hours = max(0, (now - Double(ts)) / 3600)
-            guard hours <= 12 else { return nil }          // yesterday's news is not a headline
-            let weight: Double = switch i.impact {
-            case "critical": 4; case "major": 3; case "material": 2; case "minor": 1
-            default: 0                                      // "none" is the keyboard-discount tier
-            }
-            guard weight > 0 else { return nil }
-            return weight / (1 + hours / 2)
-        }
-        var best: [String: (NewsItem, Double)] = [:]
-        for item in headlines + feed {
-            guard let s = score(item) else { continue }
-            if let existing = best[item.mint], existing.1 >= s { continue }
-            best[item.mint] = (item, s)
-        }
-        return best.values.sorted { $0.1 > $1.1 }.prefix(12).map(\.0)
-    }
-
     /// The user's own stocks come first; signed out it's simply the newest across the market.
     func loadFeed(app: AppState) async {
         guard !feedLoading else { return }
@@ -106,7 +80,8 @@ final class HomeStore {
         }
         loading = false
         if let t = try? await API.shared.ticker(memes: 10, stonks: 1) { ticker = t.tokens }
-        if let h = try? await API.shared.newsTicker() { headlines = h.items }
+        // One headline per stock, material or better, newest first — the BE does the curation now.
+        if let h = try? await API.shared.news(limit: 12, minImpact: "material", perStock: 1) { headlines = h.items }
         headlinesLoading = false
     }
 

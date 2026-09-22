@@ -13,8 +13,8 @@ struct HomeView: View {
                 // The strip teases news from the other tabs; on News itself it is the same
                 // stories twice on one screen, so it stands down.
                 if !app.isApe, store.investTab != .news {
-                    if store.stripHeadlines.isEmpty, store.headlinesLoading { HeadlineStripSkeleton().padding(.top, 12) }
-                    else { HeadlineStrip(items: store.stripHeadlines).padding(.top, 12) }
+                    if store.headlines.isEmpty, store.headlinesLoading { HeadlineStripSkeleton().padding(.top, 12) }
+                    else { HeadlineStrip(items: store.headlines).padding(.top, 12) }
                 }
                 HR().padding(.top, 8)
                 tabs
