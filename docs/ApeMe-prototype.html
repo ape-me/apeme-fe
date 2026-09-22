@@ -1005,14 +1005,17 @@ function tradeSheet({side,item,stock,holding,resume}){
   });
 
   /* ---- review ---- */
-  const row=(k,v)=>`<div style="height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px"><span style="font-size:15px;color:var(--muted)">${k}</span><b class="mono" style="font-size:15px;font-weight:600">${v}</b></div>`;
+  const row=(k,v,rank)=>`<div style="height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px"><span style="font-size:15px;color:var(--muted)">${k}</span><b class="mono" style="font-size:${rank==='outcome'?16:15}px;font-weight:${rank==='outcome'?700:600};color:${rank==='reference'?'var(--muted)':'var(--ink)'}">${v}</b></div>`;
+  /* Amber is for a cost worth pausing on: a one-time account fee, or fees eating more than 5% of
+     the order. A routine 1% on a $50 buy stays ink — flag everything and amber means nothing. */
+  const feesNotable=()=>!!rent()||(q.inUsd>0&&fees()/q.inUsd>0.05);
   const hr='<div style="height:1px;background:var(--line)"></div>';
 
   /* every fee, named: ours, the issuer's, and Solana's one-time rent */
   const feesRow=()=>{ const parts=[`ApeMe ${q.fee.bps/100}% ${fmt.cash(q.fee.usd)}`];
     if(q.issuerFee?.bps>0) parts.push(`Issuer ${q.issuerFee.bps/100}% ${fmt.cash(q.issuerFee.usd)}`);
     if(rent()) parts.push(`${fmt.cash(rent())} one-time network fee`);
-    return `<div style="padding:12px 0"><div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:15px;color:var(--muted)">Fees</span><b class="mono" style="font-size:15px;font-weight:600">${fmt.cash(fees())}</b></div><div style="font-size:13px;color:var(--faint);margin-top:4px">${parts.join(' · ')}</div></div>`; };
+    return `<div style="padding:12px 0"><div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:15px;color:var(--muted)">Fees</span><b class="mono" style="font-size:15px;font-weight:600;color:${feesNotable()?'var(--amber)':'var(--ink)'}">${fmt.cash(fees())}</b></div><div style="font-size:13px;color:var(--faint);margin-top:4px">${parts.join(' · ')}</div></div>`; };
 
   const detailsBlock=()=>`<div><button class="lnk" id="dets" style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--muted)">Details<span style="display:inline-flex;transform:rotate(${dets?90:0}deg);transition:transform .15s">${I.chev.replace('width="16"','width="12"').replace('height="16"','height="12"')}</span></button>
     ${dets?`<div class="kcard" style="margin-top:8px">${side==='buy'?kv(`Buys of ${esc(item.symbol)}`,fmt.cash(q.swapUsd)):''}${kv('ApeMe fee',fmt.cash(q.fee.usd))}${q.issuerFee?.bps>0?kv(`Issuer fee ${q.issuerFee.bps/100}%`,fmt.cash(q.issuerFee.usd)):''}${rent()?kv('One-time network fee',fmt.cash(rent()))+`<div style="font-size:12px;color:var(--faint);padding:10px 0;line-height:16px">Charged by Solana to open ${esc(item.symbol)} in your wallet, not by ApeMe. Never again for this token.</div>`:''}${kv('Gas','Free')}${kv('Price impact',`<span style="color:var(--${q.priceImpactPct>2?'amber':'ink'})">${q.priceImpactPct.toFixed(2)}%</span>`)}${kv('Max price move',(q.slippageBps/100)+'%')}</div>`:''}</div>`;
@@ -1025,12 +1028,12 @@ function tradeSheet({side,item,stock,holding,resume}){
     ${phase==='failed'?`<button class="btn ${side==='sell'?'sellb':'buy'}" id="again">Try again</button>`:'<button class="btn off">Getting price…</button>'}`;
 
   const quoted=()=>`<div style="padding-top:28px">
-      ${row(side==='buy'?'Receive':'Selling',side==='buy'?`≈ ${youGet()} · ${fmt.cash(q.swapUsd)}`:fmt.qty(sellQty(),item.symbol))}
-      ${isStock&&q.markUsd?hr+row(markLabel,fmt.usd(q.markUsd)):''}
+      ${row(side==='buy'?'Receive':'Selling',side==='buy'?`≈ ${youGet()} · ${fmt.cash(q.swapUsd)}`:fmt.qty(sellQty(),item.symbol),'outcome')}
+      ${isStock&&q.markUsd?hr+row(markLabel,fmt.usd(q.markUsd),'reference'):''}
       ${hr}${feesRow()}</div>
     ${q.priceImpactPct>2?`<div class="notice" style="margin-top:14px">Thin market: you're paying ${q.priceImpactPct.toFixed(1)}% above the current price.</div>`:''}
     ${side==='buy'&&isStock&&q.premiumPct>5?`<div class="notice" style="margin-top:14px">Trading ${q.premiumPct.toFixed(0)}% above ${pre?'its fair value':'the Nasdaq price'}.</div>`:''}
-    ${rent()?`<div class="sub" style="margin-top:14px;line-height:19px">First time holding ${esc(item.symbol)}: ${fmt.cash(rent())} of this is a one-time network fee to open the token in your wallet. Next time it's just ${fmt.cash(fees()-rent())}.</div>`:''}
+    ${rent()?`<div class="notice" style="margin-top:14px;display:block;line-height:19px">First time holding ${esc(item.symbol)}: ${fmt.cash(rent())} of this is a one-time network fee to open the token in your wallet. Next time it's just ${fmt.cash(fees()-rent())}.</div>`:''}
     <div style="height:28px"></div>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
       <div><div style="font-size:20px;font-weight:600;letter-spacing:-.025em;font-variant-numeric:tabular-nums">${side==='buy'?`${fmt.cash(q.inUsd)} total`:`${fmt.cash(q.outUsd)} you get`}</div>

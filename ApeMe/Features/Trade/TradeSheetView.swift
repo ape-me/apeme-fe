@@ -286,17 +286,19 @@ struct TradeSheetView: View {
             }
             if let q = store.quote {
                 VStack(spacing: 0) {
-                    row(side == .buy ? "Receive" : "Selling", side == .buy ? "≈ \(store.youGet) · \(Fmt.cash(q.swapUsd ?? q.outUsd))" : Fmt.qty(sellQty, symbol: asset.symbol))
+                    row(side == .buy ? "Receive" : "Selling",
+                        side == .buy ? "≈ \(store.youGet) · \(Fmt.cash(q.swapUsd ?? q.outUsd))" : Fmt.qty(sellQty, symbol: asset.symbol),
+                        .outcome)
                     Divider().overlay(Theme.line)
-                    if asset.isStock, let m = q.markUsd { row(asset.isPreIPO ? "Fair value" : "Nasdaq price", Fmt.usd(m)); Divider().overlay(Theme.line) }
+                    if asset.isStock, let m = q.markUsd { row(asset.isPreIPO ? "Fair value" : "Nasdaq price", Fmt.usd(m), .reference); Divider().overlay(Theme.line) }
                     feesRow(q)
                 }
                 .padding(.top, 28)
                 if let i = q.priceImpactPct, i > 2 { note("Thin market: you're paying \(String(format: "%.1f", i))% above the current price.").padding(.top, 14) }
                 if side == .buy, asset.isStock, let p = q.premiumPct, p > 5 { note("Trading \(String(format: "%.0f", p))% above \(asset.isPreIPO ? "its fair value" : "the Nasdaq price").").padding(.top, 14) }
                 if let rent = rentUsd(q) {
-                    Text("First time holding \(asset.symbol): \(Fmt.cash(rent)) of this is a one-time network fee to open the token in your wallet. Next time it's just \(Fmt.cash(feesTotal(q) - rent)).")
-                        .font(.sub).foregroundStyle(Theme.muted).lineSpacing(2).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 14)
+                    note("First time holding \(asset.symbol): \(Fmt.cash(rent)) of this is a one-time network fee to open the token in your wallet. Next time it's just \(Fmt.cash(feesTotal(q) - rent)).")
+                        .padding(.top, 14)
                 }
                 errorBox.padding(.top, 14)
                 Color.clear.frame(height: 24)
@@ -347,15 +349,38 @@ struct TradeSheetView: View {
         if let f = q.issuerFee, let bps = f.bps, bps > 0 { parts.append("Issuer \(String(format: "%g", Double(bps) / 100))% \(Fmt.cash(f.usd ?? 0))") }
         if let rent = rentUsd(q) { parts.append("\(Fmt.cash(rent)) one-time network fee") }
         return VStack(alignment: .leading, spacing: 4) {
-            HStack { Text("Fees").font(.system(size: 15)).foregroundStyle(Theme.muted); Spacer(); Text(Fmt.cash(feesTotal(q))).font(.system(size: 15, weight: .semibold)).monospacedDigit() }
+            HStack {
+                Text("Fees").font(.system(size: 15)).foregroundStyle(Theme.muted)
+                Spacer()
+                Text(Fmt.cash(feesTotal(q))).font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                    .foregroundStyle(feesAreNotable(q) ? Theme.amber : Theme.ink)
+            }
             Text(parts.joined(separator: " · ")).font(.sub).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 12)
     }
 
-    private func row(_ k: String, _ v: String) -> some View {
-        HStack { Text(k).font(.system(size: 15)).foregroundStyle(Theme.muted); Spacer(); Text(v).font(.system(size: 15, weight: .semibold)).monospacedDigit() }
-            .frame(height: 52)
+    private enum RowRank { case normal, outcome, reference }
+
+    private func row(_ k: String, _ v: String, _ rank: RowRank = .normal) -> some View {
+        HStack {
+            Text(k).font(.system(size: 15)).foregroundStyle(Theme.muted)
+            Spacer()
+            Text(v)
+                .font(.system(size: rank == .outcome ? 16 : 15, weight: rank == .outcome ? .bold : .semibold))
+                .foregroundStyle(rank == .reference ? Theme.muted : Theme.ink)
+                .monospacedDigit()
+        }
+        .frame(height: 52)
+    }
+
+    /// Amber is for a cost worth pausing on: a one-time account fee, or fees eating more than 5%
+    /// of the order. A routine 1% on a $50 buy stays ink — flag everything and amber stops meaning
+    /// anything. Applies to a sell the same way.
+    private func feesAreNotable(_ q: Quote) -> Bool {
+        if rentUsd(q) != nil { return true }
+        guard let charged = q.inUsd, charged > 0 else { return false }
+        return feesTotal(q) / charged > 0.05
     }
 
     /// Solana's token-account rent, only when this trade opens the account.
