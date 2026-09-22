@@ -74,8 +74,7 @@ struct TradeSheetView: View {
         .onChange(of: scenePhase) { _, p in if p == .active { Task { await store.refresh() } } }
         .onChange(of: store.phase) { old, p in
             // Soft ticks while the price loads, one firmer tick when it lands.
-            if p == .quoting { Haptic.selection() }
-            if old == .quoting, p == .ready { Haptic.light() }
+            if old == .quoting, p == .ready, reviewing { Haptic.light() }
         }
         .onChange(of: store.error) { _, e in if let e, store.phase == .failed, app.tradeInFlight == nil, !reviewing { app.show(e, error: true) } }
     }
@@ -125,18 +124,9 @@ struct TradeSheetView: View {
                     Image("usdc").resizable().frame(width: 36, height: 36).clipShape(.circle)
                     Text(amount.isEmpty ? "0" : amount).font(.amount).tracking(-2.8).monospacedDigit().foregroundStyle(Theme.ink)
                 }
-                HStack(spacing: 6) {
-                    if side == .buy {
-                        Text("You get ≈").foregroundStyle(Theme.muted)
-                        if store.phase == .quoting { Shimmer().frame(width: 128, height: 16) }
-                        else { Text(store.youGet).foregroundStyle(Theme.ink).fontWeight(.semibold).contentTransition(.numericText()) }
-                    } else {
-                        Text("≈ \(Fmt.qty(sellQty, symbol: asset.symbol))").foregroundStyle(Theme.ink).fontWeight(.semibold)
-                        if sellValue > 0 { Text("· \(Fmt.n(min(100, usd / sellValue * 100).rounded()))%").foregroundStyle(Theme.muted) }
-                    }
+                if side == .sell, hasAmount, sellValue > 0 {
+                    Text("≈ \(Fmt.qty(sellQty, symbol: asset.symbol)) · \(Fmt.n(min(100, usd / sellValue * 100).rounded()))%").font(.system(size: 15)).monospacedDigit().foregroundStyle(Theme.muted)
                 }
-                .font(.system(size: 15)).monospacedDigit()
-                .opacity(hasAmount ? 1 : 0)
             }
             .frame(maxWidth: .infinity)
             Spacer(minLength: 12)
@@ -147,7 +137,6 @@ struct TradeSheetView: View {
                     amount = String(format: "%.2f", floor(v * 100) / 100); pct = abs(v - sellValue) < 0.005 ? 100 : nil
                 }
             }
-            notes.padding(.top, 12)
             Spacer(minLength: 12)
             Numpad { key in
                 pct = nil
@@ -231,13 +220,11 @@ struct TradeSheetView: View {
         case .insufficient:
             if side == .buy { BigButton(label: "Deposit to buy", style: .white) { dismiss(); app.sheet = .deposit } }
             else { BigButton(label: "You hold \(Fmt.cash(sellValue)) · Sell all", style: .white) { amount = String(format: "%.2f", floor(sellValue * 100) / 100); pct = 100 } }
-        case .quoting: BigButton(label: "Getting price…", style: .off) {}
-        case .ready:
-            BigButton(label: "Review order", style: side == .sell ? .sell : .buy) { reviewing = true }
+        case .quoting, .ready, .failed:
+            BigButton(label: "Review order", style: side == .sell ? .sell : .buy) { Haptic.light(); reviewing = true }
         case .signing: BigButton(label: "Signing…", style: .off) {}
         case .submitting: BigButton(label: "Submitting…", style: .off) {}
         case .confirming: BigButton(label: "Confirming…", style: .off) {}
-        case .failed: BigButton(label: "Try again", style: .ghost) { requote() }
         default: BigButton(label: "Enter an amount", style: .off) {}
         }
     }
