@@ -324,53 +324,57 @@ struct TxSheet: View {
     }
 }
 
-/// Tap on a position: value, cost, P&L; Buy more / Sell; open the page.
+/// Tap on a position: shares, entry, now, profit. Buy more / Sell; open the page.
 struct PositionSheet: View {
     let holding: Holding
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
 
+    private var entry: Double? { holding.avgEntryUsd ?? holding.costUsd.map { $0 / max(holding.amount, 1e-12) } }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                HStack(spacing: 10) {
-                    if holding.kind == "meme" { Avatar(url: holding.imageURL, symbol: holding.symbol, size: 28) } else { Logo(url: holding.imageURL, symbol: holding.symbol, size: 28) }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(holding.symbol).h3Text()
-                        Text("\(Fmt.qty(holding.amount, symbol: holding.symbol)) · \(Fmt.usd(holding.valueUsd))").font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    HStack(spacing: 10) {
+                        if holding.kind == "meme" { Avatar(url: holding.imageURL, symbol: holding.symbol, size: 28) } else { Logo(url: holding.imageURL, symbol: holding.symbol, size: 28) }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(holding.symbol).h3Text()
+                            Text(Fmt.usd(holding.valueUsd)).font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
+                        }
+                    }
+                    Spacer()
+                    IconButton(symbol: "xmark", label: "Close") { dismiss() }
+                }
+                KCard {
+                    KV(holding.kind == "meme" ? "Tokens" : "Shares", Fmt.qty(holding.amount, symbol: ""))
+                    if let e = entry { KV("Entry", Fmt.usd(e)) }
+                    KV("Now", Fmt.usd(holding.priceUsd))
+                    KV("Profit") {
+                        if holding.costUsd != nil, let p = holding.pnlUsd { Text("\((p >= 0 ? "+" : "−") + Fmt.usd(abs(p))) (\(Fmt.pct(holding.pnlPct, 1)))").foregroundStyle(Theme.change(p)) }
+                        else { Text("—").foregroundStyle(Theme.muted) }
                     }
                 }
-                Spacer()
-                IconButton(symbol: "xmark", label: "Close") { dismiss() }
-            }
-            KCard {
-                KV("Value", Fmt.usd(holding.valueUsd))
-                KV("Cost", holding.costUsd.map(Fmt.usd) ?? "—")
-                KV("P&L") {
-                    if let p = holding.pnlUsd { Text("\((p >= 0 ? "+" : "−") + Fmt.usd(abs(p))) (\(Fmt.pct(holding.pnlPct, 1)))").foregroundStyle(Theme.change(p)) } else { Text("—") }
+                HStack(spacing: 10) {
+                    BigButton(label: "Buy more", style: .buy) {
+                        dismiss()
+                        if let s = app.stocksByMint[holding.mint] { app.trade(.buyStock(s)) } else { app.openStock(holding.mint) }
+                    }
+                    BigButton(label: "Sell", style: .sell) { dismiss(); app.sheet = .sell(holding) }
                 }
-                if let e = holding.avgEntryUsd ?? holding.costUsd.map({ $0 / max(holding.amount, 1e-12) }) { KV("Entry", Fmt.usd(e)) }
-                KV("Price now", Fmt.usd(holding.priceUsd))
-                if let f = holding.feesUsd, f > 0 { KV("Fees paid", Fmt.usd(f)) }
-            }
-            HStack(spacing: 10) {
-                BigButton(label: "Buy more", style: .buy) {
+                Button {
                     dismiss()
-                    if let s = app.stocksByMint[holding.mint] { app.trade(.buyStock(s)) } else { app.openStock(holding.mint) }
+                    if holding.kind == "meme" { if app.isApe { app.push(.token(holding.mint)) } else { app.show("Switch to Ape mode to open memes") } }
+                    else { app.openStock(holding.mint) }
+                } label: {
+                    Text("Open \(holding.kind == "meme" ? "token" : "stock") page ›").font(.sub.weight(.semibold)).foregroundStyle(Theme.ink).frame(maxWidth: .infinity)
                 }
-                BigButton(label: "Sell", style: .sell) { dismiss(); app.sheet = .sell(holding) }
+                .buttonStyle(.plain)
             }
-            Button {
-                dismiss()
-                if holding.kind == "meme" { if app.isApe { app.push(.token(holding.mint)) } else { app.show("Switch to Ape mode to open memes") } }
-                else { app.openStock(holding.mint) }
-            } label: {
-                Text("Open \(holding.kind == "meme" ? "token" : "stock") page ›").font(.sub.weight(.semibold)).foregroundStyle(Theme.ink).frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 18)
         }
-        .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 18)
-        .presentationDetents([.height(420)])
+        .scrollIndicators(.hidden)
+        .presentationDetents([.medium])
         .presentationBackground(Theme.surface)
         .presentationDragIndicator(.visible)
     }
