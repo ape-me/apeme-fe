@@ -270,12 +270,12 @@ struct TradeSheetView: View {
                 VStack(spacing: 10) {
                     BigButton(label: "Try again", style: side == .sell ? .sell : .buy) {
                         guard let w = app.auth.activeWallet else { return }
-                        Task { await store.retry(wallet: w) { Task { await app.loadWallet(fresh: true) } } }
+                        Task { await store.retry(wallet: w) { app.settleWallet() } }
                     }
                     if store.slippageFails >= 1, (store.slippageBps ?? 0) < 300 {
                         BigButton(label: "Retry with 3% price move", style: .ghost) {
                             guard let w = app.auth.activeWallet else { return }
-                            Task { await store.retryWider(wallet: w) { Task { await app.loadWallet(fresh: true) } } }
+                            Task { await store.retryWider(wallet: w) { app.settleWallet() } }
                         }
                     }
                 }
@@ -303,7 +303,7 @@ struct TradeSheetView: View {
             Spacer(minLength: 0)
             BigButton(label: side == .buy ? "Pay \(Fmt.usd(store.replacement?.inUsd))" : "Confirm sale", style: side == .sell ? .sell : .buy) {
                 guard let w = app.auth.activeWallet else { return }
-                Task { await store.acceptReplacement(wallet: w) { Task { await app.loadWallet(fresh: true) } } }
+                Task { await store.acceptReplacement(wallet: w) { app.settleWallet() } }
             }
             BigButton(label: "Cancel", style: .ghost) { dismiss() }
         }
@@ -316,7 +316,7 @@ struct TradeSheetView: View {
 
     private func run() async {
         guard let w = app.auth.activeWallet else { store.error = "Sign in first."; return }
-        await store.execute(wallet: w) { Task { await app.loadWallet(fresh: true) } }
+        await store.execute(wallet: w) { app.settleWallet() }
     }
 
     // MARK: Done

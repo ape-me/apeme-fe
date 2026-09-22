@@ -80,9 +80,27 @@ final class AppState {
         for s in stocks { stocksByMint[s.mint] = s }
     }
 
-    func loadWallet(fresh: Bool = true) async {
+    func loadWallet(fresh: Bool = true, bustCache: Bool = false) async {
         guard let address = walletAddress else { wallet = nil; return }
-        if let w = try? await API.shared.wallet(address, activity: 30, fresh: fresh) { wallet = w }
+        if let w = try? await API.shared.wallet(address, activity: 30, fresh: fresh, bustCache: bustCache) { wallet = w }
+    }
+
+    /// After a confirmed trade: the edge cache and the RPC can lag a few seconds. Poll past the cache
+    /// until the wallet actually changes (or give up after 20 s).
+    private var settleTask: Task<Void, Never>?
+    func settleWallet() {
+        settleTask?.cancel()
+        let before = wallet
+        settleTask = Task {
+            for _ in 0..<10 {
+                try? await Task.sleep(for: .seconds(2))
+                guard !Task.isCancelled else { return }
+                await loadWallet(fresh: true, bustCache: true)
+                guard let now = wallet, let was = before else { return }
+                let moved = now.asOf != was.asOf && (now.cashUsd != was.cashUsd || now.holdings != was.holdings || now.activity.count != was.activity.count)
+                if moved { startWalletLive(); return }
+            }
+        }
     }
     var cashUsd: Double { wallet?.cashUsd ?? 0 }
 

@@ -24,7 +24,7 @@ struct PortfolioView: View {
                 .padding(.horizontal, 20).padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
-            .refreshable { await app.loadWallet(fresh: true) }
+            .refreshable { await app.loadWallet(fresh: true, bustCache: true) }
         }
         .background(Theme.ground)
         .task(id: app.walletAddress) {
@@ -42,7 +42,7 @@ struct PortfolioView: View {
             }
         }
         .onChange(of: app.wallet?.positions.map(\.mint) ?? [], initial: true) { _, _ in app.startWalletLive() }
-        .onChange(of: scenePhase) { _, p in if p == .active { Task { await app.loadWallet(fresh: true) } } }
+        .onChange(of: scenePhase) { _, p in if p == .active { Task { await app.loadWallet(fresh: true, bustCache: true) } } }
         .onDisappear { poller?.cancel(); app.stopWalletLive() }
         .sheet(isPresented: $showAccounts) { AccountsSheet() }
     }
