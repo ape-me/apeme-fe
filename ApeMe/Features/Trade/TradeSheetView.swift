@@ -587,35 +587,25 @@ struct TradeSheetView: View {
                     row("When price hits", Fmt.usd(q.triggerUsd))
                     Divider().overlay(Theme.line)
                     row("Price now", Fmt.usd(spot), .reference)
-                    Divider().overlay(Theme.line)
-                    feeLine(q.fee)
-                    if let days = OrdersStore.shared.config.ttlDays {
+                    if side == .sell, let f = q.fee, !f.isFree {
                         Divider().overlay(Theme.line)
-                        row("Expires", "\(days) days", .reference)
+                        feeLine(f)
                     }
-                    if side == .buy, (q.costUsd ?? 0) > 0 {
+                    if side == .buy, let cost = q.costUsd, cost > 0 {
                         Divider().overlay(Theme.line)
-                        depositLine(q.depositUsd ?? q.costUsd ?? 0)
-                        if let account = q.accountUsd, account > 0 {
-                            Divider().overlay(Theme.line)
-                            accountLine(account)
-                        }
+                        costLine(cost, deposit: q.depositUsd, account: q.accountUsd)
                         Divider().overlay(Theme.line)
                         row("Total", Fmt.cash(q.totalUsd), .outcome)
                     }
                 }
                 .padding(.top, 28)
-                note(side == .buy
-                     ? "\(Fmt.cash(q.escrowUsd)) is reserved for the stock and comes back in full if you cancel. Nothing is charged for the trade unless it fills."
-                     : "Your \(asset.symbol) is reserved while this order waits. Cancel any time to get it back.")
-                    .padding(.top, 14)
                 Color.clear.frame(height: 24)
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(side == .buy ? "\(Fmt.cash(q.totalUsd ?? q.escrowUsd)) leaves your wallet" : "\(Fmt.cash(proceedsAtTrigger)) if it fills")
                             .font(.system(size: 20, weight: .semibold)).tracking(-0.4).monospacedDigit()
-                        Text("at \(Fmt.usd(q.triggerUsd)) · \(awayPct >= 0 ? "+" : "−")\(String(format: "%.1f", abs(awayPct)))% from now")
-                            .font(.sub).foregroundStyle(Theme.muted)
+                        Text("at \(Fmt.usd(q.triggerUsd)) · \(awayPct >= 0 ? "+" : "−")\(String(format: "%.1f", abs(awayPct)))% from now\(OrdersStore.shared.config.ttlDays.map { " · expires in \($0) days" } ?? "")")
+                            .font(.sub).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer()
                     HStack(spacing: 6) {
@@ -624,6 +614,11 @@ struct TradeSheetView: View {
                     }
                     .padding(.horizontal, 11).frame(height: 32).background(Theme.surface2, in: .capsule)
                 }
+                Text(side == .buy
+                     ? "No trading fee. Nothing is charged for the trade unless it fills, and cancelling returns the \(Fmt.cash(q.escrowUsd))."
+                     : "Cancel any time and your \(asset.symbol) comes back.")
+                    .font(.sub).foregroundStyle(Theme.muted).lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true).padding(.top, 12)
                 Group {
                     if placing {
                         HStack(spacing: 10) { ProgressView().tint(.white); Text("Placing…").font(.system(size: 17, weight: .semibold)) }
@@ -646,28 +641,22 @@ struct TradeSheetView: View {
         }
     }
 
-    /// Returned in SOL when the order closes either way, so calling it a fee would be wrong and
-    /// saying nothing would be worse — a line item nobody explains reads as a charge.
-    private func depositLine(_ usd: Double) -> some View {
-        breakdown("Order deposit", usd,
-                  "Solana holds this while the order waits and returns it to your wallet when it closes — filled or cancelled.")
-    }
-
-    /// A genuine one-time cost, the same one a market buy charges, and only on a stonk never held.
-    private func accountLine(_ usd: Double) -> some View {
-        breakdown("Account setup", usd,
-                  "One time, for holding \(asset.symbol) at all. This one doesn't come back.")
-    }
-
-    private func breakdown(_ label: String, _ usd: Double, _ note: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+    /// Solana's charges, on one line. Two rows with a paragraph each said the same thing at four
+    /// times the length, next to a "No fee" row that read as a contradiction.
+    private func costLine(_ cost: Double, deposit: Double?, account: Double?) -> some View {
+        var parts: [String] = []
+        if let d = deposit, d > 0 { parts.append("\(Fmt.cash(d)) comes back when the order closes") }
+        if let a = account, a > 0 { parts.append("\(Fmt.cash(a)) one-time for holding \(asset.symbol)") }
+        return VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(label).font(.system(size: 15)).foregroundStyle(Theme.muted)
+                Text("Solana costs").font(.system(size: 15)).foregroundStyle(Theme.muted)
                 Spacer()
-                Text(Fmt.cash(usd)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                Text(Fmt.cash(cost)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
             }
-            Text(note).font(.sub).foregroundStyle(Theme.faint).lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true)
+            if !parts.isEmpty {
+                Text(parts.joined(separator: " · ")).font(.sub).foregroundStyle(Theme.faint)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(.vertical, 12)
     }
