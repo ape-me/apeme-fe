@@ -589,11 +589,15 @@ struct TradeSheetView: View {
                     row("Price now", Fmt.usd(spot), .reference)
                     Divider().overlay(Theme.line)
                     feeLine(q.fee)
-                    if side == .buy, let cost = q.costUsd, cost > 0 {
+                    if side == .buy, (q.costUsd ?? 0) > 0 {
                         Divider().overlay(Theme.line)
-                        costLine(cost)
+                        depositLine(q.depositUsd ?? q.costUsd ?? 0)
+                        if let account = q.accountUsd, account > 0 {
+                            Divider().overlay(Theme.line)
+                            accountLine(account)
+                        }
                         Divider().overlay(Theme.line)
-                        row("Total", Fmt.cash(q.totalUsd ?? (q.escrowUsd ?? 0) + cost), .outcome)
+                        row("Total", Fmt.cash(q.totalUsd), .outcome)
                     }
                 }
                 .padding(.top, 28)
@@ -638,21 +642,28 @@ struct TradeSheetView: View {
         }
     }
 
-    /// Jupiter's order deposit comes back in SOL when the order closes, filled or cancelled, so
-    /// it is not a fee and must not read like one. The token account is a genuine one-time cost,
-    /// the same one a market buy already charges, and only lands on a stonk never held before.
-    private func costLine(_ cost: Double) -> some View {
+    /// Returned in SOL when the order closes either way, so calling it a fee would be wrong and
+    /// saying nothing would be worse — a line item nobody explains reads as a charge.
+    private func depositLine(_ usd: Double) -> some View {
+        breakdown("Order deposit", usd,
+                  "Solana holds this while the order waits and returns it to your wallet when it closes — filled or cancelled.")
+    }
+
+    /// A genuine one-time cost, the same one a market buy charges, and only on a stonk never held.
+    private func accountLine(_ usd: Double) -> some View {
+        breakdown("Account setup", usd,
+                  "One time, for holding \(asset.symbol) at all. This one doesn't come back.")
+    }
+
+    private func breakdown(_ label: String, _ usd: Double, _ note: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(holdsAlready ? "Order deposit" : "Deposit + account setup")
-                    .font(.system(size: 15)).foregroundStyle(Theme.muted)
+                Text(label).font(.system(size: 15)).foregroundStyle(Theme.muted)
                 Spacer()
-                Text(Fmt.cash(cost)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                Text(Fmt.cash(usd)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
             }
-            Text(holdsAlready
-                 ? "Solana holds this while the order waits and returns it to your wallet when it closes — filled or cancelled."
-                 : "The deposit comes back to your wallet when the order closes. The account setup is a one-time cost for holding \(asset.symbol) and doesn't.")
-                .font(.sub).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+            Text(note).font(.sub).foregroundStyle(Theme.faint).lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 12)
     }
