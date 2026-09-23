@@ -217,12 +217,16 @@ struct StockView: View {
         switch i { case "prestocks": "PreStocks"; case "xstocks": "xStocks"; case "backpack": "Backpack"; default: i }
     }
 
+    /// One height for every range. LIVE used to be 60pt taller, so simply tapping between ranges
+    /// grew the chart and shoved the pills, Buy/Sell and the tabs down the screen.
+    private static let chartHeight: CGFloat = 220
+
     @ViewBuilder private func chart(_ s: Stock) -> some View {
         let live = store.range == .live
         if store.chartLoading {
-            Skeleton(height: live ? 260 : 200).padding(.horizontal, 20)
+            Skeleton(height: Self.chartHeight).padding(.horizontal, 20)
         } else {
-            LineChart(points: store.points, tint: store.direction, live: live, height: live ? 260 : 200) { store.scrub = $0 }
+            LineChart(points: store.points, tint: store.direction, live: live, height: Self.chartHeight) { store.scrub = $0 }
                 .animation(.easeOut(duration: 0.3), value: store.points.last?.price)
         }
     }
