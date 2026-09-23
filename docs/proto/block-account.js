@@ -84,9 +84,33 @@ Object.assign(acct,{
     o.status='cancelled';
     if(o.side==='buy'){ const w=acct.wallet(); w.holdings[0].valueUsd=+(w.holdings[0].valueUsd+o.escrowUsd).toFixed(2); w.holdings[0].amount=w.holdings[0].valueUsd; }
   },
+  ordersFor(mint){ return MOCK.orders.filter(o=>o.mint===mint); },
   /* Money sitting in open buy escrows — reserved, not spendable. */
   reservedUsd(){ return acct.openOrders().filter(o=>o.side==='buy').reduce((t,o)=>t+(o.escrowUsd||0),0); }
 });
+
+function orderRowHtml(o,{cancel=true}={}){
+  const s=state.stocksByMint[o.mint], open=o.status==='open';
+  const away=open&&s&&s.priceUsd?((o.triggerUsd-s.priceUsd)/s.priceUsd*100):null;
+  return `<div class="row m" style="align-items:center">${logo({symbol:o.symbol,logo:s?.logo},40)}
+    <div class="grow"><div class="t"><span class="sym">${esc(o.symbol)}</span>${open
+      ? `<span class="badge" style="padding:2px 6px;font-size:9px;background:var(--${o.side==='buy'?'greenT':'redT'});color:var(--${o.side==='buy'?'green':'red'})">${o.side.toUpperCase()}</span>`
+      : `<span class="faint" style="font-size:11px;font-weight:500">${esc(o.status)}</span>`}</div>
+      <div class="s mono">${fmt.cash(o.makingUsd)} at ${fmt.usd(o.triggerUsd)}${away!=null?` · ${away>=0?'+':'−'}${Math.abs(away).toFixed(1)}% away`:` · ${fmt.ago(o.createdAt)} ago`}</div></div>
+    ${open&&cancel?`<button class="pill xs" data-cancel="${o.id}">Cancel</button>`:''}</div>`;
+}
+
+/* Open and past orders for one mint, or for everything when mint is omitted. */
+function ordersPanel(mint,view){
+  const all=mint?acct.ordersFor(mint):MOCK.orders;
+  const open=all.filter(o=>o.status==='open'), past=all.filter(o=>o.status!=='open');
+  const pills=`<div style="display:flex;gap:8px;margin-bottom:12px"><button class="pill sm ${view==='open'?'on':''}" data-ov="open">Open${open.length?` · ${open.length}`:''}</button><button class="pill sm ${view==='past'?'on':''}" data-ov="past">History${past.length?` · ${past.length}`:''}</button></div>`;
+  if(view==='past') return pills+(past.length?`<div class="card">${past.map(o=>orderRowHtml(o)).join('')}</div>`:'<div class="empty"><b>Nothing here yet.</b><span class="sub">Filled and cancelled orders show up here.</span></div>');
+  if(!open.length) return pills+'<div class="empty"><b>No waiting orders.</b><span class="sub">Set a price with Limit and it fills while you sleep.</span></div>';
+  const reserved=open.filter(o=>o.side==='buy').reduce((t,o)=>t+(o.escrowUsd||0),0);
+  return pills+`<div class="card">${open.map(o=>orderRowHtml(o)).join('')}</div>
+    ${reserved?`<div class="sub" style="margin-top:12px;padding-inline:4px">${fmt.cash(reserved)} reserved — not spendable until they fill or you cancel.</div>`:''}`;
+}
 
 auth.address=()=>state.user?acct.active():null;
 
@@ -390,23 +414,8 @@ SCREENS.portfolio={
     const activity=()=>{ if(!w.activity.length) return '<div class="empty"><b>Nothing yet.</b><span class="sub">Your deposits and trades show up here.</span></div>'; const groups=[]; w.activity.sort((a,b)=>(b.ts||0)-(a.ts||0)); const pend=w.activity.filter(a=>a.status==='pending'); if(pend.length) groups.push(['Pending',pend]); for(const a of w.activity.filter(a=>a.status!=='pending')){ const l=dayLabel(a.ts); const g=groups.find(x=>x[0]===l); if(g) g[1].push(a); else groups.push([l,[a]]); } return groups.map(([l,items])=>`<div class="eyebrow" style="margin-top:18px">${l}</div><div class="card">${items.map(actRow).join('')}</div>`).join(''); };
     /* Waiting orders, with what each one has reserved. Nothing is charged until one fills. */
     const openOrders=acct.openOrders();
-    const pastOrders=MOCK.orders.filter(o=>o.status!=='open');
     let oview=state._oview||'open';
-    const orderRow=o=>{ const s=state.stocksByMint[o.mint]; const away=s&&s.priceUsd?((o.triggerUsd-s.priceUsd)/s.priceUsd*100):null;
-      return `<div class="row m" style="align-items:center">${logo({symbol:o.symbol,logo:s?.logo},40)}
-        <div class="grow"><div class="t"><span class="sym">${esc(o.symbol)}</span><span class="badge ${o.side==='buy'?'up':'dn'}" style="padding:2px 6px;font-size:9px;background:var(--${o.side==='buy'?'greenT':'redT'});color:var(--${o.side==='buy'?'green':'red'})">${o.side.toUpperCase()}</span></div>
-          <div class="s mono">${fmt.cash(o.makingUsd)} at ${fmt.usd(o.triggerUsd)}${away!=null?` · ${away>=0?'+':'−'}${Math.abs(away).toFixed(1)}% away`:''}</div></div>
-        <button class="pill xs" data-cancel="${o.id}">Cancel</button></div>`; };
-    const pastRow=o=>{ const s=state.stocksByMint[o.mint];
-      return `<div class="row m" style="align-items:center">${logo({symbol:o.symbol,logo:s?.logo},40)}
-        <div class="grow"><div class="t"><span class="sym">${esc(o.symbol)}</span><span class="faint" style="font-size:11px;font-weight:500">${o.status}</span></div>
-          <div class="s mono">${fmt.cash(o.makingUsd)} at ${fmt.usd(o.triggerUsd)} · ${fmt.ago(o.createdAt)} ago</div></div></div>`; };
-    const orders=()=>{
-      const pills=`<div style="display:flex;gap:8px;margin-bottom:12px"><button class="pill sm ${oview==='open'?'on':''}" data-ov="open">Open orders</button><button class="pill sm ${oview==='past'?'on':''}" data-ov="past">Order history</button></div>`;
-      if(oview==='past') return pills+(pastOrders.length?`<div class="card">${pastOrders.map(pastRow).join('')}</div>`:'<div class="empty"><b>Nothing here yet.</b><span class="sub">Filled and cancelled orders show up here.</span></div>');
-      if(!openOrders.length) return pills+'<div class="empty"><b>No waiting orders.</b><span class="sub">Set a price with Limit on any stock and it fills while you sleep.</span></div>';
-      return pills+`<div class="card">${openOrders.map(orderRow).join('')}</div>
-        <div class="sub" style="margin-top:12px;padding-inline:4px">${fmt.cash(acct.reservedUsd())} reserved across ${openOrders.length} order${openOrders.length===1?'':'s'} — not spendable until they fill or you cancel.</div>`; };
+    const orders=()=>ordersPanel(null,oview);
 
     const paint=()=>{ const inv=w.totalUsd-w.cashUsd;
       const costed=positions.filter(h=>h.costUsd!=null);

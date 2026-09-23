@@ -159,8 +159,7 @@ SCREENS.stock={
       <div class="pad" style="margin-top:18px"><div class="btns"><button class="btn buy" id="buy">Buy</button><button class="btn sellb" id="sell">Sell</button></div></div>
       <div class="hr" style="margin-top:26px"></div>
       <div id="earn"></div>
-      <div id="ordcard"></div>
-      <div class="tabs fill" id="stabs" style="padding-inline:20px;margin-top:20px"><button data-st="news" class="on">News<i class="ndot" hidden></i></button><button data-st="overview">Overview</button><button data-st="about">About</button></div>
+      <div class="tabs fill" id="stabs" style="padding-inline:20px;margin-top:20px"></div>
       <div id="stab"></div>
       <div class="pad" style="margin-top:20px"><span class="cc" data-data-status></span></div>`;
     updateDataStatus();
@@ -185,25 +184,26 @@ SCREENS.stock={
         ${tradingHere(s,depth)}
         ${dividendCard(ins)}
       </div>`;
-    const paintOrders=()=>{ const box=el.querySelector('#ordcard'); if(!box) return;
-      const os=acct.openOrders(s.mint); if(!os.length){ box.innerHTML=''; return; }
-      const o=os[0], away=s.priceUsd?((o.triggerUsd-s.priceUsd)/s.priceUsd*100):null;
-      box.innerHTML=`<div class="pad" style="margin-top:14px"><button class="row m" id="toorders" style="width:100%;border-radius:14px;background:var(--surface);padding:14px 16px">
-        <div class="grow" style="text-align:left"><div class="t"><span class="sym">${os.length} order${os.length===1?'':'s'} waiting</span></div>
-        <div class="s mono">${esc(o.side)} ${fmt.cash(o.makingUsd)} at ${fmt.usd(o.triggerUsd)}${away!=null?` · ${away>=0?'+':'−'}${Math.abs(away).toFixed(1)}% away`:''}</div></div>
-        <div class="r">${I.chev}</div></button></div>`;
-      box.querySelector('#toorders').onclick=()=>{ state._wtab='orders'; state._oview='open'; root('portfolio'); };
+    let oview='open';
+    const paintTabs=()=>{ const bar=el.querySelector('#stabs'); if(!bar) return;
+      const n=acct.ordersFor(s.mint).length;
+      if(!n&&stab==='orders') stab='news';
+      bar.innerHTML=`<button data-st="news">News<i class="ndot" hidden></i></button><button data-st="overview">Overview</button>${n?`<button data-st="orders">Orders · ${n}</button>`:''}<button data-st="about">About</button>`;
+      bar.querySelectorAll('[data-st]').forEach(b=>{ b.classList.toggle('on',b.dataset.st===stab);
+        b.onclick=()=>{ stab=b.dataset.st; if(stab==='news') el.querySelector('#stabs .ndot').hidden=true; paintTabs(); paintStab(); }; });
     };
-    paintOrders();
 
     const paintStab=()=>{ const m=el.querySelector('#stab'); if(!m) return;
       if(stab==='news'){ el.querySelector('#stabs .ndot').hidden=true; fresh=0; paintNewsList(m,`/stocks/${s.mint}/news?`,s.symbol); return; }
+      if(stab==='orders'){ m.innerHTML=`<div class="pad" style="padding-top:18px">${ordersPanel(s.mint,oview)}</div>`;
+        m.querySelectorAll('[data-ov]').forEach(b=>b.onclick=()=>{ oview=b.dataset.ov; paintStab(); });
+        m.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=()=>{ acct.cancelOrder(b.dataset.cancel); toast('Order cancelled · funds returned'); paintTabs(); paintStab(); });
+        return; }
       m.innerHTML=stab==='about'?aboutCards(s,ins):overview();
       const cp=m.querySelector('#cpm'); if(cp) cp.onclick=()=>copy(s.mint);
       m.querySelectorAll('[data-web]').forEach(b=>b.onclick=()=>window.open(b.dataset.web,'_blank','noopener'));
     };
-    el.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{ stab=b.dataset.st; el.querySelectorAll('[data-st]').forEach(x=>x.classList.toggle('on',x===b)); paintStab(); });
-    paintStab();
+    paintTabs(); paintStab();
     /* insights arrive after the first paint; Overview and About redraw when they do */
     api(`/stocks/${s.mint}/depth`,60000).then(d=>{ if(el.isConnected){ depth=d; if(stab==='overview') paintStab(); } }).catch(()=>{});
     api(`/stocks/${s.mint}/insights`,300000).then(d=>{ if(!el.isConnected) return; ins=d;
