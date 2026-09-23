@@ -15,8 +15,11 @@ struct WsOrder: Codable, Hashable {
     let mint: String?
     let symbol: String?
     let side: String?
-    let status: String?            // "filled" | "cancelled"
+    let status: String?            // "filled" | "partial" | "cancelled"
     let fillUsd: Double?
+    /// Present on a partial: what has been taken so far and what the order was for.
+    let filledUsd: Double?
+    let makingUsd: Double?
     let signature: String?
 }
 

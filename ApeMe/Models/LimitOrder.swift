@@ -11,7 +11,7 @@ struct LimitOrder: Codable, Hashable, Identifiable {
     let takingRaw: String?
     let makingUsd: Double?
     let triggerUsd: Double?
-    let status: String          // quoted | open | filled | cancelled | failed
+    let status: String          // quoted | open | partial | filled | cancelled | failed
     let signature: String?
     let createdAt: Int?
     let filledAt: Int?
@@ -20,11 +20,51 @@ struct LimitOrder: Codable, Hashable, Identifiable {
     let rentUsd: Double?
     let error: String?
     let expiresAt: Int?
+    /// Jupiter fills in pieces. Whichever of these the BE sends, `filledFraction` uses it.
+    let filledUsd: Double?
+    let filledPct: Double?
+    let remainingMakingRaw: String?
+    let remainingTakingRaw: String?
 
-    var isOpen: Bool { status == "open" }
+    /// A partly filled order is still working, so it belongs with the open ones.
+    var isOpen: Bool { status == "open" || status == "partial" }
     var isBuy: Bool { side == "buy" }
-    /// What this order has locked up — only buys reserve USDC.
-    var escrowUsd: Double? { isBuy ? (makingUsd ?? 0) + (feeUsd ?? 0) + (rentUsd ?? 0) : nil }
+
+    /// How much of the order has been taken, 0…1. nil when the BE says nothing about it.
+    var filledFraction: Double? {
+        if let p = filledPct { return min(1, max(0, p > 1 ? p / 100 : p)) }
+        if let m = makingUsd, m > 0, let f = filledUsd ?? (isOpen ? nil : fillUsd) {
+            return min(1, max(0, f / m))
+        }
+        if let making = makingRaw.flatMap(Double.init), making > 0,
+           let left = remainingMakingRaw.flatMap(Double.init) {
+            return min(1, max(0, 1 - left / making))
+        }
+        return nil
+    }
+    /// Partly filled and still working — the row has to say so rather than read as done.
+    var isPartial: Bool {
+        guard isOpen, let f = filledFraction else { return false }
+        return f > 0.001 && f < 0.999
+    }
+    var filledUsdValue: Double? {
+        if let filledUsd { return filledUsd }
+        guard let f = filledFraction, let m = makingUsd else { return isOpen ? nil : fillUsd }
+        return m * f
+    }
+    /// Past its deadline but not closed. Until we have proof Jupiter returns the money on its
+    /// own, the row treats this as "still yours, cancel to get it back".
+    var isExpired: Bool {
+        guard isOpen, let e = expiresAt else { return false }
+        return Double(e) <= Date.now.timeIntervalSince1970
+    }
+
+    /// What this order has locked up — only buys reserve USDC, and only the unfilled part.
+    var escrowUsd: Double? {
+        guard isBuy else { return nil }
+        let left = (makingUsd ?? 0) * (1 - (filledFraction ?? 0))
+        return left + (feeUsd ?? 0) + (rentUsd ?? 0)
+    }
 
     /// How far the trigger sits from where the stock trades now.
     func awayPct(from price: Double?) -> Double? {

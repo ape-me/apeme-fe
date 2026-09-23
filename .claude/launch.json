@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "proto",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "/private/tmp/claude-501/-Users-iamdsv-apeme-fe/9e923dcb-944a-4433-8694-818e1d3df1fa/scratchpad/proto"],
+      "port": 8765
+    }
+  ]
+}

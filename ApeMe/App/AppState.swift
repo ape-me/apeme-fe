@@ -100,6 +100,13 @@ final class AppState {
                 let what = order.fillUsd.map { " · \(Fmt.cash($0))" } ?? ""
                 show("\(symbol) order filled\(what)", image: img)
                 Task { await self.loadWallet(bustCache: true) }
+            } else if order.status == "partial" {
+                // Part of the money has already moved, so the balance is stale either way.
+                Haptic.success()
+                let part = order.filledUsd ?? order.fillUsd
+                let of = order.makingUsd.map { " of \(Fmt.cash($0))" } ?? ""
+                show("\(symbol) partly filled\(part.map { " · \(Fmt.cash($0))" } ?? "")\(of) · still open", image: img)
+                Task { await self.loadWallet(bustCache: true) }
             } else if order.status == "cancelled" {
                 show("\(symbol) order cancelled", image: img)
             }

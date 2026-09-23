@@ -69,18 +69,20 @@ struct OrdersPanel: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(o.symbol).font(.system(size: 15, weight: .semibold))
-                    if o.isOpen {
-                        Text(o.side.uppercased())
-                            .font(.system(size: 9, weight: .bold)).tracking(0.4)
-                            .foregroundStyle(o.isBuy ? Theme.green : Theme.red)
-                            .padding(.horizontal, 6).frame(height: 17)
-                            .background(o.isBuy ? Theme.greenT : Theme.redT, in: .rect(cornerRadius: 5))
-                    } else {
-                        Text(o.status).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.faint)
-                    }
+                    badge(o)
                 }
                 Text(subtitle(o, away: away))
                     .font(.sub).monospacedDigit().foregroundStyle(Theme.muted).lineLimit(1)
+                // A part-filled order is still working: show how far it got, not one end state.
+                if let f = o.filledFraction, o.isPartial {
+                    GeometryReader { g in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Theme.line)
+                            Capsule().fill(Theme.amber).frame(width: g.size.width * min(1, max(0.02, f)))
+                        }
+                    }
+                    .frame(height: 3).padding(.top, 2)
+                }
             }
             Spacer(minLength: 8)
             if o.isOpen { cancelButton(o) }
@@ -88,8 +90,36 @@ struct OrdersPanel: View {
         .frame(minHeight: 64)
     }
 
+    @ViewBuilder private func badge(_ o: LimitOrder) -> some View {
+        if o.isPartial {
+            chip("PART FILLED", Theme.amber, Theme.amberT)
+        } else if o.isExpired {
+            chip("EXPIRED", Theme.muted, Theme.greyT)
+        } else if o.isOpen {
+            chip(o.side.uppercased(), o.isBuy ? Theme.green : Theme.red, o.isBuy ? Theme.greenT : Theme.redT)
+        } else {
+            Text(o.status).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.faint)
+        }
+    }
+
+    private func chip(_ text: String, _ fg: Color, _ bg: Color) -> some View {
+        Text(text)
+            .font(.system(size: 9, weight: .bold)).tracking(0.4)
+            .foregroundStyle(fg)
+            .padding(.horizontal, 6).frame(height: 17)
+            .background(bg, in: .rect(cornerRadius: 5))
+    }
+
     private func subtitle(_ o: LimitOrder, away: Double?) -> String {
         let head = "\(Fmt.cash(o.makingUsd)) at \(Fmt.usd(o.triggerUsd))"
+        // Partly filled, open or closed: the fraction is the story.
+        if let part = o.filledUsdValue, let f = o.filledFraction, f > 0.001, f < 0.999 {
+            let tail = o.isOpen ? "still open" : o.status
+            return "\(Fmt.cash(part)) of \(Fmt.cash(o.makingUsd)) filled · \(tail)"
+        }
+        // Past its deadline. We do not know yet whether Jupiter returns the escrow on its own,
+        // so this says what to do and promises nothing.
+        if o.isExpired { return head + " · cancel to close it out" }
         if o.isOpen, let away {
             let gap = " · \(away >= 0 ? "+" : "−")\(String(format: "%.1f", abs(away)))% away"
             // Only once the clock is worth watching — an order with three weeks left says nothing.
