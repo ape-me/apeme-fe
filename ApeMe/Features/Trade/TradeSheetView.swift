@@ -559,10 +559,8 @@ struct TradeSheetView: View {
                     row("When price hits", Fmt.usd(q.triggerUsd))
                     Divider().overlay(Theme.line)
                     row("Price now", Fmt.usd(spot), .reference)
-                    if let f = q.fee, !f.isFree {
-                        Divider().overlay(Theme.line)
-                        feeLine(f)
-                    }
+                    Divider().overlay(Theme.line)
+                    feeLine(q.fee)
                 }
                 .padding(.top, 28)
                 note(side == .buy
@@ -606,14 +604,21 @@ struct TradeSheetView: View {
         }
     }
 
-    private func feeLine(_ f: OrderQuote.Fee) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+    /// A free buy is worth saying out loud, not hiding.
+    private func feeLine(_ f: OrderQuote.Fee?) -> some View {
+        let bps = f?.bps ?? (side == .buy ? 0 : 150)
+        let free = (f?.totalUsd ?? 0) <= 0
+        return VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("Fee (\(String(format: "%g", Double(f.bps ?? 150) / 100))%)").font(.system(size: 15)).foregroundStyle(Theme.muted)
+                Text("Fee").font(.system(size: 15)).foregroundStyle(Theme.muted)
                 Spacer()
-                Text(Fmt.cash(f.totalUsd)).font(.system(size: 15, weight: .semibold)).monospacedDigit().foregroundStyle(Theme.amber)
+                Text(free ? "No fee" : Fmt.cash(f?.totalUsd))
+                    .font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                    .foregroundStyle(free ? Theme.green : Theme.amber)
             }
-            Text("ApeMe \(String(format: "%g", Double(f.bps ?? 150) / 100))% \(Fmt.cash(f.usd))\((f.rentUsd ?? 0) > 0 ? " · \(Fmt.cash(f.rentUsd)) account setup, one time" : "") · charged \(f.when ?? "on fill")")
+            Text(free
+                 ? "Limit buys are free. You pay only for the stock."
+                 : "\(String(format: "%g", Double(bps) / 100))% taken from the proceeds when it fills — cancel and nothing is charged.")
                 .font(.sub).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 12)
