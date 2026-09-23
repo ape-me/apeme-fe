@@ -87,6 +87,25 @@ final class AppState {
         for s in stocks { stocksByMint[s.mint] = s }
     }
 
+    /// A fill is the whole point of a limit order, so it arrives rather than being discovered:
+    /// the user's own channel pushes it and the toast names it the moment it lands.
+    func startOrderFeed() {
+        guard let channel = auth.me?.channel, !channel.isEmpty else { return }
+        OrdersStore.shared.connect(channel: channel) { [weak self] order in
+            guard let self else { return }
+            let symbol = order.symbol ?? "Your order"
+            let img = order.mint.flatMap { self.stocksByMint[$0] }.map { ToastImage(url: $0.logoURL, symbol: $0.symbol, isStock: true) }
+            if order.status == "filled" {
+                Haptic.success()
+                let what = order.fillUsd.map { " · \(Fmt.cash($0))" } ?? ""
+                show("\(symbol) order filled\(what)", image: img)
+                Task { await self.loadWallet(bustCache: true) }
+            } else if order.status == "cancelled" {
+                show("\(symbol) order cancelled", image: img)
+            }
+        }
+    }
+
     func loadWallet(fresh: Bool = true, bustCache: Bool = false) async {
         guard let address = walletAddress else { wallet = nil; return }
         if let w = try? await API.shared.wallet(address, activity: 30, fresh: fresh, bustCache: bustCache) { wallet = w }

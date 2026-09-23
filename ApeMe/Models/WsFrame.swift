@@ -6,6 +6,18 @@ enum WsFrame: Hashable {
     case token(mint: String, event: String)
     case price(WsPrice)
     case news(WsNews)
+    case order(WsOrder)
+}
+
+/// Arrives on the user's own channel the moment a limit order finishes.
+struct WsOrder: Codable, Hashable {
+    let id: String
+    let mint: String?
+    let symbol: String?
+    let side: String?
+    let status: String?            // "filled" | "cancelled"
+    let fillUsd: Double?
+    let signature: String?
 }
 
 /// `stock:<mint>` announces a headline the moment it lands. Enough to flag the tab; the list refetches.
@@ -63,6 +75,8 @@ struct RawWsFrame: Decodable {
             frame = (try? WsPrice(from: decoder)).map(WsFrame.price)
         case "news":
             frame = (try? WsNews(from: decoder)).map(WsFrame.news)
+        case "order":
+            frame = (try? WsOrder(from: decoder)).map(WsFrame.order)
         default:
             frame = nil
         }

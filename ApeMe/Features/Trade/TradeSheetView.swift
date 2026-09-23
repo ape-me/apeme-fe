@@ -589,6 +589,10 @@ struct TradeSheetView: View {
                     row("Price now", Fmt.usd(spot), .reference)
                     Divider().overlay(Theme.line)
                     feeLine(q.fee)
+                    if let days = OrdersStore.shared.config.ttlDays {
+                        Divider().overlay(Theme.line)
+                        row("Expires", "\(days) days", .reference)
+                    }
                     if side == .buy, (q.costUsd ?? 0) > 0 {
                         Divider().overlay(Theme.line)
                         depositLine(q.depositUsd ?? q.costUsd ?? 0)

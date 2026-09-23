@@ -90,7 +90,15 @@ struct OrdersPanel: View {
 
     private func subtitle(_ o: LimitOrder, away: Double?) -> String {
         let head = "\(Fmt.cash(o.makingUsd)) at \(Fmt.usd(o.triggerUsd))"
-        if o.isOpen, let away { return head + " · \(away >= 0 ? "+" : "−")\(String(format: "%.1f", abs(away)))% away" }
+        if o.isOpen, let away {
+            let gap = " · \(away >= 0 ? "+" : "−")\(String(format: "%.1f", abs(away)))% away"
+            // Only once the clock is worth watching — an order with three weeks left says nothing.
+            if let exp = o.expiresAt {
+                let days = Int((Double(exp) - Date.now.timeIntervalSince1970) / 86_400)
+                if days <= 7 { return head + gap + " · \(max(0, days))d left" }
+            }
+            return head + gap
+        }
         if let ts = o.filledAt ?? o.createdAt { return head + " · \(Fmt.ago(ts)) ago" }
         return head
     }

@@ -22,6 +22,7 @@ struct RootView: View {
         }
         .animation(.easeOut(duration: 0.25), value: app.signedIn)
         .background(Theme.ground)
+        .task(id: app.signedIn) { if app.signedIn { app.startOrderFeed() } }
         .sheet(item: $app.sheet) { sheet in
             Group {
             switch sheet {

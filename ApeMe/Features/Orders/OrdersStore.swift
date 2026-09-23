@@ -32,7 +32,7 @@ final class OrdersStore {
         config = OrderConfig(minUsd: min ?? config.minUsd, maxOpen: config.maxOpen,
                              buyFeeBps: config.buyFeeBps, sellFeeBps: config.sellFeeBps,
                              accountCostUsd: config.accountCostUsd, minGapBps: config.minGapBps,
-                             excludedIssuers: excluded ?? config.excludedIssuers)
+                             ttlDays: config.ttlDays, excludedIssuers: excluded ?? config.excludedIssuers)
     }
 
     /// Order failures are rare and specific, so the BE's own words beat a guess. A swap's generic
@@ -60,7 +60,35 @@ final class OrdersStore {
 
 
 
+    private var socket: LiveSocket?
+    private var listener: Task<Void, Never>?
+    /// What just happened, for the surface that can show a toast.
+    var lastEvent: WsOrder?
+
     private init() {}
+
+    /// The channel is the authorisation, so it is passed in rather than read from anywhere global.
+    func connect(channel: String, onEvent: @escaping (WsOrder) -> Void) {
+        guard socket == nil else { return }
+        let s = LiveSocket(room: channel)
+        socket = s
+        listener = Task { [weak self] in
+            for await ev in s.events {
+                guard let self, case .frames(let frames) = ev else { continue }
+                for case .order(let o) in frames {
+                    lastEvent = o
+                    onEvent(o)
+                    await load()
+                }
+            }
+        }
+        s.start()
+    }
+
+    func disconnect() {
+        listener?.cancel(); listener = nil
+        socket?.stop(); socket = nil
+    }
 
     var open: [LimitOrder] { orders.filter(\.isOpen) }
     var past: [LimitOrder] { orders.filter { !$0.isOpen } }

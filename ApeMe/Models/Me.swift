@@ -35,6 +35,9 @@ struct Me: Codable, Hashable {
     let settings: Settings?
     let referral: Referral?
     let createdAt: Int?            // unix seconds
+    /// The user's own socket room. Derived server-side and only ever returned to its owner, so
+    /// possession is the authorisation — never log it or put it in a shared URL.
+    let channel: String?
 
     var needsInvite: Bool { status == "invite_required" }
 }

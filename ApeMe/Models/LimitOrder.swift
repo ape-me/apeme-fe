@@ -19,6 +19,7 @@ struct LimitOrder: Codable, Hashable, Identifiable {
     let feeUsd: Double?
     let rentUsd: Double?
     let error: String?
+    let expiresAt: Int?
 
     var isOpen: Bool { status == "open" }
     var isBuy: Bool { side == "buy" }
@@ -61,6 +62,8 @@ struct OrderQuote: Codable, Hashable {
     let totalUsd: Double?
     let triggerUsd: Double?
     let fee: Fee?
+    /// Unix seconds. Jupiter drops the order at this point if it has not filled.
+    let expiresAt: Int?
 }
 
 struct OrdersResponse: Codable { let orders: [LimitOrder] }
