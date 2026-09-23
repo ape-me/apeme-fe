@@ -20,6 +20,26 @@ final class OrdersStore {
     /// from then on.
     var minUsd: Double?
 
+    /// Order failures are rare and specific, so the BE's own words beat a guess. A swap's generic
+    /// "trade didn't go through" hides exactly the reason the user needs.
+    static func message(_ error: Error) -> String {
+        if case APIError.insufficientFunds(let short) = error {
+            return short > 0 ? "Add \(Fmt.cash(short)) USDC to place this order" : "Not enough USDC for this order."
+        }
+        if case APIError.http(let code, let raw) = error {
+            // Drop the request id the API appends for debugging, keep the reason.
+            let reason = raw.split(separator: "·").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? raw
+            if code == 429 { return "Too many orders this hour. Take a breath." }
+            if reason.lowercased().contains("invite_required") { return "Enter your invite code first." }
+            if reason == "request failed" { return "The order was refused and we weren't told why." }
+            // snake_case from the BE reads as a sentence: minimum_order_size -> Minimum order size.
+            let words = reason.replacingOccurrences(of: "_", with: " ")
+            return words.prefix(1).uppercased() + words.dropFirst() + "."
+        }
+        if error is DecodingError { return "Couldn't read the order. Try again." }
+        return "No connection. Try again."
+    }
+
     /// Pulls the figure out of whatever the BE said, so the button can quote its number back.
     func noteMinimum(from error: Error) {
         guard case APIError.http(_, let msg) = error, msg.lowercased().contains("min") else { return }

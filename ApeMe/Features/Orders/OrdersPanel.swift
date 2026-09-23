@@ -101,7 +101,7 @@ struct OrdersPanel: View {
             Haptic.medium()
             Task {
                 do { try await store.cancel(o.id, wallet: w); app.show("Order cancelled · funds returned") }
-                catch { app.show(TradeStore.message(error), error: true) }
+                catch { app.show(OrdersStore.message(error), error: true) }
             }
         } label: {
             Group {

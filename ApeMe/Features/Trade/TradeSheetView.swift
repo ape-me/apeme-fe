@@ -390,19 +390,28 @@ struct TradeSheetView: View {
         }
     }
 
+    /// Buys give USDC at 6dp; sells give raw token units, which must actually exist.
+    private var orderAmountRaw: String? {
+        if side == .buy { return String(Int64((usd * 1_000_000).rounded())) }
+        guard let raw = store.holding?.raw, raw != "0", !raw.isEmpty else { return nil }
+        return raw
+    }
+
     private func loadOrderQuote() async {
         orderQuote = nil
         guard let addr = app.walletAddress else { return }
-        let raw = side == .buy
-            ? String(Int64((usd * 1_000_000).rounded()))
-            : (store.holding?.raw ?? "0")
+        guard let raw = orderAmountRaw else {
+            app.show("Couldn't read your \(asset.symbol) balance. Pull to refresh and try again.", error: true)
+            reviewing = false
+            return
+        }
         do {
             orderQuote = try await API.shared.orderQuote(wallet: addr, mint: asset.mint,
                                                          side: side == .buy ? "buy" : "sell",
                                                          amountRaw: raw, triggerUsd: triggerUsd)
         } catch {
             OrdersStore.shared.noteMinimum(from: error)
-            store.error = TradeStore.message(error)
+            store.error = OrdersStore.message(error)
             app.show(store.error ?? "Couldn't price that order.", error: true)
             reviewing = false
         }
@@ -493,7 +502,7 @@ struct TradeSheetView: View {
         guard let w = app.auth.activeWallet, let addr = app.walletAddress else { app.show("Sign in first.", error: true); return }
         placing = true
         defer { placing = false }
-        let raw = side == .buy ? String(Int64((usd * 1_000_000).rounded())) : (store.holding?.raw ?? "0")
+        guard let raw = orderAmountRaw else { app.show("Couldn't read your balance.", error: true); return }
         do {
             try await OrdersStore.shared.place(wallet: w, address: addr, mint: asset.mint,
                                                side: side == .buy ? "buy" : "sell",
@@ -503,7 +512,7 @@ struct TradeSheetView: View {
             app.show("Order placed · \(asset.symbol) at \(Fmt.usd(triggerUsd))",
                      image: ToastImage(url: asset.imageURL, symbol: asset.symbol, isStock: asset.isStock))
         } catch {
-            app.show(TradeStore.message(error), error: true)
+            app.show(OrdersStore.message(error), error: true)
         }
     }
 
