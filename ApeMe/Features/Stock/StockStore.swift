@@ -14,11 +14,11 @@ final class StockStore {
     var status: LiveSocket.Status = .connecting
 
     enum Tab: String, CaseIterable, Identifiable {
-        case overview, news, about
+        case news, overview, orders, about
         var id: String { rawValue }
         var label: String { rawValue.capitalized }
     }
-    var tab: Tab = .overview
+    var tab: Tab = .news
     var insights: Insights?
     var insightsLoading = true
     var depth: Depth?

@@ -27,6 +27,11 @@ struct TradeSheetView: View {
     @State private var amount = ""          // dollars typed (buy and sell)
     @State private var pct: Double? = nil    // sell chip, for the label only
     @State private var reviewing = false
+    @State private var limit = false
+    @State private var trigger = ""
+    @State private var settingPrice = false
+    @State private var orderQuote: OrderQuote?
+    @State private var placing = false
 
     init(side: TradeStore.Side, asset: Asset) {
         self.side = side; self.asset = asset
@@ -62,13 +67,23 @@ struct TradeSheetView: View {
     private var sellValue: Double { store.holding?.valueUsd ?? 0 }
     private var sellQty: Double { sellValue > 0 ? (store.holding?.amount ?? 0) * min(usd, sellValue) / sellValue : 0 }
     private var hasAmount: Bool { usd > 0 }
+    /// Jupiter refuses triggers on the pre-IPO names, so Limit is simply not offered there.
+    private var canLimit: Bool { asset.isStock && !asset.isPreIPO }
+    private var triggerUsd: Double { Double(trigger) ?? 0 }
+    private var spot: Double { asset.priceUsd ?? 0 }
+    private var awayPct: Double { spot > 0 && triggerUsd > 0 ? (triggerUsd - spot) / spot * 100 : 0 }
+    private static let orderMinUsd: Double = 5
+    private static let orderMaxOpen = 20
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             switch store.phase {
             case .confirmed: ScrollView { done }.scrollIndicators(.hidden)
             case .requoted: requoted
-            default: if reviewing { ScrollView { review }.scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize) } else { form }
+            default:
+                if settingPrice { priceStep }
+                else if reviewing { ScrollView { limit ? AnyView(orderReview) : AnyView(review) }.scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize) }
+                else { form }
             }
         }
         .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 18)
@@ -124,9 +139,63 @@ struct TradeSheetView: View {
         if asset.isStock { Logo(url: asset.imageURL, symbol: asset.symbol, size: size) } else { Avatar(url: asset.imageURL, symbol: asset.symbol, size: size) }
     }
 
+    @ViewBuilder private var modeTabs: some View {
+        if canLimit {
+            VStack(spacing: 8) {
+                HStack(spacing: 0) {
+                    ForEach([false, true], id: \.self) { isLimit in
+                        Button {
+                            Haptic.selection(); limit = isLimit; store.reset(); orderQuote = nil
+                        } label: {
+                            VStack(spacing: 8) {
+                                Text(isLimit ? "Limit" : "Market")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(limit == isLimit ? Theme.ink : Theme.faint)
+                                Rectangle().fill(limit == isLimit ? Theme.ink : .clear).frame(height: 2)
+                            }
+                        }
+                        .buttonStyle(.plain).frame(maxWidth: .infinity)
+                    }
+                }
+                Text(limit ? "Fills only at your price or better. Nothing is charged until it does."
+                           : "Fills now at the best price available.")
+                    .font(.system(size: 12.5)).foregroundStyle(Theme.muted)
+                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.top, 14)
+        }
+    }
+
+    /// The price is a row that pushes into its own screen — squeezed beside the amount it reads
+    /// as a form field, which is the whole reason the first attempt felt cheap.
+    private var triggerRow: some View {
+        Button { Haptic.light(); settingPrice = true } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("When price hits").font(.system(size: 12)).foregroundStyle(Theme.muted)
+                    Text(triggerUsd > 0 ? Fmt.usd(triggerUsd) : "Set a price")
+                        .font(.system(size: 19, weight: .bold)).monospacedDigit()
+                        .foregroundStyle(triggerUsd > 0 ? Theme.ink : Theme.faint)
+                }
+                Spacer()
+                if triggerUsd > 0 {
+                    Text("\(awayPct >= 0 ? "+" : "−")\(String(format: "%.1f", abs(awayPct)))%")
+                        .font(.system(size: 13, weight: .semibold)).monospacedDigit()
+                        .foregroundStyle(awayPct >= 0 ? Theme.amber : Theme.green)
+                }
+                Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.faint)
+            }
+            .padding(.horizontal, 16).frame(height: 64)
+            .background(Theme.surface, in: .rect(cornerRadius: 14))
+        }
+        .buttonStyle(PressScale())
+        .padding(.top, 16)
+    }
+
     private var form: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
+            modeTabs
             Spacer(minLength: 12)
             VStack(spacing: 8) {
                 HStack(spacing: 10) {
@@ -138,6 +207,7 @@ struct TradeSheetView: View {
                 }
             }
             .frame(maxWidth: .infinity)
+            if limit { triggerRow }
             Spacer(minLength: 12)
             if side == .buy {
                 chips((settings.quickBuyUsd ?? [10, 25, 50, 100]).map { ("$" + Fmt.n($0), nil, $0) } + [("Max", nil, maxCash)], selected: usd) { amount = String(format: $0 == maxCash ? "%.2f" : "%g", $0); pct = nil }
@@ -227,9 +297,202 @@ struct TradeSheetView: View {
     /// Amount step button. Purely local — nothing is fetched until Review order.
     @ViewBuilder private var primary: some View {
         if usd <= 0 { BigButton(label: "Enter an amount", style: .off) {} }
+        else if limit {
+            if usd < Self.orderMinUsd { BigButton(label: "Limit orders start at \(Fmt.cash(Self.orderMinUsd))", style: .off) {} }
+            else if triggerUsd <= 0 { BigButton(label: "Set a trigger price", style: .off) { Haptic.light(); settingPrice = true } }
+            else if OrdersStore.shared.open.count >= Self.orderMaxOpen { BigButton(label: "\(Self.orderMaxOpen) open orders is the limit", style: .off) {} }
+            else if side == .buy, usd * 1.015 + 0.48 > cash + 0.000001 { BigButton(label: "Deposit to place this", style: .white) { dismiss(); app.sheet = .deposit } }
+            else { BigButton(label: "Review order", style: side == .sell ? .sell : .buy) { Haptic.light(); reviewing = true; Task { await loadOrderQuote() } } }
+        }
         else if side == .buy, estimatedTotal(usd) > cash + 0.000001 { BigButton(label: "Deposit to buy", style: .white) { dismiss(); app.sheet = .deposit } }
         else if side == .sell, usd > sellValue + 0.005 { BigButton(label: "You hold \(Fmt.cash(sellValue)) · Sell all", style: .white) { amount = String(format: "%.2f", floor(sellValue * 100) / 100); pct = 100 } }
         else { BigButton(label: "Review order", style: side == .sell ? .sell : .buy) { Haptic.light(); reviewing = true; requote() } }
+    }
+
+    // MARK: Limit — price step and order review
+
+    /// Phantom's Set Limit Price in our clothes: one number, the distance from spot beneath it,
+    /// offsets sitting directly on the keys.
+    private var priceStep: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                IconButton(symbol: "chevron.left", label: "Back") { settingPrice = false }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Set trigger price").h3Text()
+                    Text("\(asset.symbol) now \(Fmt.usd(spot))").font(.sub).foregroundStyle(Theme.muted)
+                }
+                Spacer()
+                Color.clear.frame(width: 40, height: 40)
+            }
+            .padding(.top, 8)
+            Spacer(minLength: 20)
+            VStack(spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text("$").font(.system(size: 34, weight: .semibold)).foregroundStyle(Theme.faint)
+                    Text(trigger.isEmpty ? "0" : trigger).font(.amount).tracking(-2.8).monospacedDigit().foregroundStyle(Theme.ink)
+                }
+                Text(triggerUsd > 0 ? "\(awayPct >= 0 ? "+" : "−")\(String(format: "%.2f", abs(awayPct)))%  ⇅" : "0%  ⇅")
+                    .font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                    .foregroundStyle(triggerUsd <= 0 ? Theme.faint : awayPct >= 0 ? Theme.amber : Theme.green)
+            }
+            .frame(maxWidth: .infinity)
+            Spacer(minLength: 20)
+            offsetChips
+            Numpad { key in
+                switch key {
+                case "⌫": trigger = String(trigger.dropLast())
+                case ".": if !trigger.contains(".") { trigger = (trigger.isEmpty ? "0" : trigger) + "." }
+                default:
+                    let d = trigger.split(separator: ".", omittingEmptySubsequences: false).dropFirst().first?.count ?? 0
+                    if trigger.count < 10, !trigger.contains(".") || d < 2 { trigger = trigger == "0" ? key : trigger + key }
+                }
+            }
+            .padding(.top, 8)
+            Spacer(minLength: 12)
+            BigButton(label: "Set", style: triggerUsd > 0 ? (side == .sell ? .sell : .buy) : .off) {
+                guard triggerUsd > 0 else { return }
+                Haptic.light(); settingPrice = false
+            }
+        }
+        .frame(maxHeight: .infinity)
+    }
+
+    /// Offsets from spot, the way every exchange offers them — a trigger in one tap.
+    private var offsetChips: some View {
+        let offsets: [(String, Double?)] = side == .buy
+            ? [("Mid", nil), ("−1%", -1), ("−2%", -2), ("−5%", -5)]
+            : [("Mid", nil), ("+1%", 1), ("+2%", 2), ("+5%", 5)]
+        return HStack(spacing: 8) {
+            ForEach(offsets, id: \.0) { label, pct in
+                Button {
+                    Haptic.selection()
+                    trigger = String(format: "%.2f", spot * (1 + (pct ?? 0) / 100))
+                } label: {
+                    Text(label)
+                        .font(.system(size: 14, weight: .semibold)).monospacedDigit()
+                        .foregroundStyle(Theme.ink)
+                        .frame(maxWidth: .infinity).frame(height: 44)
+                        .background(Theme.surface2, in: .rect(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func loadOrderQuote() async {
+        orderQuote = nil
+        guard let addr = app.walletAddress else { return }
+        let raw = side == .buy
+            ? String(Int64((usd * 1_000_000).rounded()))
+            : (store.holding?.raw ?? "0")
+        do {
+            orderQuote = try await API.shared.orderQuote(wallet: addr, mint: asset.mint,
+                                                         side: side == .buy ? "buy" : "sell",
+                                                         amountRaw: raw, triggerUsd: triggerUsd)
+        } catch {
+            store.error = TradeStore.message(error)
+            app.show(store.error ?? "Couldn't price that order.", error: true)
+            reviewing = false
+        }
+    }
+
+    /// A limit order reviews its own way: what gets reserved leads, because nothing is spent.
+    private var orderReview: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                IconButton(symbol: "chevron.left", label: "Back") { reviewing = false }.disabled(placing)
+                Spacer()
+                IconButton(symbol: "xmark", label: "Close") { dismiss() }.disabled(placing)
+            }
+            VStack(spacing: 10) {
+                assetImage(64)
+                Text("\(side == .buy ? "Buy" : "Sell") $\(amount) at \(Fmt.usd(triggerUsd))").h1Text().multilineTextAlignment(.center)
+                Text("\(asset.symbol) price \(Fmt.usd(spot))").font(.system(size: 15)).monospacedDigit().foregroundStyle(Theme.muted)
+            }
+            .frame(maxWidth: .infinity).padding(.top, 26)
+            if let q = orderQuote {
+                VStack(spacing: 0) {
+                    row(side == .buy ? "You buy" : "You sell", "\(Fmt.cash(q.orderUsd)) of \(asset.symbol)", .outcome)
+                    Divider().overlay(Theme.line)
+                    row("When price hits", Fmt.usd(q.triggerUsd))
+                    Divider().overlay(Theme.line)
+                    row("Price now", Fmt.usd(spot), .reference)
+                    if let f = q.fee, !f.isFree {
+                        Divider().overlay(Theme.line)
+                        feeLine(f)
+                    }
+                }
+                .padding(.top, 28)
+                note(side == .buy
+                     ? "\(Fmt.cash(q.escrowUsd)) is reserved while this order waits. Nothing is charged unless it fills, and cancelling returns all of it."
+                     : "Your \(asset.symbol) is reserved while this order waits. Cancel any time to get it back.")
+                    .padding(.top, 14)
+                Color.clear.frame(height: 24)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(side == .buy ? "\(Fmt.cash(q.escrowUsd)) reserved" : "\(Fmt.cash(q.orderUsd)) to sell")
+                            .font(.system(size: 20, weight: .semibold)).tracking(-0.4).monospacedDigit()
+                        Text("at \(Fmt.usd(q.triggerUsd)) · \(awayPct >= 0 ? "+" : "−")\(String(format: "%.1f", abs(awayPct)))% from now")
+                            .font(.sub).foregroundStyle(Theme.muted)
+                    }
+                    Spacer()
+                    HStack(spacing: 6) {
+                        Image("usdc").resizable().frame(width: 18, height: 18).clipShape(.circle)
+                        Text("USDC · \(Fmt.cash(cash))").font(.system(size: 13, weight: .semibold)).monospacedDigit()
+                    }
+                    .padding(.horizontal, 11).frame(height: 32).background(Theme.surface2, in: .capsule)
+                }
+                Group {
+                    if placing {
+                        HStack(spacing: 10) { ProgressView().tint(.white); Text("Placing…").font(.system(size: 17, weight: .semibold)) }
+                            .foregroundStyle(.white).frame(maxWidth: .infinity).frame(height: 52)
+                            .background(side == .sell ? AnyShapeStyle(Theme.sellGradient) : AnyShapeStyle(Theme.buyGradient), in: .capsule)
+                    } else {
+                        BigButton(label: "Place order", style: side == .sell ? .sell : .buy) { Haptic.medium(); Task { await placeOrder(q) } }
+                    }
+                }
+                .padding(.top, 14)
+            } else {
+                VStack(spacing: 0) {
+                    HStack { Text(side == .buy ? "You buy" : "You sell").font(.system(size: 15)).foregroundStyle(Theme.muted); Spacer(); Shimmer().frame(width: 140, height: 16) }.frame(height: 52)
+                    Divider().overlay(Theme.line)
+                    row("When price hits", Fmt.usd(triggerUsd))
+                }
+                .padding(.top, 28)
+                BigButton(label: "Pricing your order…", style: .off) {}.padding(.top, 20)
+            }
+        }
+    }
+
+    private func feeLine(_ f: OrderQuote.Fee) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Fee (\(String(format: "%g", Double(f.bps ?? 150) / 100))%)").font(.system(size: 15)).foregroundStyle(Theme.muted)
+                Spacer()
+                Text(Fmt.cash(f.totalUsd)).font(.system(size: 15, weight: .semibold)).monospacedDigit().foregroundStyle(Theme.amber)
+            }
+            Text("ApeMe \(String(format: "%g", Double(f.bps ?? 150) / 100))% \(Fmt.cash(f.usd))\((f.rentUsd ?? 0) > 0 ? " · \(Fmt.cash(f.rentUsd)) account setup, one time" : "") · charged \(f.when ?? "on fill")")
+                .font(.sub).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 12)
+    }
+
+    private func placeOrder(_ q: OrderQuote) async {
+        guard let w = app.auth.activeWallet, let addr = app.walletAddress else { app.show("Sign in first.", error: true); return }
+        placing = true
+        defer { placing = false }
+        let raw = side == .buy ? String(Int64((usd * 1_000_000).rounded())) : (store.holding?.raw ?? "0")
+        do {
+            try await OrdersStore.shared.place(wallet: w, address: addr, mint: asset.mint,
+                                               side: side == .buy ? "buy" : "sell",
+                                               amountRaw: raw, triggerUsd: triggerUsd)
+            Haptic.success()
+            dismiss()
+            app.show("Order placed · \(asset.symbol) at \(Fmt.usd(triggerUsd))",
+                     image: ToastImage(url: asset.imageURL, symbol: asset.symbol, isStock: asset.isStock))
+        } catch {
+            app.show(TradeStore.message(error), error: true)
+        }
     }
 
     // MARK: Details (shared by review + success)

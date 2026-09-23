@@ -34,6 +34,7 @@ struct StockView: View {
             await store.load(app: app)
         }
         .task { await store.loadInsights() }
+        .task { if !OrdersStore.shared.loaded { await OrdersStore.shared.load() } }
         .task { await store.resync() }
         .onDisappear { store.disconnect() }
     }
@@ -86,6 +87,7 @@ struct StockView: View {
                 switch store.tab {
                 case .overview: overview(s)
                 case .news: newsTab(s)
+                case .orders: OrdersPanel(mint: store.mint).padding(.horizontal, 20).padding(.top, 20)
                 case .about: about(s)
                 }
             }
@@ -95,7 +97,7 @@ struct StockView: View {
 
     private var tabs: some View {
         HStack(spacing: 0) {
-            ForEach(StockStore.Tab.allCases) { t in
+            ForEach(StockStore.Tab.allCases.filter { $0 != .orders || !OrdersStore.shared.all(for: store.mint).isEmpty }) { t in
                 Button {
                     Haptic.selection()
                     store.tab = t
@@ -103,7 +105,7 @@ struct StockView: View {
                 } label: {
                     VStack(spacing: 8) {
                         HStack(spacing: 5) {
-                            Text(t.label)
+                            Text(t == .orders ? "Orders · \(OrdersStore.shared.all(for: store.mint).count)" : t.label)
                             if t == .news, store.unreadNews {
                                 Circle().fill(skin.accent).frame(width: 6, height: 6)
                             }

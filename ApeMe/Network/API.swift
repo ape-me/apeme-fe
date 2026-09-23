@@ -146,6 +146,29 @@ actor API {
     func submit(requestId: String, signedTransaction: String) async throws -> SubmitResponse {
         try decoder.decode(SubmitResponse.self, from: try await send("POST", "/swap/submit", body: ["requestId": requestId, "signedTransaction": signedTransaction]))
     }
+    // MARK: Limit orders (Jupiter Trigger holds the escrow; signing is the same as a swap)
+
+    /// `amount` is raw units of what the user gives — USDC 6dp on a buy, the token's decimals on
+    /// a sell. `triggerUsd` is the price as the user sees it; the BE handles the multiplier.
+    func orderQuote(wallet: String, mint: String, side: String, amountRaw: String, triggerUsd: Double) async throws -> OrderQuote {
+        try decoder.decode(OrderQuote.self, from: try await send("POST", "/orders/quote", body: [
+            "wallet": wallet, "mint": mint, "side": side, "amount": amountRaw, "triggerUsd": triggerUsd]))
+    }
+    func submitOrder(id: String, signedTransaction: String) async throws -> OrderSubmitResponse {
+        try decoder.decode(OrderSubmitResponse.self, from: try await send("POST", "/orders/\(id)/submit", body: ["signedTransaction": signedTransaction]))
+    }
+    /// Reconciled against Jupiter on every read, so a refetch on appear is enough — no polling.
+    func orders(limit: Int = 50) async throws -> OrdersResponse {
+        try decoder.decode(OrdersResponse.self, from: try await send("GET", "/orders?limit=\(limit)"))
+    }
+    /// Cancelling is a second signature: fetch the transaction, sign it, post it back.
+    func cancelOrder(id: String) async throws -> CancelResponse {
+        try decoder.decode(CancelResponse.self, from: try await send("POST", "/orders/\(id)/cancel"))
+    }
+    func submitCancel(id: String, signedTransaction: String) async throws -> OrderSubmitResponse {
+        try decoder.decode(OrderSubmitResponse.self, from: try await send("POST", "/orders/\(id)/cancel/submit", body: ["signedTransaction": signedTransaction]))
+    }
+
     func tx(_ signature: String) async throws -> TxStatus {
         try decoder.decode(TxStatus.self, from: try await send("GET", "/tx/\(signature)"))
     }

@@ -2,7 +2,11 @@ import SwiftUI
 
 /// Wallet tab: portfolio value first, cash in its own card, then Positions | Activity.
 struct PortfolioView: View {
-    enum Tab: String, CaseIterable, Identifiable { case positions, activity; var id: String { rawValue }; var label: String { rawValue.capitalized } }
+    enum Tab: String, CaseIterable, Identifiable {
+        case positions, orders, activity
+        var id: String { rawValue }
+        var label: String { rawValue.capitalized }
+    }
 
     @Environment(AppState.self) private var app
     @Environment(\.skin) private var skin
@@ -124,6 +128,7 @@ struct PortfolioView: View {
                 case .positions:
                     if positions.isEmpty { EmptyState(title: "No positions yet.", subtitle: "Buy a stock or ape a meme to see it here.") }
                     else { VStack(spacing: 0) { ForEach(positions) { PositionRow(holding: $0) } } }
+                case .orders: OrdersPanel()
                 case .activity: ActivityList(activity: w.activity)
                 }
             }
