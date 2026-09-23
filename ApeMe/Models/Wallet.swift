@@ -19,7 +19,11 @@ struct Wallet: Codable, Hashable {
     let asOf: Int?
 
     var cash: Holding? { holdings.first { $0.kind == "cash" } }
-    var positions: [Holding] { holdings.filter { $0.kind == "stock" || $0.kind == "meme" }.sorted { ($0.valueUsd ?? 0) > ($1.valueUsd ?? 0) } }
+    var positions: [Holding] {
+        holdings
+            .filter { $0.kind == "stock" || (Feature.ape && $0.kind == "meme") }
+            .sorted { ($0.valueUsd ?? 0) > ($1.valueUsd ?? 0) }
+    }
     var sol: Holding? { holdings.first { $0.kind == "sol" } }
     var isEmpty: Bool { (cashUsd ?? 0) == 0 && holdings.count <= 1 }
     /// Sum of cost for positions bought through ApeMe. Outside deposits (costUsd nil) don't count.
@@ -36,7 +40,9 @@ struct Wallet: Codable, Hashable {
         holdings[i] = h
         stocksUsd = holdings.filter { $0.kind == "stock" }.compactMap(\.valueUsd).reduce(0, +)
         memesUsd = holdings.filter { $0.kind == "meme" }.compactMap(\.valueUsd).reduce(0, +)
-        totalUsd = (cashUsd ?? 0) + (solUsd ?? 0) + (stocksUsd ?? 0) + (memesUsd ?? 0)
+        // Meme value is left out of the headline while the meme side is hidden, so the total
+        // always equals the positions listed under it.
+        totalUsd = (cashUsd ?? 0) + (solUsd ?? 0) + (stocksUsd ?? 0) + (Feature.ape ? (memesUsd ?? 0) : 0)
         let withCost = positions.filter { $0.costUsd != nil }
         pnlUsd = withCost.isEmpty ? nil : withCost.compactMap(\.pnlUsd).reduce(0, +)
     }

@@ -6,6 +6,14 @@ enum Route: Hashable {
     case token(String)
     case settings
     case referrals
+
+    /// Destinations that belong to the meme side, and are unreachable while it is hidden.
+    var needsApe: Bool {
+        switch self {
+        case .floor, .token: true
+        case .stock, .settings, .referrals: false
+        }
+    }
 }
 
 enum Tab: String, CaseIterable, Identifiable {

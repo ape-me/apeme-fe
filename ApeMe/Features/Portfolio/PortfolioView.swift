@@ -126,10 +126,11 @@ struct PortfolioView: View {
             Group {
                 switch tab {
                 case .positions:
-                    if positions.isEmpty { EmptyState(title: "No positions yet.", subtitle: "Buy a stock or ape a meme to see it here.") }
+                    if positions.isEmpty { EmptyState(title: "No positions yet.", subtitle: Feature.ape ? "Buy a stock or ape a meme to see it here." : "Buy a stock to see it here.") }
                     else { VStack(spacing: 0) { ForEach(positions) { PositionRow(holding: $0) } } }
                 case .orders: OrdersPanel()
-                case .activity: ActivityList(activity: w.activity)
+                // A meme trade is quoted in a stock, so it goes with the rest of that side.
+                case .activity: ActivityList(activity: w.activity.filter { Feature.ape || $0.stockSymbol == nil })
                 }
             }
             .padding(.top, 6)
@@ -481,7 +482,7 @@ struct PositionSheet: View {
                 }
                 Button {
                     dismiss()
-                    if holding.kind == "meme" { if app.isApe { app.push(.token(holding.mint)) } else { app.show("Switch to Ape mode to open memes") } }
+                    if holding.kind == "meme" { app.push(.token(holding.mint)) }
                     else { app.openStock(holding.mint) }
                 } label: {
                     Text("Open \(holding.kind == "meme" ? "token" : "stock") page ›").font(.sub.weight(.semibold)).foregroundStyle(Theme.ink).frame(maxWidth: .infinity)

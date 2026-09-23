@@ -92,7 +92,7 @@ final class HomeStore {
             if preipo.isEmpty { self.error = "Markets are taking a moment" }
         }
         loading = false
-        if let t = try? await API.shared.ticker(memes: 10, stonks: 1) { ticker = t.tokens }
+        if Feature.ape, let t = try? await API.shared.ticker(memes: 10, stonks: 1) { ticker = t.tokens }
         // One headline per stock, material or better, newest first — the BE does the curation now.
         if let h = try? await API.shared.news(limit: 12, minImpact: "material", perStock: 1) { headlines = h.items }
         headlinesLoading = false

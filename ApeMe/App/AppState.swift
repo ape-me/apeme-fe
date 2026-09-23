@@ -38,7 +38,7 @@ final class AppState {
         tokenWatch = defaults.stringArray(forKey: "apeme.tokenWatch") ?? []
     }
 
-    var isApe: Bool { mode == .ape }
+    var isApe: Bool { Feature.ape && mode == .ape }
 
     /// Privy wallet when signed in, the demo wallet when that's switched on, otherwise nothing.
     let auth = Auth.shared
@@ -69,7 +69,12 @@ final class AppState {
         path.removeAll()
     }
 
-    func push(_ r: Route) { path.append(r) }
+    func push(_ r: Route) {
+        // The last word on navigation: while the meme side is hidden nothing reaches a floor or
+        // a token page, whatever calls this.
+        guard Feature.ape || !r.needsApe else { return }
+        path.append(r)
+    }
 
     /// Stocks open the Stock page in Invest and the Floor in Ape.
     func openStock(_ mint: String) { push(isApe ? .floor(mint) : .stock(mint)) }

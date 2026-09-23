@@ -8,26 +8,31 @@ struct OnboardingView: View {
     @State private var index = 0
     @State private var choice: Mode? = nil
 
+    private static var pages: Int { Feature.ape ? 4 : 3 }
+    private static var lastPage: Int { pages - 1 }
+
     var body: some View {
         VStack(spacing: 0) {
             TabView(selection: $index) {
                 slide1.tag(0)
                 slide2.tag(1)
                 slide3.tag(2)
-                question.tag(3)
+                if Feature.ape { question.tag(3) }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             VStack(spacing: 14) {
                 HStack(spacing: 5) {
-                    ForEach(0..<4) { i in
+                    ForEach(0..<Self.pages, id: \.self) { i in
                         Circle().fill(i == index ? Theme.muted : Theme.line).frame(width: 5, height: 5)
                     }
                 }
-                BigButton(label: index < 3 ? "Continue" : "Get started",
-                          style: index == 3 && choice == nil ? .off : .white) {
-                    if index < 3 { withAnimation { index += 1 } }
-                    else if let choice {
-                        app.mode = choice
+                BigButton(label: index < Self.lastPage ? "Continue" : "Get started",
+                          style: Feature.ape && index == Self.lastPage && choice == nil ? .off : .white) {
+                    if index < Self.lastPage { withAnimation { index += 1 } }
+                    else {
+                        // Without the question there is one mode, and this is it.
+                        guard let picked = Feature.ape ? choice : .invest else { return }
+                        app.mode = picked
                         if let onGetStarted { onGetStarted() } else { app.onboarded = true; app.root(.home) }
                     }
                 }
@@ -82,7 +87,19 @@ struct OnboardingView: View {
         }
     }
 
-    private var slide3: some View {
+    @ViewBuilder private var slide3: some View {
+        if Feature.ape { floorSlide } else { limitSlide }
+    }
+
+    /// No wallet to set up, no seed phrase, and an order that waits for your price.
+    private var limitSlide: some View {
+        slide("Set your price and walk away.",
+              "Buy and sell whenever you like, or leave an order at the price you want. No seed phrase, no wallet to manage.") {
+            LimitArt()
+        }
+    }
+
+    private var floorSlide: some View {
         slide("Every stock has a floor.",
               "Community tokens launch against each stock. Buy the stock, or ape the memes on its floor.") {
             GeometryReader { g in
@@ -158,6 +175,38 @@ private struct PremiumArt: View {
                     .offset(x: 8, y: 116 * sy)
                 Text("Fair value").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.amber)
                     .offset(x: 8, y: 158 * sy)
+            }
+        }
+    }
+}
+
+
+/// Slide art: a price line crossing the level someone set and walked away from.
+private struct LimitArt: View {
+    var body: some View {
+        GeometryReader { g in
+            let w = g.size.width, h = g.size.height
+            let target = h * 0.42
+            ZStack(alignment: .topLeading) {
+                Path { p in p.move(to: .init(x: 0, y: target)); p.addLine(to: .init(x: w, y: target)) }
+                    .stroke(Theme.amber, style: StrokeStyle(lineWidth: 2, dash: [5, 7]))
+                Path { p in
+                    p.move(to: .init(x: 0, y: h * 0.78))
+                    p.addCurve(to: .init(x: w * 0.42, y: h * 0.66),
+                               control1: .init(x: w * 0.14, y: h * 0.88), control2: .init(x: w * 0.28, y: h * 0.58))
+                    p.addCurve(to: .init(x: w * 0.74, y: h * 0.52),
+                               control1: .init(x: w * 0.56, y: h * 0.74), control2: .init(x: w * 0.64, y: h * 0.48))
+                    p.addCurve(to: .init(x: w, y: target),
+                               control1: .init(x: w * 0.86, y: h * 0.56), control2: .init(x: w * 0.93, y: target))
+                }
+                .stroke(Color(hex: 0x578bfa), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                Circle().fill(Color(hex: 0x578bfa)).frame(width: 12, height: 12)
+                    .position(x: w, y: target)
+                Text("Your price")
+                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.amber)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Theme.amberT, in: .capsule)
+                    .offset(x: 4, y: target - 34)
             }
         }
     }

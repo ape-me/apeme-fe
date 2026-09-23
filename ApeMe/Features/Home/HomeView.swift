@@ -35,7 +35,7 @@ struct HomeView: View {
         HStack(alignment: .center, spacing: 12) {
             Text(app.isApe ? "Floors" : "Home").h1Text()
             Spacer()
-            ModeSwitch()
+            if Feature.ape { ModeSwitch() }
         }
         .padding(.horizontal, 20).padding(.top, 16)
     }

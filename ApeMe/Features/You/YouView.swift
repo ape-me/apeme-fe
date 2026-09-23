@@ -45,14 +45,16 @@ struct YouView: View {
                     }
                     .buttonStyle(.plain).padding(.top, 12).padding(.bottom, 8)
 
-                    SettingRow(symbol: app.isApe ? "flame" : "chart.line.uptrend.xyaxis", title: "Ape mode",
-                               sub: app.isApe ? "Floors, kings and the live tape" : "Off · stocks and fair values",
-                               trailing: AnyView(SwitchShape(on: app.isApe, tint: Skin(mode: app.mode ?? .invest).accent))) { app.toggleMode() }
+                    if Feature.ape {
+                        SettingRow(symbol: app.isApe ? "flame" : "chart.line.uptrend.xyaxis", title: "Ape mode",
+                                   sub: app.isApe ? "Floors, kings and the live tape" : "Off · stocks and fair values",
+                                   trailing: AnyView(SwitchShape(on: app.isApe, tint: Skin(mode: app.mode ?? .invest).accent))) { app.toggleMode() }
+                    }
                     SettingRow(symbol: "slider.horizontal.3", title: "Trading settings", sub: "Slippage, quick amounts, priority, confirmations") { app.push(.settings) }
                     if let address = app.walletAddress {
                         SettingRow(symbol: "doc.on.doc", title: "Wallet address", sub: Fmt.short(address)) { app.copy(address) }
                     }
-                    SettingRow(symbol: "arrow.counterclockwise", title: "Show onboarding again", sub: "Three slides and the mode question") { confirmOnboarding = true }
+                    SettingRow(symbol: "arrow.counterclockwise", title: "Show onboarding again", sub: Feature.ape ? "Three slides and the mode question" : "The three slides you saw first") { confirmOnboarding = true }
                     SettingRow(symbol: "rectangle.portrait.and.arrow.right", title: "Sign out", sub: app.auth.accountLabel ?? "Signed in") { confirmSignOut = true }
                     #if DEBUG
                     SettingRow(symbol: "bell", title: "Preview toasts", sub: "Success, then error") {
