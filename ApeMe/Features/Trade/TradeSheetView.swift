@@ -180,6 +180,7 @@ struct TradeSheetView: View {
                     ForEach([false, true], id: \.self) { isLimit in
                         Button {
                             Haptic.selection(); limit = isLimit; store.reset(); orderQuote = nil
+                            if isLimit { prefillLimit() }
                         } label: {
                             VStack(spacing: 8) {
                                 Text(isLimit ? "Limit" : "Market")
@@ -367,15 +368,7 @@ struct TradeSheetView: View {
     @ViewBuilder private var limitPrimary: some View {
         let min = OrdersStore.shared.minUsd
         let value = limitSell ? limitSellUsd : usd
-        if limitSell, tokenQty <= 0 {
-            BigButton(label: "Enter an amount", style: .off) {}
-        } else if !limitSell, usd <= 0 {
-            BigButton(label: "Enter an amount", style: .off) {}
-        } else if limitSell, tokenQty > heldQty * 1.0001 {
-            BigButton(label: "You hold \(Fmt.qty(heldQty, symbol: asset.symbol)) · Sell all", style: .white) {
-                Haptic.light(); tokens = Fmt.plain(heldQty)
-            }
-        } else if limitSell, let min, sellValue < min - 0.005 {
+        if limitSell, let min, sellValue < min - 0.005 {
             // The floor is measured on what the position is worth today, not on what the trigger
             // would return — Jupiter values the order when it is placed. Saying only the figure
             // read as the proceeds, which is a different number and a worrying one.
@@ -387,6 +380,14 @@ struct TradeSheetView: View {
                     Haptic.light(); limit = false
                     amount = String(format: "%.2f", floor(sellValue * 100) / 100); pct = 100
                 }
+            }
+        } else if limitSell, tokenQty <= 0 {
+            BigButton(label: "Enter an amount", style: .off) {}
+        } else if !limitSell, usd <= 0 {
+            BigButton(label: "Enter an amount", style: .off) {}
+        } else if limitSell, tokenQty > heldQty * 1.0001 {
+            BigButton(label: "You hold \(Fmt.qty(heldQty, symbol: asset.symbol)) · Sell all", style: .white) {
+                Haptic.light(); tokens = Fmt.plain(heldQty)
             }
         } else if let min, value < min {
             // A dead grey button states the rule and leaves the user stuck. Give the way out:
@@ -536,6 +537,15 @@ struct TradeSheetView: View {
         var floored = Decimal()
         NSDecimalRound(&floored, &scaled, 0, .down)
         return floored > 0 ? "\(floored)" : nil
+    }
+
+    /// A trigger 5% the right side of spot is always valid, and a sell defaults to the whole
+    /// position, so the sheet opens on something that can actually be placed.
+    private func prefillLimit() {
+        if trigger.isEmpty, spot > 0 {
+            trigger = String(format: "%.2f", spot * (side == .buy ? 0.95 : 1.05))
+        }
+        if side == .sell, tokens.isEmpty, heldQty > 0 { tokens = Fmt.plain(heldQty) }
     }
 
     private func loadOrderQuote() async {
