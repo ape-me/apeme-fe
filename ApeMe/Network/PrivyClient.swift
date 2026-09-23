@@ -148,6 +148,6 @@ final class Auth {
     func applyMe(_ m: Me) { me = m }
     func applySettings(_ s: Me.Settings) {
         guard let m = me else { return }
-        me = Me(userId: m.userId, handle: m.handle, avatarUrl: m.avatarUrl, status: m.status, wallets: m.wallets, settings: s, referral: m.referral, createdAt: m.createdAt)
+        me = Me(userId: m.userId, handle: m.handle, avatarUrl: m.avatarUrl, status: m.status, wallets: m.wallets, settings: s, referral: m.referral, createdAt: m.createdAt, channel: m.channel)
     }
 }
