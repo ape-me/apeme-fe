@@ -68,14 +68,19 @@ struct TradeSheetView: View {
     private var sellValue: Double { store.holding?.valueUsd ?? 0 }
     private var sellQty: Double { sellValue > 0 ? (store.holding?.amount ?? 0) * min(usd, sellValue) / sellValue : 0 }
     private var hasAmount: Bool { usd > 0 }
-    /// Jupiter refuses triggers on the pre-IPO names, so Limit is simply not offered there.
-    private var canLimit: Bool { asset.isStock && !asset.isPreIPO }
+    /// Which issuers are off-limits is the BE's to say, so the day Jupiter supports transfer-fee
+    /// mints this opens up with no release.
+    private var canLimit: Bool {
+        guard asset.isStock else { return false }
+        let issuer = app.stocksByMint[asset.mint]?.issuer ?? (asset.isPreIPO ? "prestocks" : "")
+        return OrdersStore.shared.config.allows(issuer: issuer)
+    }
     private var triggerUsd: Double { Double(trigger) ?? 0 }
     /// Live where a socket is feeding it: the stock page writes price frames into the index, so
     /// the sheet reads the same number the page behind it is showing rather than a snapshot.
     private var spot: Double { app.stocksByMint[asset.mint]?.priceUsd ?? asset.priceUsd ?? 0 }
     private var awayPct: Double { spot > 0 && triggerUsd > 0 ? (triggerUsd - spot) / spot * 100 : 0 }
-    private static let orderMaxOpen = 20
+
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -95,6 +100,7 @@ struct TradeSheetView: View {
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(busy)
         .task { if app.wallet == nil { await app.loadWallet() } }
+        .task { await OrdersStore.shared.loadConfig() }
         .onChange(of: amount) { _, _ in store.reset() }
         .onChange(of: pct) { _, _ in store.reset() }
         .onChange(of: scenePhase) { _, p in if p == .active { Task { await store.refresh() } } }
@@ -302,8 +308,8 @@ struct TradeSheetView: View {
         else if limit {
             if let min = OrdersStore.shared.minUsd, usd < min { BigButton(label: "Limit orders start at \(Fmt.cash(min))", style: .off) {} }
             else if triggerUsd <= 0 { BigButton(label: "Set a trigger price", style: .off) { Haptic.light(); settingPrice = true } }
-            else if OrdersStore.shared.open.count >= Self.orderMaxOpen { BigButton(label: "\(Self.orderMaxOpen) open orders is the limit", style: .off) {} }
-            else if side == .buy, usd * 1.015 + 0.48 > cash + 0.000001 { BigButton(label: "Deposit to place this", style: .white) { dismiss(); app.sheet = .deposit } }
+            else if let max = OrdersStore.shared.config.maxOpen, OrdersStore.shared.open.count >= max { BigButton(label: "\(max) open orders is the limit", style: .off) {} }
+            else if side == .buy, usd * (1 + OrdersStore.shared.config.buyFeeRate) + (OrdersStore.shared.config.accountCostUsd ?? 0) > cash + 0.000001 { BigButton(label: "Deposit to place this", style: .white) { dismiss(); app.sheet = .deposit } }
             else { BigButton(label: "Review order", style: side == .sell ? .sell : .buy) { Haptic.light(); reviewing = true; Task { await loadOrderQuote() } } }
         }
         else if side == .buy, estimatedTotal(usd) > cash + 0.000001 { BigButton(label: "Deposit to buy", style: .white) { dismiss(); app.sheet = .deposit } }
@@ -418,7 +424,7 @@ struct TradeSheetView: View {
                                                          side: side == .buy ? "buy" : "sell",
                                                          amountRaw: raw, triggerUsd: triggerUsd)
         } catch {
-            OrdersStore.shared.noteMinimum(from: error)
+            OrdersStore.shared.adopt(error)
             store.error = OrdersStore.message(error)
             app.show(store.error ?? "Couldn't price that order.", error: true)
             reviewing = false

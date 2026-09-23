@@ -148,6 +148,11 @@ actor API {
     }
     // MARK: Limit orders (Jupiter Trigger holds the escrow; signing is the same as a swap)
 
+    /// Public, cached 60s on the BE. Read at launch; nothing about order limits is assumed.
+    func orderConfig() async throws -> OrderConfig {
+        try await fetch("/orders/config", ttl: 60)
+    }
+
     /// `amount` is raw units of what the user gives — USDC 6dp on a buy, the token's decimals on
     /// a sell. `triggerUsd` is the price as the user sees it; the BE handles the multiplier.
     func orderQuote(wallet: String, mint: String, side: String, amountRaw: String, triggerUsd: Double) async throws -> OrderQuote {
@@ -189,6 +194,9 @@ actor API {
         guard (200..<300).contains(code) else {
             let body = try? decoder.decode(ErrorBody.self, from: data)
             if body?.error == "insufficient_usdc" { throw APIError.insufficientFunds(shortUsd: body?.shortUsd ?? 0) }
+            if let b = body, b.minUsd != nil || b.excludedIssuers != nil {
+                throw APIError.orderRefused(reason: b.error, minUsd: b.minUsd, excludedIssuers: b.excludedIssuers)
+            }
             var msg = body?.error ?? "request failed"
             if let rid = body?.requestId ?? (resp as? HTTPURLResponse)?.value(forHTTPHeaderField: "cf-ray") { msg += " · req \(rid)" }
             throw APIError.http(code, msg)

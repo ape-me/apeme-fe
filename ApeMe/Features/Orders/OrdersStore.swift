@@ -15,16 +15,34 @@ final class OrdersStore {
     var error: String?
     /// The order currently being cancelled, so its row can show the work.
     var cancelling: String?
-    /// The minimum is the BE's to set and it can move without a deploy, so it is never assumed —
-    /// it is learned the first time an order is refused for being too small, and gates locally
-    /// from then on.
-    var minUsd: Double?
+    /// Read from the BE at launch. Nothing about order limits is hardcoded: the minimum moves
+    /// from their admin panel, the account cost tracks the SOL price, and the excluded issuers
+    /// decide which stocks offer limit orders at all.
+    var config: OrderConfig = .provisional
+    var minUsd: Double? { config.minUsd }
+
+    func loadConfig() async {
+        if let c = try? await API.shared.orderConfig() { config = c }
+    }
+
+    /// A refusal states the rule it enforced, so the UI adopts it immediately rather than
+    /// waiting for the next config read.
+    func adopt(_ error: Error) {
+        guard case APIError.orderRefused(_, let min, let excluded) = error else { return }
+        config = OrderConfig(minUsd: min ?? config.minUsd, maxOpen: config.maxOpen,
+                             buyFeeBps: config.buyFeeBps, sellFeeBps: config.sellFeeBps,
+                             accountCostUsd: config.accountCostUsd,
+                             excludedIssuers: excluded ?? config.excludedIssuers)
+    }
 
     /// Order failures are rare and specific, so the BE's own words beat a guess. A swap's generic
     /// "trade didn't go through" hides exactly the reason the user needs.
     static func message(_ error: Error) -> String {
         if case APIError.insufficientFunds(let short) = error {
             return short > 0 ? "Add \(Fmt.cash(short)) USDC to place this order" : "Not enough USDC for this order."
+        }
+        if case APIError.orderRefused(let reason, _, _) = error {
+            return reason.prefix(1).uppercased() + reason.dropFirst() + "."
         }
         if case APIError.http(let code, let raw) = error {
             // Drop the request id the API appends for debugging, keep the reason.
@@ -40,11 +58,7 @@ final class OrdersStore {
         return "No connection. Try again."
     }
 
-    /// Pulls the figure out of whatever the BE said, so the button can quote its number back.
-    func noteMinimum(from error: Error) {
-        guard case APIError.http(_, let msg) = error, msg.lowercased().contains("min") else { return }
-        if let m = msg.firstMatch(of: /([0-9]+(?:\.[0-9]+)?)/) { minUsd = Double(m.1) }
-    }
+
 
     private init() {}
 
@@ -58,6 +72,7 @@ final class OrdersStore {
     var reservedUsd: Double { open.filter(\.isBuy).reduce(0) { $0 + ($1.escrowUsd ?? 0) } }
 
     func load() async {
+        if config.minUsd == nil { await loadConfig() }
         guard !loading else { return }
         loading = true
         defer { loading = false; loaded = true }

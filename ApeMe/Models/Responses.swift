@@ -35,8 +35,10 @@ struct TickerResponse: Codable { let updatedAt: String?; let tokens: [TickerItem
 struct ErrorBody: Codable {
     let error: String
     let requestId: String?
-    /// Only on `insufficient_usdc`, so the sheet can name the exact shortfall.
+    /// Refusals carry the rule they enforced, so nothing has to be read back out of the sentence.
     let neededUsd: Double?
     let heldUsd: Double?
     let shortUsd: Double?
+    let minUsd: Double?
+    let excludedIssuers: [String]?
 }
