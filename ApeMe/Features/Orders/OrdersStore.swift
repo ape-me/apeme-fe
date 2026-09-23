@@ -15,6 +15,16 @@ final class OrdersStore {
     var error: String?
     /// The order currently being cancelled, so its row can show the work.
     var cancelling: String?
+    /// The minimum is the BE's to set and it can move without a deploy, so it is never assumed —
+    /// it is learned the first time an order is refused for being too small, and gates locally
+    /// from then on.
+    var minUsd: Double?
+
+    /// Pulls the figure out of whatever the BE said, so the button can quote its number back.
+    func noteMinimum(from error: Error) {
+        guard case APIError.http(_, let msg) = error, msg.lowercased().contains("min") else { return }
+        if let m = msg.firstMatch(of: /([0-9]+(?:\.[0-9]+)?)/) { minUsd = Double(m.1) }
+    }
 
     private init() {}
 

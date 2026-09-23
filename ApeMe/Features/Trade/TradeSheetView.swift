@@ -32,6 +32,7 @@ struct TradeSheetView: View {
     @State private var settingPrice = false
     @State private var orderQuote: OrderQuote?
     @State private var placing = false
+    @State private var livePulse = false
 
     init(side: TradeStore.Side, asset: Asset) {
         self.side = side; self.asset = asset
@@ -70,9 +71,10 @@ struct TradeSheetView: View {
     /// Jupiter refuses triggers on the pre-IPO names, so Limit is simply not offered there.
     private var canLimit: Bool { asset.isStock && !asset.isPreIPO }
     private var triggerUsd: Double { Double(trigger) ?? 0 }
-    private var spot: Double { asset.priceUsd ?? 0 }
+    /// Live where a socket is feeding it: the stock page writes price frames into the index, so
+    /// the sheet reads the same number the page behind it is showing rather than a snapshot.
+    private var spot: Double { app.stocksByMint[asset.mint]?.priceUsd ?? asset.priceUsd ?? 0 }
     private var awayPct: Double { spot > 0 && triggerUsd > 0 ? (triggerUsd - spot) / spot * 100 : 0 }
-    private static let orderMinUsd: Double = 5
     private static let orderMaxOpen = 20
 
     var body: some View {
@@ -298,7 +300,7 @@ struct TradeSheetView: View {
     @ViewBuilder private var primary: some View {
         if usd <= 0 { BigButton(label: "Enter an amount", style: .off) {} }
         else if limit {
-            if usd < Self.orderMinUsd { BigButton(label: "Limit orders start at \(Fmt.cash(Self.orderMinUsd))", style: .off) {} }
+            if let min = OrdersStore.shared.minUsd, usd < min { BigButton(label: "Limit orders start at \(Fmt.cash(min))", style: .off) {} }
             else if triggerUsd <= 0 { BigButton(label: "Set a trigger price", style: .off) { Haptic.light(); settingPrice = true } }
             else if OrdersStore.shared.open.count >= Self.orderMaxOpen { BigButton(label: "\(Self.orderMaxOpen) open orders is the limit", style: .off) {} }
             else if side == .buy, usd * 1.015 + 0.48 > cash + 0.000001 { BigButton(label: "Deposit to place this", style: .white) { dismiss(); app.sheet = .deposit } }
@@ -317,9 +319,16 @@ struct TradeSheetView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 IconButton(symbol: "chevron.left", label: "Back") { settingPrice = false }
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text("Set trigger price").h3Text()
-                    Text("\(asset.symbol) now \(Fmt.usd(spot))").font(.sub).foregroundStyle(Theme.muted)
+                    HStack(spacing: 5) {
+                        Circle().fill(Theme.green).frame(width: 6, height: 6).opacity(livePulse ? 0.35 : 1)
+                        Text("\(asset.symbol) now").font(.sub).foregroundStyle(Theme.muted)
+                        Text(Fmt.usd(spot))
+                            .font(.system(size: 15, weight: .bold)).monospacedDigit()
+                            .foregroundStyle(Theme.green)
+                            .contentTransition(.numericText())
+                    }
                 }
                 Spacer()
                 Color.clear.frame(width: 40, height: 40)
@@ -355,6 +364,8 @@ struct TradeSheetView: View {
             }
         }
         .frame(maxHeight: .infinity)
+        .animation(.easeOut(duration: 0.3), value: spot)
+        .onAppear { withAnimation(.easeInOut(duration: 1.1).repeatForever()) { livePulse = true } }
     }
 
     /// Offsets from spot, the way every exchange offers them — a trigger in one tap.
@@ -390,6 +401,7 @@ struct TradeSheetView: View {
                                                          side: side == .buy ? "buy" : "sell",
                                                          amountRaw: raw, triggerUsd: triggerUsd)
         } catch {
+            OrdersStore.shared.noteMinimum(from: error)
             store.error = TradeStore.message(error)
             app.show(store.error ?? "Couldn't price that order.", error: true)
             reviewing = false
