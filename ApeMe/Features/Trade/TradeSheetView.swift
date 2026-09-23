@@ -99,8 +99,8 @@ struct TradeSheetView: View {
     private var triggerProblem: String? {
         guard triggerUsd > 0, spot > 0, !triggerIsValid else { return nil }
         return side == .buy
-            ? "A buy has to sit below \(Fmt.usd(triggerCeiling)). Above that it fills straight away — use Market instead."
-            : "A sell has to sit above \(Fmt.usd(triggerFloor)). Below that it fills straight away — use Market instead."
+            ? "Limit buys wait for a cheaper price. Set it below \(Fmt.usd(triggerCeiling)), or use Market to buy now."
+            : "Limit sells wait for a higher price. Set it above \(Fmt.usd(triggerFloor)), or use Market to sell now."
     }
     /// Live where a socket is feeding it: the stock page writes price frames into the index, so
     /// the sheet reads the same number the page behind it is showing rather than a snapshot.
@@ -604,8 +604,8 @@ struct TradeSheetView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(side == .buy ? "\(Fmt.cash(q.totalUsd ?? q.escrowUsd)) leaves your wallet" : "\(Fmt.cash(proceedsAtTrigger)) if it fills")
                             .font(.system(size: 20, weight: .semibold)).tracking(-0.4).monospacedDigit()
-                        Text("at \(Fmt.usd(q.triggerUsd)) · \(awayPct >= 0 ? "+" : "−")\(String(format: "%.1f", abs(awayPct)))% from now\(OrdersStore.shared.config.ttlDays.map { " · expires in \($0) days" } ?? "")")
-                            .font(.sub).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                        Text("at \(Fmt.usd(q.triggerUsd)) · \(awayPct >= 0 ? "+" : "−")\(String(format: "%.1f", abs(awayPct)))% from now")
+                            .font(.sub).foregroundStyle(Theme.muted)
                     }
                     Spacer()
                     HStack(spacing: 6) {
@@ -614,11 +614,6 @@ struct TradeSheetView: View {
                     }
                     .padding(.horizontal, 11).frame(height: 32).background(Theme.surface2, in: .capsule)
                 }
-                Text(side == .buy
-                     ? "No trading fee. Nothing is charged for the trade unless it fills, and cancelling returns the \(Fmt.cash(q.escrowUsd))."
-                     : "Cancel any time and your \(asset.symbol) comes back.")
-                    .font(.sub).foregroundStyle(Theme.muted).lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true).padding(.top, 12)
                 Group {
                     if placing {
                         HStack(spacing: 10) { ProgressView().tint(.white); Text("Placing…").font(.system(size: 17, weight: .semibold)) }
@@ -644,18 +639,15 @@ struct TradeSheetView: View {
     /// Solana's charges, on one line. Two rows with a paragraph each said the same thing at four
     /// times the length, next to a "No fee" row that read as a contradiction.
     private func costLine(_ cost: Double, deposit: Double?, account: Double?) -> some View {
-        var parts: [String] = []
-        if let d = deposit, d > 0 { parts.append("\(Fmt.cash(d)) comes back when the order closes") }
-        if let a = account, a > 0 { parts.append("\(Fmt.cash(a)) one-time for holding \(asset.symbol)") }
+        _ = account
         return VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text("Solana costs").font(.system(size: 15)).foregroundStyle(Theme.muted)
                 Spacer()
                 Text(Fmt.cash(cost)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
             }
-            if !parts.isEmpty {
-                Text(parts.joined(separator: " · ")).font(.sub).foregroundStyle(Theme.faint)
-                    .fixedSize(horizontal: false, vertical: true)
+            if let d = deposit, d > 0 {
+                Text("\(Fmt.cash(d)) comes back").font(.sub).foregroundStyle(Theme.faint)
             }
         }
         .padding(.vertical, 12)
