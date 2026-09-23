@@ -125,6 +125,10 @@ struct StockView: View {
     /// Three cards: is it cheap, where is it in its year, is it busy here.
     private func overview(_ s: Stock) -> some View {
         VStack(alignment: .leading, spacing: 22) {
+            // What you hold comes before what the market thinks.
+            if let h = app.wallet?.holdings.first(where: { $0.mint == s.mint && $0.amount > 0 }) {
+                PositionCard(holding: h, symbol: s.symbol)
+            }
             if let mark = fairMark(s), let p = fairPremium(s) {
                 FairValueBlock(stock: s, mark: mark, premium: p, insights: store.insights)
             }

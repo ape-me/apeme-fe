@@ -8,6 +8,7 @@ struct OrdersPanel: View {
     @Environment(AppState.self) private var app
     @State private var store = OrdersStore.shared
     @State private var showPast = false
+    @State private var detail: LimitOrder?
 
     private var open: [LimitOrder] { mint.map(store.open(for:)) ?? store.open }
     private var past: [LimitOrder] { (mint.map(store.all(for:)) ?? store.orders).filter { !$0.isOpen } }
@@ -39,6 +40,7 @@ struct OrdersPanel: View {
             }
         }
         .task { if !store.loaded { await store.load() } }
+        .sheet(item: $detail) { OrderDetailSheet(order: $0) }
     }
 
     private var pills: some View {
@@ -62,6 +64,11 @@ struct OrdersPanel: View {
     }
 
     private func row(_ o: LimitOrder) -> some View {
+        Button { Haptic.selection(); detail = o } label: { rowBody(o) }
+            .buttonStyle(.plain)
+    }
+
+    private func rowBody(_ o: LimitOrder) -> some View {
         let stock = app.stocksByMint[o.mint]
         let away = o.awayPct(from: stock?.priceUsd)
         return HStack(spacing: 12) {
@@ -86,8 +93,10 @@ struct OrdersPanel: View {
             }
             Spacer(minLength: 8)
             if o.isOpen { cancelButton(o) }
+            else { Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint) }
         }
         .frame(minHeight: 64)
+        .contentShape(.rect)
     }
 
     @ViewBuilder private func badge(_ o: LimitOrder) -> some View {

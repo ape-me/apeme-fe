@@ -174,9 +174,55 @@ struct PositionRow: View {
 struct ActivityList: View {
     let activity: [Activity]
 
+    /// What the filter row is set to. Period narrows by day, kind by what happened.
+    enum Period: String, CaseIterable, Identifiable {
+        case all, today, week, month, day
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .all: "All time"; case .today: "Today"; case .week: "Last 7 days"
+            case .month: "Last 30 days"; case .day: "Pick a day"
+            }
+        }
+    }
+    enum Kind: String, CaseIterable, Identifiable {
+        case all, buy, sell, transfer
+        var id: String { rawValue }
+        var label: String {
+            switch self { case .all: "All"; case .buy: "Buys"; case .sell: "Sells"; case .transfer: "Transfers" }
+        }
+        func matches(_ a: Activity) -> Bool {
+            switch self {
+            case .all: true
+            case .buy: a.kind == "buy"
+            case .sell: a.kind == "sell"
+            case .transfer: a.kind == "deposit" || a.kind == "withdraw"
+            }
+        }
+    }
+
+    @State private var period: Period = .all
+    @State private var kind: Kind = .all
+    @State private var pickedDay: Date = .now
+    @State private var showPicker = false
+
+    private var filtered: [Activity] {
+        activity.filter { a in
+            guard kind.matches(a) else { return false }
+            let d = Date(timeIntervalSince1970: TimeInterval(a.ts))
+            switch period {
+            case .all: return true
+            case .today: return Calendar.current.isDateInToday(d)
+            case .week: return d >= Calendar.current.date(byAdding: .day, value: -7, to: .now)!
+            case .month: return d >= Calendar.current.date(byAdding: .day, value: -30, to: .now)!
+            case .day: return Calendar.current.isDate(d, inSameDayAs: pickedDay)
+            }
+        }
+    }
+
     private var groups: [(String, [Activity])] {
         var out: [(String, [Activity])] = []
-        let sorted = activity.sorted { $0.ts > $1.ts }   // newest first, whatever order the BE sent
+        let sorted = filtered.sorted { $0.ts > $1.ts }   // newest first, whatever order the BE sent
         let pending = sorted.filter { $0.status == "pending" }
         if !pending.isEmpty { out.append(("Pending", pending)) }
         for a in sorted where a.status != "pending" {
@@ -199,12 +245,76 @@ struct ActivityList: View {
             EmptyState(title: "Nothing yet.", subtitle: "Your deposits and trades show up here.")
         } else {
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(groups, id: \.0) { label, items in
-                    Text(label).font(.eyebrow).foregroundStyle(Theme.muted).padding(.top, 18)
-                    ForEach(items) { ActivityRow(activity: $0) }
+                filters
+                if groups.isEmpty {
+                    EmptyState(title: "Nothing in this view.", subtitle: "Try another day or clear the filter.")
+                } else {
+                    ForEach(groups, id: \.0) { label, items in
+                        Text(label).font(.eyebrow).foregroundStyle(Theme.muted).padding(.top, 18)
+                        ForEach(items) { ActivityRow(activity: $0) }
+                    }
                 }
             }
+            .sheet(isPresented: $showPicker) {
+                VStack(spacing: 16) {
+                    HStack {
+                        Text("Pick a day").h2Text()
+                        Spacer()
+                        IconButton(symbol: "xmark", label: "Close") { showPicker = false }
+                    }
+                    DatePicker("", selection: $pickedDay, in: ...Date.now, displayedComponents: .date)
+                        .datePickerStyle(.graphical)
+                        .tint(Theme.buy)
+                    BigButton(label: "Show that day", style: .buy) { period = .day; showPicker = false }
+                }
+                .padding(.horizontal, 20).padding(.top, 14)
+                .presentationDetents([.height(500)])
+                .presentationBackground(Theme.surface)
+                .presentationDragIndicator(.visible)
+            }
         }
+    }
+
+    /// Period on the left as a menu, kind as chips — the two questions asked of a statement.
+    private var filters: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 8) {
+                Menu {
+                    ForEach(Period.allCases) { p in
+                        Button(p.label) {
+                            Haptic.selection()
+                            if p == .day { showPicker = true } else { period = p }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 5) {
+                        Text(periodLabel)
+                        Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(period == .all ? Theme.ink : Theme.ground)
+                    .padding(.horizontal, 12).frame(height: 32)
+                    .background(period == .all ? Theme.surface2 : Theme.ink, in: .capsule)
+                }
+                ForEach(Kind.allCases) { k in
+                    Button { Haptic.selection(); kind = k } label: {
+                        Text(k.label)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(kind == k ? Theme.ground : Theme.ink)
+                            .padding(.horizontal, 12).frame(height: 32)
+                            .background(kind == k ? Theme.ink : Theme.surface2, in: .capsule)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .scrollIndicators(.hidden)
+        .padding(.top, 14)
+    }
+
+    private var periodLabel: String {
+        period == .day ? pickedDay.formatted(.dateTime.month(.abbreviated).day()) : period.label
     }
 }
 
