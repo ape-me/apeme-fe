@@ -373,7 +373,25 @@ struct TradeSheetView: View {
                 }
             }
         } else if let min, value < min {
-            BigButton(label: "Limit orders start at \(Fmt.cash(min))", style: .off) {}
+            // A dead grey button states the rule and leaves the user stuck. Give the way out:
+            // top the order up to the floor when the cash is there, or go to market when not.
+            VStack(spacing: 10) {
+                Text(limitSell
+                     ? "A limit order needs \(Fmt.cash(min)) — that's the value at today's price, not what your trigger would return."
+                     : "A limit order needs \(Fmt.cash(min)). Below that Jupiter won't hold it.")
+                    .font(.sub).foregroundStyle(Theme.muted).lineSpacing(2)
+                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                if !limitSell, min * (1 + OrdersStore.shared.config.buyFeeRate) + (OrdersStore.shared.config.accountCostUsd ?? 0) <= cash + 0.000001 {
+                    BigButton(label: "Make it \(Fmt.cash(min))", style: .buy) {
+                        Haptic.light(); amount = String(format: "%g", min)
+                    }
+                } else {
+                    BigButton(label: side == .buy ? "Buy at market instead" : "Sell at market instead", style: .white) {
+                        Haptic.light(); limit = false
+                        if limitSell { amount = String(format: "%.2f", floor(sellValue * 100) / 100); pct = 100 }
+                    }
+                }
+            }
         } else if triggerUsd <= 0 {
             BigButton(label: "Set a trigger price", style: .off) { Haptic.light(); settingPrice = true }
         } else if let max = OrdersStore.shared.config.maxOpen, OrdersStore.shared.open.count >= max {
