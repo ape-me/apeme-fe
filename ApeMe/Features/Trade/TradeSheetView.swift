@@ -360,11 +360,17 @@ struct TradeSheetView: View {
                 Haptic.light(); tokens = Fmt.plain(heldQty)
             }
         } else if limitSell, let min, sellValue < min - 0.005 {
-            // The whole position is under the floor, so no trigger will ever be taken. Market
-            // sells have no minimum, so send them there rather than leaving a dead control.
-            BigButton(label: "Only \(Fmt.cash(sellValue)) here · sell at market", style: .white) {
-                Haptic.light(); limit = false
-                amount = String(format: "%.2f", floor(sellValue * 100) / 100); pct = 100
+            // The floor is measured on what the position is worth today, not on what the trigger
+            // would return — Jupiter values the order when it is placed. Saying only the figure
+            // read as the proceeds, which is a different number and a worrying one.
+            VStack(spacing: 10) {
+                Text("A limit order needs \(Fmt.cash(min)). This is worth \(Fmt.cash(sellValue)) at today's price — that's what counts, not what your trigger would return.")
+                    .font(.sub).foregroundStyle(Theme.muted).lineSpacing(2)
+                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                BigButton(label: "Sell at market instead", style: .white) {
+                    Haptic.light(); limit = false
+                    amount = String(format: "%.2f", floor(sellValue * 100) / 100); pct = 100
+                }
             }
         } else if let min, value < min {
             BigButton(label: "Limit orders start at \(Fmt.cash(min))", style: .off) {}
