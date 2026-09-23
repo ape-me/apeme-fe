@@ -137,7 +137,13 @@ struct NewsLead: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            art.frame(maxWidth: .infinity).aspectRatio(16 / 9, contentMode: .fill)
+            // A 16:9 banner has to be bounded by the width it is offered. `aspectRatio(.fill)`
+            // does the opposite — it grows past the proposal to keep the ratio, which made the
+            // whole page wider than the screen and shunted every row left of centre.
+            Color.clear
+                .aspectRatio(16 / 9, contentMode: .fit)
+                .overlay { art.scaledToFill() }
+                .clipped()
                 .clipShape(.rect(cornerRadius: 14))
             HStack(spacing: 5) {
                 if showSymbol {

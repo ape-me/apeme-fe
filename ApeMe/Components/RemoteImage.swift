@@ -38,7 +38,11 @@ struct RemoteImage: View {
         ZStack {
             Theme.surface2
             if let image {
-                Image(uiImage: image).resizable().scaledToFill()
+                // Drawn through a flexible layer: `scaledToFill` reports a size bigger than the
+                // space it was offered, and on its own it would widen whatever contains it.
+                Color.clear
+                    .overlay { Image(uiImage: image).resizable().scaledToFill() }
+                    .clipped()
             } else if !fallback.isEmpty {
                 // The letter replaces the logo, it never sits behind it. Drawn underneath, it
                 // showed through every logo with a transparent background — the stray D on DELL.
