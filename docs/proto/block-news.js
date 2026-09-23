@@ -89,13 +89,26 @@ function yearRange(ins,s){
     <div class="sub" style="color:var(--ink);font-weight:600">${where}</div></div></div>`;
 }
 
-/* Our own market — the one thing no brokerage can show them. */
-function tradingHere(s){
+/* Our own market — the one thing no brokerage can show them. The depth ladder turns "very large
+   orders move the price" into the actual number at each size. */
+function tradingHere(s,depth){
+  const levels=(depth&&depth.levels)||[];
+  const notable=levels.find(l=>l.usd>=1000&&(l.impactPct||0)>1);
+  const tint=l=>l.impactPct==null?'var(--faint)':l.impactPct>3?'var(--red)':l.impactPct>1?'var(--amber)':'var(--ink)';
+  const txt=l=>l.impactPct==null?'—':(l.impactPct<0.01?'0%':l.impactPct.toFixed(2)+'%');
+  const sentence=notable
+    ? `This pool is thin — a ${fmt.big(notable.usd)} order moves the price ${notable.impactPct.toFixed(2)}%.`
+    : 'Small orders fill at the price above. Very large ones move it.';
   return `<div><div class="sect">Trading here today</div><div class="kcard pad" style="display:flex;flex-direction:column;gap:14px">
     <div style="display:flex;justify-content:space-between;font-size:15px"><span class="muted">Traded</span><b class="mono">${fmt.big(s.stockVol24hUsd)}</b></div>
     <div style="display:flex;justify-content:space-between;font-size:15px"><span class="muted">In the pool</span><b class="mono">${fmt.big(s.liquidityUsd)}</b></div>
     ${splitBar(s.buys24h,s.sells24h,'buys','sells')}
-    <div class="sub" style="line-height:18px">Small orders fill at the price above. Very large ones move it.</div></div></div>`;
+    ${levels.length?`<div style="height:1px;background:var(--line)"></div>
+      <div><div style="font-size:12px;font-weight:600;color:var(--faint);margin-bottom:8px">What it costs to buy</div>
+      <div style="display:flex;gap:8px">${levels.map(l=>`<div class="mono" style="flex:1;text-align:center;padding:8px 0;border-radius:10px;background:var(--surface2)">
+        <div style="font-size:12px;font-weight:600;color:var(--muted)">${fmt.big(l.usd)}</div>
+        <div style="font-size:13px;font-weight:700;margin-top:3px;color:${tint(l)}">${txt(l)}</div></div>`).join('')}</div></div>`:''}
+    <div class="sub" style="line-height:18px;color:${notable?'var(--amber)':'var(--muted)'}">${sentence}</div></div></div>`;
 }
 
 /* Dividends are real here: Backed reinvests them and the token balance grows. Never a bare yield. */

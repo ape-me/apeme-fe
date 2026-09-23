@@ -142,7 +142,7 @@ SCREENS.stock={
     <div class="scroll" id="sc"><div id="body"><div class="pad"><div class="skel" style="width:40%;margin-top:12px"></div><div class="skel" style="height:44px;margin-top:10px"></div><div class="skel" style="height:200px;margin-top:20px"></div></div></div></div>`; },
   async mount(el,p){
     let s; try{ s=await api('/stocks/'+p.mint); state.stocksByMint[s.mint]=s; }catch(e){ s=state.stocksByMint[p.mint]; if(!s){ el.querySelector('#body').innerHTML=`<div class="errbar">Couldn't load this stock.</div>`; return; } }
-    const body=el.querySelector('#body'); let range='1d', longR='1w', stab='overview', ins=null, fresh=0;
+    const body=el.querySelector('#body'); let range='1d', longR='1w', stab='overview', ins=null, depth=null, fresh=0;
     const RANGES={live:{api:'5m',label:'LIVE',cap:'live'},'1h':{api:'1h',label:'1H',cap:'past hour'},'1d':{api:'1d',label:'1D',cap:'today'},'1w':{api:'1w',label:'7D',cap:'past 7 days'},'1m':{api:'1m',label:'30D',cap:'past 30 days'},all:{api:'1m',label:'ALL',cap:'all time'}};
     el.querySelector('#csub').innerHTML=`<span class="${fmt.cls(s.change24h)}">${fmt.arrow(s.change24h)}</span> today`;
     const abs=s.change24h==null?null:s.priceUsd-s.priceUsd/(1+s.change24h/100);
@@ -181,7 +181,7 @@ SCREENS.stock={
         return `<div class="pad" style="margin-top:20px"><div class="sect">Fair value</div><div class="kcard">${kv('You pay',fmt.usd(s.priceUsd))}${kv(worth,fmt.usd(mark))}${kv(p>0?'Premium':p<0?'Discount':'Gap',`<span style="display:inline-flex;align-items:center;gap:8px">${gap!=null&&!neutral?fmt.usd(Math.abs(gap)):''}${premiumBadge(s)}</span>`)}<div class="sub" style="padding:12px 0">${neutral?`Trading at fair value \u2014 ${what}.`:`You're paying ${fmt.usd(Math.abs(gap))} ${p>0?'more':'less'} than ${what}.`}</div></div></div>`; })():''}`; })()}
       <div class="stack" style="padding-top:20px">
         ${yearRange(ins,s)}
-        ${tradingHere(s)}
+        ${tradingHere(s,depth)}
         ${dividendCard(ins)}
       </div>`;
     const paintStab=()=>{ const m=el.querySelector('#stab'); if(!m) return;
@@ -193,6 +193,7 @@ SCREENS.stock={
     el.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{ stab=b.dataset.st; el.querySelectorAll('[data-st]').forEach(x=>x.classList.toggle('on',x===b)); paintStab(); });
     paintStab();
     /* insights arrive after the first paint; Overview and About redraw when they do */
+    api(`/stocks/${s.mint}/depth`,60000).then(d=>{ if(el.isConnected){ depth=d; if(stab==='overview') paintStab(); } }).catch(()=>{});
     api(`/stocks/${s.mint}/insights`,300000).then(d=>{ if(!el.isConnected) return; ins=d;
       const nq=el.querySelector('#nqline'); if(nq) nq.innerHTML=nasdaqCard(ins);
       el.querySelector('#earn').innerHTML=earningsNote(ins); if(stab!=='news') paintStab(); }).catch(()=>{});

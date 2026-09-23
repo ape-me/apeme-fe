@@ -137,9 +137,11 @@ struct RangeBar: View {
     }
 }
 
-/// Our own market — the one thing no brokerage app can show them.
+/// Our own market — the one thing no brokerage app can show them. The depth ladder turns
+/// "very large orders move the price" into the actual number at each size.
 struct TradingHereCard: View {
     let stock: Stock
+    var depth: Depth?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -149,12 +151,53 @@ struct TradingHereCard: View {
                     line("Traded", Fmt.big(stock.stockVol24hUsd))
                     line("In the pool", Fmt.big(stock.liquidityUsd))
                     SplitBar(a: stock.buys24h, b: stock.sells24h)
-                    Text("Small orders fill at the price above. Very large ones move it.")
-                        .font(.sub).foregroundStyle(Theme.muted).lineSpacing(2)
-                        .fixedSize(horizontal: false, vertical: true)
+                    if let levels = depth?.levels, !levels.isEmpty {
+                        Divider().overlay(Theme.line)
+                        ladder(levels)
+                    }
+                    Text(sentence)
+                        .font(.sub).foregroundStyle(depth?.notable != nil ? Theme.amber : Theme.muted)
+                        .lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
+    }
+
+    /// What each order size costs you, side by side, so the shape of the pool reads at a glance.
+    private func ladder(_ levels: [Depth.Level]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("What it costs to buy").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint)
+            HStack(spacing: 8) {
+                ForEach(levels) { level in
+                    VStack(spacing: 3) {
+                        Text(Fmt.big(level.usd)).font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)
+                        Text(impactText(level)).font(.system(size: 13, weight: .bold)).foregroundStyle(tint(level))
+                    }
+                    .monospacedDigit()
+                    .frame(maxWidth: .infinity).padding(.vertical, 8)
+                    .background(Theme.surface2, in: .rect(cornerRadius: 10))
+                }
+            }
+        }
+    }
+
+    private func impactText(_ l: Depth.Level) -> String {
+        guard let p = l.impactPct else { return "—" }
+        return p < 0.01 ? "0%" : String(format: "%.2f%%", p)
+    }
+
+    private func tint(_ l: Depth.Level) -> Color {
+        guard let p = l.impactPct else { return Theme.faint }
+        if p > 3 { return Theme.red }
+        if p > 1 { return Theme.amber }
+        return Theme.ink
+    }
+
+    private var sentence: String {
+        if let thin = depth?.notable, let p = thin.impactPct {
+            return "This pool is thin — a \(Fmt.big(thin.usd)) order moves the price \(String(format: "%.2f", p))%."
+        }
+        return "Small orders fill at the price above. Very large ones move it."
     }
 
     private func line(_ k: String, _ v: String) -> some View {

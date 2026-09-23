@@ -131,7 +131,7 @@ struct StockView: View {
             } else if store.insightsLoading {
                 InsightCardSkeleton(title: "Past 12 months", height: 92)
             }
-            TradingHereCard(stock: s)
+            TradingHereCard(stock: s, depth: store.depth)
             if let d = store.insights?.dividends { DividendCard(dividends: d) }
             else if store.insightsLoading { InsightCardSkeleton(title: "Dividends", height: 84) }
         }

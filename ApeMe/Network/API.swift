@@ -58,6 +58,10 @@ actor API {
     func trades(_ mint: String, limit: Int = 40) async throws -> TradesResponse {
         try await fetch("/tokens/\(mint)/trades?limit=\(limit)", ttl: 3)
     }
+    /// What each order size costs in price impact. Works for memes too.
+    func depth(_ mint: String) async throws -> Depth {
+        try await fetch("/stocks/\(mint)/depth", ttl: 60)
+    }
     /// Nasdaq, company, earnings and the token's dividend rebase. Cached 5 min on the BE.
     func insights(_ mint: String) async throws -> Insights {
         try await fetch("/stocks/\(mint)/insights", ttl: 300)
