@@ -98,7 +98,7 @@ SCREENS.home={
         let d; try{ d=await api(`/news?limit=30${mints.length?'&mints='+mints.join(','):''}`,60000); }catch(e){ body.innerHTML='<div class="sec"><div class="errbar">Couldn\'t load the news.</div></div>'; return null; }
         if(!el.isConnected) return null;
         body.innerHTML=(d.items||[]).length
-          ? `<div class="sec"><div class="head"><div><div class="h2">Latest</div><div class="sub">${mints.length?'Your stocks first, then the rest of the market':'Newest across every stock'}</div></div></div><div class="nlist">${d.items.map(i=>newsRow(i)).join('')}</div></div>`
+          ? `<div class="sec"><div class="head"><div><div class="h2">Latest</div><div class="sub">${mints.length?'Your stocks first, then the rest of the market':'Newest across every stock'}</div></div></div>${d.items[0].articleImage?newsLead(d.items[0]):''}<div class="nlist">${(d.items[0].articleImage?d.items.slice(1):d.items).map(i=>newsRow(i)).join('')}</div></div>`
           : '<div class="empty"><b>No news yet.</b><span class="sub">Headlines land here within 20 minutes of publication.</span></div>';
         bind(); bindNews(body); return null; },
       watch(){ const w=state.watch.map(m=>state.stocksByMint[m]).filter(Boolean); return `<div class="sec">${w.length?`<div class="card">${w.map(s=>stockRow(s,skin)).join('')}</div>`:`<div class="empty">${I.star(false)}<b>Nothing watched yet</b><span class="sub">Tap the star on any stock to keep it here.</span><button class="link" data-tab="markets">Explore markets ${I.chev}</button></div>`}</div>`; },

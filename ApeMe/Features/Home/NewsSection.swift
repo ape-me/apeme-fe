@@ -68,9 +68,14 @@ struct NewsSection: View {
                         .font(.sub).foregroundStyle(Theme.muted)
                 }
                 .padding(.top, 20).padding(.bottom, 2)
-                NewsList(items: store.feed,
-                         open: { openArticle($0, openURL) },
-                         openStock: { app.openStock($0) })
+                if let first = store.feed.first, first.photoURL != nil {
+                    NewsLead(item: first, open: { openArticle($0, openURL) }, openStock: { app.openStock($0) })
+                    NewsList(items: Array(store.feed.dropFirst()),
+                             open: { openArticle($0, openURL) }, openStock: { app.openStock($0) })
+                } else {
+                    NewsList(items: store.feed,
+                             open: { openArticle($0, openURL) }, openStock: { app.openStock($0) })
+                }
             }
         }
         .padding(.horizontal, 20)

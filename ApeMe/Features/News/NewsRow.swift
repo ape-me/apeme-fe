@@ -113,6 +113,49 @@ struct NewsRow: View {
     private var dot: some View { Text("·").foregroundStyle(Theme.faint) }
 }
 
+/// The top story earns a picture at full width. Only when the article actually brought one —
+/// a stock logo stretched to 16:9 is worse than no lead at all.
+struct NewsLead: View {
+    let item: NewsItem
+    var showSymbol = true
+    let open: (NewsItem) -> Void
+    let openStock: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            RemoteImage(url: item.photoURL, fallback: "")
+                .frame(maxWidth: .infinity).aspectRatio(16 / 9, contentMode: .fill)
+                .clipShape(.rect(cornerRadius: 14))
+            HStack(spacing: 5) {
+                if showSymbol {
+                    Button { openStock(item.mint) } label: {
+                        HStack(spacing: 4) {
+                            Text(item.symbol).foregroundStyle(Theme.ink)
+                            if let c = item.change24h { Text(Fmt.arrow(c, 2)).foregroundStyle(Theme.change(c)) }
+                        }
+                        .font(.system(size: 12, weight: .bold)).monospacedDigit().lineLimit(1)
+                    }
+                    .buttonStyle(.plain)
+                    Text("·").foregroundStyle(Theme.faint)
+                }
+                Text(item.source).lineLimit(1)
+                if let ts = item.publishedAt { Text("·").foregroundStyle(Theme.faint); Text("\(Fmt.ago(ts)) ago").lineLimit(1) }
+                if let i = item.impactBadge { NewsBadge.impact(i).padding(.leading, 2) }
+                if let d = item.direction { NewsBadge.direction(d) }
+                Spacer(minLength: 0)
+            }
+            .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.muted)
+            Text(item.title)
+                .font(.system(size: 19, weight: .bold)).tracking(-0.4).lineSpacing(3)
+                .foregroundStyle(Theme.ink).multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 14)
+        .contentShape(.rect)
+        .onTapGesture { open(item) }
+    }
+}
+
 /// A list of headlines with hairlines between, and nothing above the first or below the last.
 struct NewsList: View {
     let items: [NewsItem]

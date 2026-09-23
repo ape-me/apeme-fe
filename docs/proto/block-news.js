@@ -24,6 +24,15 @@ function newsRow(i,{sym=true,thumb=true}={}){
     </span></div>`;
 }
 
+function newsLead(i){
+  NEWS_BY_ID.set(i.id,i);
+  const b=newsBadges(i);
+  return `<div class="nlead" data-nid="${esc(i.id)}">
+    <img src="${esc(imgSrc(i.articleImage))}" alt="" onerror="this.closest('.nlead').classList.add('nopic')">
+    <div class="nmeta" style="margin-top:10px"><b class="nsym" data-nstock="${esc(i.mint)}">${esc(i.symbol)}${i.change24h!=null?` <span class="${fmt.cls(i.change24h)}">${fmt.arrow(i.change24h,2)}</span>`:''}</b><span class="faint">·</span><span>${esc(i.source)}</span><span class="faint">·</span><span>${fmt.ago(i.publishedAt)} ago</span>${b?`<span class="nbs">${b}</span>`:''}</div>
+    <div class="nleadtitle">${esc(i.title)}</div></div>`;
+}
+
 function bindNews(scope){
   scope.querySelectorAll('[data-nid]').forEach(e=>e.onclick=ev=>{ ev.stopPropagation(); const i=NEWS_BY_ID.get(e.dataset.nid); if(i) articleSheet(i); });
   scope.querySelectorAll('[data-nstock]').forEach(e=>e.onclick=ev=>{ ev.stopPropagation(); push(state.mode==='ape'?'floor':'stock',{mint:e.dataset.nstock}); });
@@ -173,7 +182,9 @@ async function paintNewsList(mount,path,symbol){
   if(!mount.isConnected) return;
   if(!items.length){ mount.innerHTML=`<div class="empty" style="margin-top:20px"><b>No news yet for ${esc(symbol)}</b><span class="sub">Headlines land here within 20 minutes of publication.</span></div>`; return; }
   const render=()=>{
-    mount.innerHTML=`<div class="pad" style="padding-top:4px"><div class="nlist">${items.map(i=>newsRow(i,{sym:false,thumb:false})).join('')}</div>
+    const [first,...rest]=items;
+    const lead=first.articleImage?newsLead(first):'';
+    mount.innerHTML=`<div class="pad" style="padding-top:4px">${lead}<div class="nlist">${(lead?rest:items).map(i=>newsRow(i,{sym:false,thumb:false})).join('')}</div>
       ${items.length>=5?`<button class="btn ghost" id="more" style="width:100%;margin-top:16px">More headlines</button>`:''}</div>`;
     bindNews(mount);
     const more=mount.querySelector('#more');
