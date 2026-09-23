@@ -9,6 +9,11 @@ struct StockView: View {
 
     init(mint: String) { _store = State(initialValue: StockStore(mint: mint)) }
 
+    private func setCompact(_ v: Bool) {
+        guard v != compact else { return }
+        withAnimation(.easeOut(duration: 0.15)) { compact = v }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             topbar
@@ -23,9 +28,10 @@ struct StockView: View {
             }
             .coordinateSpace(name: "stock")
             .scrollIndicators(.hidden)
+            .modifier(CompactOnScroll(past: 80) { setCompact($0) })
             .onPreferenceChange(ScrollOffsetKey.self) { y in
-                let v = y > 120
-                if v != compact { withAnimation(.easeOut(duration: 0.15)) { compact = v } }
+                // iOS 17 path. Harmless on 18+, where the modifier above has already answered.
+                setCompact(y > 80)
             }
         }
         .background(Theme.ground)
@@ -53,10 +59,13 @@ struct StockView: View {
                 HStack {
                     BackButton()
                     Spacer()
-                    VStack(spacing: 0) {
-                        Text(s.symbol).font(.system(size: 14, weight: .semibold))
-                        Text("\(Text(Fmt.arrow(s.change24h)).foregroundStyle(Theme.change(s.change24h))) today")
-                            .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.muted)
+                    VStack(spacing: 1) {
+                        HStack(spacing: 6) {
+                            Logo(url: s.logoURL, symbol: s.symbol, size: 18)
+                            Text(s.symbol).font(.system(size: 15, weight: .semibold))
+                        }
+                        Text("\(Fmt.usd(store.stock?.priceUsd)) · \(Text(Fmt.pct(s.change24h)).foregroundStyle(Theme.change(s.change24h)))")
+                            .font(.system(size: 12, weight: .medium)).monospacedDigit().foregroundStyle(Theme.muted)
                     }
                     Spacer()
                     Color.clear.frame(width: 40, height: 40)
@@ -211,7 +220,8 @@ struct StockView: View {
             Text(scrubbing ? Fmt.dateTime(store.scrub!.t) : store.range.caption.capitalized)
                 .font(.system(size: 17)).foregroundStyle(Theme.muted)
                 .padding(.top, 4)
-            if let ins = store.insights, !scrubbing { NasdaqCard(insights: ins).padding(.top, 14) }
+            NasdaqCard(insights: store.insights, loading: store.insightsLoading, dimmed: scrubbing)
+                .padding(.top, 14)
         }
         .padding(.horizontal, 20).padding(.top, 8)
     }
@@ -401,6 +411,25 @@ struct FairValueBlock: View {
                 Text(sentence).font(.sub).foregroundStyle(Theme.muted).lineSpacing(2)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
             }
+        }
+    }
+}
+
+
+/// `onScrollGeometryChange` is the reliable way to know how far a scroll view has travelled;
+/// the preference-key trick it replaces can silently stop reporting and strand the page with no
+/// title. Older systems keep the preference path.
+private struct CompactOnScroll: ViewModifier {
+    let past: CGFloat
+    let onChange: (Bool) -> Void
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y > past } action: { _, v in
+                onChange(v)
+            }
+        } else {
+            content
         }
     }
 }
