@@ -33,6 +33,9 @@ struct TradeSheetView: View {
     @State private var orderQuote: OrderQuote?
     @State private var placing = false
     @State private var livePulse = false
+    /// A limit sell is priced in tokens: you choose how many to sell and at what price. Dollars
+    /// would be computed at today's price and would be wrong the moment the trigger differs.
+    @State private var tokens = ""
 
     init(side: TradeStore.Side, asset: Asset) {
         self.side = side; self.asset = asset
@@ -76,6 +79,13 @@ struct TradeSheetView: View {
         return OrdersStore.shared.config.allows(issuer: issuer)
     }
     private var triggerUsd: Double { Double(trigger) ?? 0 }
+    private var limitSell: Bool { limit && side == .sell }
+    private var tokenQty: Double { Double(tokens) ?? 0 }
+    private var heldQty: Double { store.holding?.amount ?? 0 }
+    /// What the BE weighs against the minimum: the position's value at today's price.
+    private var limitSellUsd: Double { heldQty > 0 ? sellValue * tokenQty / heldQty : 0 }
+    /// What the order would actually return if it fills at the trigger.
+    private var proceedsAtTrigger: Double { tokenQty * triggerUsd }
     /// Live where a socket is feeding it: the stock page writes price frames into the index, so
     /// the sheet reads the same number the page behind it is showing rather than a snapshot.
     private var spot: Double { app.stocksByMint[asset.mint]?.priceUsd ?? asset.priceUsd ?? 0 }
@@ -207,10 +217,18 @@ struct TradeSheetView: View {
             Spacer(minLength: 12)
             VStack(spacing: 8) {
                 HStack(spacing: 10) {
-                    Image("usdc").resizable().frame(width: 36, height: 36).clipShape(.circle)
-                    Text(amount.isEmpty ? "0" : amount).font(.amount).tracking(-2.8).monospacedDigit().foregroundStyle(Theme.ink)
+                    if limitSell { assetImage(36) } else { Image("usdc").resizable().frame(width: 36, height: 36).clipShape(.circle) }
+                    Text(limitSell ? (tokens.isEmpty ? "0" : tokens) : (amount.isEmpty ? "0" : amount))
+                        .font(.amount).tracking(-2.8).monospacedDigit().foregroundStyle(Theme.ink)
+                        .lineLimit(1).minimumScaleFactor(0.5)
                 }
-                if side == .sell, hasAmount, sellValue > 0 {
+                if limitSell {
+                    Text(triggerUsd > 0 && tokenQty > 0
+                         ? "\(asset.symbol) · you'd get \(Fmt.cash(proceedsAtTrigger)) at \(Fmt.usd(triggerUsd))"
+                         : "\(asset.symbol) · you hold \(Fmt.qty(heldQty, symbol: ""))")
+                        .font(.system(size: 15)).monospacedDigit().foregroundStyle(Theme.muted)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                } else if side == .sell, hasAmount, sellValue > 0 {
                     Text("≈ \(Fmt.qty(sellQty, symbol: asset.symbol)) · \(Fmt.n(min(100, usd / sellValue * 100).rounded()))%").font(.system(size: 15)).monospacedDigit().foregroundStyle(Theme.muted)
                 }
             }
@@ -219,6 +237,11 @@ struct TradeSheetView: View {
             Spacer(minLength: 12)
             if side == .buy {
                 chips((settings.quickBuyUsd ?? [10, 25, 50, 100]).map { ("$" + Fmt.n($0), nil, $0) } + [("Max", nil, maxCash)], selected: usd) { amount = String(format: $0 == maxCash ? "%.2f" : "%g", $0); pct = nil }
+            } else if limitSell {
+                chips((settings.quickSellPct ?? [25, 50, 100]).map { p in (Fmt.n(p) + "%", Fmt.qty(heldQty * p / 100, symbol: ""), heldQty * p / 100) }, selected: tokenQty) { q in
+                    tokens = Fmt.qty(q, symbol: "").replacingOccurrences(of: ",", with: "")
+                    pct = abs(q - heldQty) < heldQty * 0.0001 ? 100 : nil
+                }
             } else {
                 chips((settings.quickSellPct ?? [25, 50, 100]).map { p in (Fmt.n(p) + "%", Fmt.usd(sellValue * p / 100), sellValue * p / 100) }, selected: usd) { v in
                     amount = String(format: "%.2f", floor(v * 100) / 100); pct = abs(v - sellValue) < 0.005 ? 100 : nil
@@ -227,6 +250,14 @@ struct TradeSheetView: View {
             Spacer(minLength: 12)
             Numpad { key in
                 pct = nil
+                if limitSell {
+                    switch key {
+                    case "⌫": tokens = String(tokens.dropLast())
+                    case ".": if !tokens.contains(".") { tokens = (tokens.isEmpty ? "0" : tokens) + "." }
+                    default: if tokens.count < 12 { tokens = tokens == "0" ? key : tokens + key }
+                    }
+                    return
+                }
                 switch key {
                 case "⌫": amount = String(amount.dropLast())
                 case ".": if !amount.contains(".") { amount = (amount.isEmpty ? "0" : amount) + "." }
@@ -304,12 +335,19 @@ struct TradeSheetView: View {
 
     /// Amount step button. Purely local — nothing is fetched until Review order.
     @ViewBuilder private var primary: some View {
-        if usd <= 0 { BigButton(label: "Enter an amount", style: .off) {} }
+        if limitSell, tokenQty <= 0 { BigButton(label: "Enter an amount", style: .off) {} }
+        else if limitSell, tokenQty > heldQty + heldQty * 0.0001 {
+            BigButton(label: "You hold \(Fmt.qty(heldQty, symbol: asset.symbol)) · Sell all", style: .white) {
+                tokens = Fmt.qty(heldQty, symbol: "").replacingOccurrences(of: ",", with: ""); pct = 100
+            }
+        }
+        else if usd <= 0, !limitSell { BigButton(label: "Enter an amount", style: .off) {} }
         else if limit {
             // Jupiter measures the output side, so a position worth less than the floor can
             // never carry a trigger at any price. Market sells have no minimum, so send them
             // there rather than leaving a control that cannot work.
             if side == .sell, let min = OrdersStore.shared.minUsd, sellValue < min - 0.005 {
+                // The whole position is under the floor, so no trigger will ever be taken.
                 BigButton(label: "Only \(Fmt.cash(sellValue)) here · sell at market", style: .white) {
                     Haptic.light()
                     limit = false
@@ -317,7 +355,7 @@ struct TradeSheetView: View {
                     pct = 100
                 }
             }
-            else if let min = OrdersStore.shared.minUsd, usd < min { BigButton(label: "Limit orders start at \(Fmt.cash(min))", style: .off) {} }
+            else if let min = OrdersStore.shared.minUsd, (limitSell ? limitSellUsd : usd) < min { BigButton(label: "Limit orders start at \(Fmt.cash(min))", style: .off) {} }
             else if triggerUsd <= 0 { BigButton(label: "Set a trigger price", style: .off) { Haptic.light(); settingPrice = true } }
             else if let max = OrdersStore.shared.config.maxOpen, OrdersStore.shared.open.count >= max { BigButton(label: "\(max) open orders is the limit", style: .off) {} }
             else if side == .buy, usd * (1 + OrdersStore.shared.config.buyFeeRate) + (OrdersStore.shared.config.accountCostUsd ?? 0) > cash + 0.000001 { BigButton(label: "Deposit to place this", style: .white) { dismiss(); app.sheet = .deposit } }
@@ -413,10 +451,12 @@ struct TradeSheetView: View {
     private var orderAmountRaw: String? {
         if side == .buy { return String(Int64((usd * 1_000_000).rounded())) }
         guard let h = store.holding, let raw = h.raw, !raw.isEmpty, raw != "0",
-              let total = Decimal(string: raw), let value = h.valueUsd, value > 0, usd > 0 else { return nil }
+              let total = Decimal(string: raw), h.amount > 0, tokenQty > 0 else { return nil }
         // All of it, within rounding: send the exact balance so no dust is stranded.
-        if usd >= value - 0.005 || pct == 100 { return raw }
-        var scaled = total * Decimal(usd) / Decimal(value)
+        if tokenQty >= h.amount * 0.9999 || pct == 100 { return raw }
+        // Scale the raw balance, never uiAmount x 10^decimals — on a rebased xStock the
+        // multiplier makes those differ and the order would ask for more than is held.
+        var scaled = total * Decimal(tokenQty) / Decimal(h.amount)
         var floored = Decimal()
         NSDecimalRound(&floored, &scaled, 0, .down)
         return floored > 0 ? "\(floored)" : nil
@@ -452,13 +492,21 @@ struct TradeSheetView: View {
             }
             VStack(spacing: 10) {
                 assetImage(64)
-                Text("\(side == .buy ? "Buy" : "Sell") $\(amount) at \(Fmt.usd(triggerUsd))").h1Text().multilineTextAlignment(.center)
+                Text(side == .buy ? "Buy $\(amount) at \(Fmt.usd(triggerUsd))"
+                                  : "Sell \(Fmt.qty(tokenQty, symbol: asset.symbol)) at \(Fmt.usd(triggerUsd))")
+                    .h1Text().multilineTextAlignment(.center)
                 Text("\(asset.symbol) price \(Fmt.usd(spot))").font(.system(size: 15)).monospacedDigit().foregroundStyle(Theme.muted)
             }
             .frame(maxWidth: .infinity).padding(.top, 26)
             if let q = orderQuote {
                 VStack(spacing: 0) {
-                    row(side == .buy ? "You buy" : "You sell", "\(Fmt.cash(q.orderUsd)) of \(asset.symbol)", .outcome)
+                    row(side == .buy ? "You buy" : "You sell",
+                        side == .buy ? "\(Fmt.cash(q.orderUsd)) of \(asset.symbol)" : Fmt.qty(tokenQty, symbol: asset.symbol),
+                        .outcome)
+                    if side == .sell {
+                        Divider().overlay(Theme.line)
+                        row("You'd get", Fmt.cash(proceedsAtTrigger))
+                    }
                     Divider().overlay(Theme.line)
                     row("When price hits", Fmt.usd(q.triggerUsd))
                     Divider().overlay(Theme.line)
@@ -476,7 +524,7 @@ struct TradeSheetView: View {
                 Color.clear.frame(height: 24)
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(side == .buy ? "\(Fmt.cash(q.escrowUsd)) reserved" : "\(Fmt.cash(q.orderUsd)) to sell")
+                        Text(side == .buy ? "\(Fmt.cash(q.escrowUsd)) reserved" : "\(Fmt.cash(proceedsAtTrigger)) if it fills")
                             .font(.system(size: 20, weight: .semibold)).tracking(-0.4).monospacedDigit()
                         Text("at \(Fmt.usd(q.triggerUsd)) · \(awayPct >= 0 ? "+" : "−")\(String(format: "%.1f", abs(awayPct)))% from now")
                             .font(.sub).foregroundStyle(Theme.muted)
