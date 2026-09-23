@@ -83,7 +83,6 @@ struct TradeSheetView: View {
     private var tokenQty: Double { Double(tokens) ?? 0 }
     private var heldQty: Double { store.holding?.amount ?? 0 }
     /// What the BE weighs against the minimum: the position's value at today's price.
-    private var limitSellUsd: Double { heldQty > 0 ? sellValue * tokenQty / heldQty : 0 }
     /// What the order would actually return if it fills at the trigger.
     private var proceedsAtTrigger: Double { tokenQty * triggerUsd }
 
@@ -367,21 +366,7 @@ struct TradeSheetView: View {
     /// what the sheet is asking for and dollars when it is not.
     @ViewBuilder private var limitPrimary: some View {
         let min = OrdersStore.shared.minUsd
-        let value = limitSell ? limitSellUsd : usd
-        if limitSell, let min, sellValue < min - 0.005 {
-            // The floor is measured on what the position is worth today, not on what the trigger
-            // would return — Jupiter values the order when it is placed. Saying only the figure
-            // read as the proceeds, which is a different number and a worrying one.
-            VStack(spacing: 10) {
-                Text("A limit order needs \(Fmt.cash(min)). This is worth \(Fmt.cash(sellValue)) at today's price — that's what counts, not what your trigger would return.")
-                    .font(.sub).foregroundStyle(Theme.muted).lineSpacing(2)
-                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-                BigButton(label: "Sell at market instead", style: .white) {
-                    Haptic.light(); limit = false
-                    amount = String(format: "%.2f", floor(sellValue * 100) / 100); pct = 100
-                }
-            }
-        } else if limitSell, tokenQty <= 0 {
+        if limitSell, tokenQty <= 0 {
             BigButton(label: "Enter an amount", style: .off) {}
         } else if !limitSell, usd <= 0 {
             BigButton(label: "Enter an amount", style: .off) {}
@@ -389,24 +374,19 @@ struct TradeSheetView: View {
             BigButton(label: "You hold \(Fmt.qty(heldQty, symbol: asset.symbol)) · Sell all", style: .white) {
                 Haptic.light(); tokens = Fmt.plain(heldQty)
             }
-        } else if let min, value < min {
+        } else if !limitSell, let min, usd < min {
             // A dead grey button states the rule and leaves the user stuck. Give the way out:
             // top the order up to the floor when the cash is there, or go to market when not.
             VStack(spacing: 10) {
-                Text(limitSell
-                     ? "A limit order needs \(Fmt.cash(min)) — that's the value at today's price, not what your trigger would return."
-                     : "A limit order needs \(Fmt.cash(min)). Below that Jupiter won't hold it.")
+                Text("A limit order needs \(Fmt.cash(min)). Below that Jupiter won't hold it.")
                     .font(.sub).foregroundStyle(Theme.muted).lineSpacing(2)
                     .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-                if !limitSell, min * (1 + OrdersStore.shared.config.buyFeeRate) + (OrdersStore.shared.config.accountCostUsd ?? 0) <= cash + 0.000001 {
+                if min * (1 + OrdersStore.shared.config.buyFeeRate) + (OrdersStore.shared.config.accountCostUsd ?? 0) <= cash + 0.000001 {
                     BigButton(label: "Make it \(Fmt.cash(min))", style: .buy) {
                         Haptic.light(); amount = String(format: "%g", min)
                     }
                 } else {
-                    BigButton(label: side == .buy ? "Buy at market instead" : "Sell at market instead", style: .white) {
-                        Haptic.light(); limit = false
-                        if limitSell { amount = String(format: "%.2f", floor(sellValue * 100) / 100); pct = 100 }
-                    }
+                    BigButton(label: "Buy at market instead", style: .white) { Haptic.light(); limit = false }
                 }
             }
         } else if triggerUsd <= 0 {
@@ -416,6 +396,24 @@ struct TradeSheetView: View {
                 Text(triggerProblem ?? "").font(.sub).foregroundStyle(Theme.red).lineSpacing(2)
                     .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                 BigButton(label: "Change the price", style: .white) { Haptic.light(); settingPrice = true }
+            }
+        } else if limitSell, let min, proceedsAtTrigger < min - 0.005 {
+            // Jupiter measures the output, so the floor is what this pays out — not what the
+            // position is worth today. Both levers that fix it are on screen: size and price.
+            VStack(spacing: 10) {
+                Text("At \(Fmt.usd(triggerUsd)) this returns \(Fmt.cash(proceedsAtTrigger)). A limit order needs \(Fmt.cash(min)) — raise the amount or the price.")
+                    .font(.sub).foregroundStyle(Theme.muted).lineSpacing(2)
+                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                if heldQty * triggerUsd >= min - 0.005, tokenQty < heldQty * 0.9999 {
+                    BigButton(label: "Sell all · \(Fmt.cash(heldQty * triggerUsd))", style: .white) {
+                        Haptic.light(); tokens = Fmt.plain(heldQty); pct = 100
+                    }
+                } else {
+                    BigButton(label: "Sell at market instead", style: .white) {
+                        Haptic.light(); limit = false
+                        amount = String(format: "%.2f", floor(sellValue * 100) / 100); pct = 100
+                    }
+                }
             }
         } else if let max = OrdersStore.shared.config.maxOpen, OrdersStore.shared.open.count >= max {
             BigButton(label: "\(max) open orders is the limit", style: .off) {}
