@@ -306,7 +306,18 @@ struct TradeSheetView: View {
     @ViewBuilder private var primary: some View {
         if usd <= 0 { BigButton(label: "Enter an amount", style: .off) {} }
         else if limit {
-            if let min = OrdersStore.shared.minUsd, usd < min { BigButton(label: "Limit orders start at \(Fmt.cash(min))", style: .off) {} }
+            // Jupiter measures the output side, so a position worth less than the floor can
+            // never carry a trigger at any price. Market sells have no minimum, so send them
+            // there rather than leaving a control that cannot work.
+            if side == .sell, let min = OrdersStore.shared.minUsd, sellValue < min - 0.005 {
+                BigButton(label: "Only \(Fmt.cash(sellValue)) here · sell at market", style: .white) {
+                    Haptic.light()
+                    limit = false
+                    amount = String(format: "%.2f", floor(sellValue * 100) / 100)
+                    pct = 100
+                }
+            }
+            else if let min = OrdersStore.shared.minUsd, usd < min { BigButton(label: "Limit orders start at \(Fmt.cash(min))", style: .off) {} }
             else if triggerUsd <= 0 { BigButton(label: "Set a trigger price", style: .off) { Haptic.light(); settingPrice = true } }
             else if let max = OrdersStore.shared.config.maxOpen, OrdersStore.shared.open.count >= max { BigButton(label: "\(max) open orders is the limit", style: .off) {} }
             else if side == .buy, usd * (1 + OrdersStore.shared.config.buyFeeRate) + (OrdersStore.shared.config.accountCostUsd ?? 0) > cash + 0.000001 { BigButton(label: "Deposit to place this", style: .white) { dismiss(); app.sheet = .deposit } }
