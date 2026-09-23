@@ -86,6 +86,22 @@ struct TradeSheetView: View {
     private var limitSellUsd: Double { heldQty > 0 ? sellValue * tokenQty / heldQty : 0 }
     /// What the order would actually return if it fills at the trigger.
     private var proceedsAtTrigger: Double { tokenQty * triggerUsd }
+
+    /// A buy has to sit below spot and a sell above it, by whatever gap the BE asks for.
+    /// Otherwise the keeper fills it on the next pass and it is a market order dodging the fee.
+    private var gap: Double { Double(OrdersStore.shared.config.minGapBps ?? 0) / 10_000 }
+    private var triggerCeiling: Double { spot * (1 - gap) }
+    private var triggerFloor: Double { spot * (1 + gap) }
+    private var triggerIsValid: Bool {
+        guard triggerUsd > 0, spot > 0 else { return false }
+        return side == .buy ? triggerUsd < triggerCeiling : triggerUsd > triggerFloor
+    }
+    private var triggerProblem: String? {
+        guard triggerUsd > 0, spot > 0, !triggerIsValid else { return nil }
+        return side == .buy
+            ? "A buy has to sit below \(Fmt.usd(triggerCeiling)). Above that it fills straight away — use Market instead."
+            : "A sell has to sit above \(Fmt.usd(triggerFloor)). Below that it fills straight away — use Market instead."
+    }
     /// Live where a socket is feeding it: the stock page writes price frames into the index, so
     /// the sheet reads the same number the page behind it is showing rather than a snapshot.
     private var spot: Double { app.stocksByMint[asset.mint]?.priceUsd ?? asset.priceUsd ?? 0 }
@@ -394,6 +410,12 @@ struct TradeSheetView: View {
             }
         } else if triggerUsd <= 0 {
             BigButton(label: "Set a trigger price", style: .off) { Haptic.light(); settingPrice = true }
+        } else if !triggerIsValid {
+            VStack(spacing: 10) {
+                Text(triggerProblem ?? "").font(.sub).foregroundStyle(Theme.red).lineSpacing(2)
+                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                BigButton(label: "Change the price", style: .white) { Haptic.light(); settingPrice = true }
+            }
         } else if let max = OrdersStore.shared.config.maxOpen, OrdersStore.shared.open.count >= max {
             BigButton(label: "\(max) open orders is the limit", style: .off) {}
         } else if side == .buy,
@@ -445,7 +467,12 @@ struct TradeSheetView: View {
                 }
                 Text(triggerUsd > 0 ? "\(awayPct >= 0 ? "+" : "−")\(String(format: "%.2f", abs(awayPct)))%  ⇅" : "0%  ⇅")
                     .font(.system(size: 15, weight: .semibold)).monospacedDigit()
-                    .foregroundStyle(triggerUsd <= 0 ? Theme.faint : awayPct >= 0 ? Theme.amber : Theme.green)
+                    .foregroundStyle(triggerUsd <= 0 ? Theme.faint : !triggerIsValid ? Theme.red : awayPct >= 0 ? Theme.amber : Theme.green)
+                if let problem = triggerProblem {
+                    Text(problem).font(.sub).foregroundStyle(Theme.red).lineSpacing(2)
+                        .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 12).padding(.top, 4)
+                }
             }
             .frame(maxWidth: .infinity)
             Spacer(minLength: 20)
@@ -461,8 +488,8 @@ struct TradeSheetView: View {
             }
             .padding(.top, 8)
             Spacer(minLength: 12)
-            BigButton(label: "Set", style: triggerUsd > 0 ? (side == .sell ? .sell : .buy) : .off) {
-                guard triggerUsd > 0 else { return }
+            BigButton(label: "Set", style: triggerIsValid ? (side == .sell ? .sell : .buy) : .off) {
+                guard triggerIsValid else { return }
                 Haptic.light(); settingPrice = false
             }
         }
@@ -473,14 +500,14 @@ struct TradeSheetView: View {
 
     /// Offsets from spot, the way every exchange offers them — a trigger in one tap.
     private var offsetChips: some View {
-        let offsets: [(String, Double?)] = side == .buy
-            ? [("Mid", nil), ("−1%", -1), ("−2%", -2), ("−5%", -5)]
-            : [("Mid", nil), ("+1%", 1), ("+2%", 2), ("+5%", 5)]
+        let offsets: [(String, Double)] = side == .buy
+            ? [("−1%", -1), ("−2%", -2), ("−5%", -5), ("−10%", -10)]
+            : [("+1%", 1), ("+2%", 2), ("+5%", 5), ("+10%", 10)]
         return HStack(spacing: 8) {
             ForEach(offsets, id: \.0) { label, pct in
                 Button {
                     Haptic.selection()
-                    trigger = String(format: "%.2f", spot * (1 + (pct ?? 0) / 100))
+                    trigger = String(format: "%.2f", spot * (1 + pct / 100))
                 } label: {
                     Text(label)
                         .font(.system(size: 14, weight: .semibold)).monospacedDigit()

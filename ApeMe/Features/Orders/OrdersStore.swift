@@ -31,7 +31,7 @@ final class OrdersStore {
         guard case APIError.orderRefused(_, let min, let excluded) = error else { return }
         config = OrderConfig(minUsd: min ?? config.minUsd, maxOpen: config.maxOpen,
                              buyFeeBps: config.buyFeeBps, sellFeeBps: config.sellFeeBps,
-                             accountCostUsd: config.accountCostUsd,
+                             accountCostUsd: config.accountCostUsd, minGapBps: config.minGapBps,
                              excludedIssuers: excluded ?? config.excludedIssuers)
     }
 
