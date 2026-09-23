@@ -161,6 +161,7 @@ actor API {
         let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(code) else {
             let body = try? decoder.decode(ErrorBody.self, from: data)
+            if body?.error == "insufficient_usdc" { throw APIError.insufficientFunds(shortUsd: body?.shortUsd ?? 0) }
             var msg = body?.error ?? "request failed"
             if let rid = body?.requestId ?? (resp as? HTTPURLResponse)?.value(forHTTPHeaderField: "cf-ray") { msg += " · req \(rid)" }
             throw APIError.http(code, msg)
@@ -215,7 +216,9 @@ actor API {
             do { (data, resp) = try await session.data(for: req) } catch { throw APIError.transport(error) }
             let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
             guard (200..<300).contains(code) else {
-                let msg = (try? decoder.decode(ErrorBody.self, from: data))?.error ?? "request failed"
+                let body = try? decoder.decode(ErrorBody.self, from: data)
+                if body?.error == "insufficient_usdc" { throw APIError.insufficientFunds(shortUsd: body?.shortUsd ?? 0) }
+                let msg = body?.error ?? "request failed"
                 throw APIError.http(code, msg)
             }
             await cache.set(path, data)

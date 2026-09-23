@@ -47,7 +47,7 @@ final class TradeStore {
     }
 
     /// Buy: `usd` in dollars (the total debit). Sell: `rawAmount` in the holding's raw units.
-    func requote(usd: Double? = nil, rawAmount: String? = nil, taker: String?, cashUsd: Double) {
+    func requote(usd: Double? = nil, rawAmount: String? = nil, estimatedTotal: Double? = nil, taker: String?, cashUsd: Double) {
         debounce?.cancel(); expiry?.cancel()
         quote = nil; replacement = nil; error = nil
         guard let taker else { phase = .idle; return }
@@ -56,7 +56,7 @@ final class TradeStore {
         switch side {
         case .buy:
             guard let usd, usd > 0 else { phase = .idle; return }
-            if usd > cashUsd + 0.000001 { phase = .insufficient; return }
+            if (estimatedTotal ?? usd) > cashUsd + 0.000001 { phase = .insufficient; return }
             raw = String(Int64((usd * 1_000_000).rounded()))
         case .sell:
             guard let rawAmount, rawAmount != "0" else { phase = .idle; return }
@@ -228,6 +228,9 @@ final class TradeStore {
     }
 
     static func message(_ error: Error) -> String {
+        if case APIError.insufficientFunds(let short) = error {
+            return short > 0 ? "Add \(Fmt.cash(short)) USDC to place this order" : "Not enough USDC for this order."
+        }
         if case APIError.http(let code, let msg) = error {
             let m = msg.lowercased()
             if m.contains("slippage") { return "Price moved. Try again." }

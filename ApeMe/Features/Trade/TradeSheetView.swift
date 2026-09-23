@@ -48,7 +48,16 @@ struct TradeSheetView: View {
     private var usd: Double { Double(amount) ?? 0 }
     private var settings: Me.Settings { app.auth.settings }
     private var cash: Double { app.cashUsd }
-    private var maxCash: Double { floor(cash * 100) / 100 }
+    /// Solved backwards: with balance B, the most they can *receive* is (B − rent) / 1.01, since
+    /// our 1% and the one-time account fee are charged on top of whatever they type.
+    private var rentIfFirst: Double { holdsAlready ? 0 : 0.25 }
+    private var holdsAlready: Bool { (app.wallet?.positions ?? []).contains { $0.mint == asset.mint } }
+    private var maxCash: Double { max(0, floor(((cash - rentIfFirst) / 1.01) * 100) / 100) }
+
+    /// What the order will actually cost, before the quote confirms it to the cent.
+    private func estimatedTotal(_ receive: Double) -> Double { receive * 1.01 + rentIfFirst }
+    /// The charge the quote reports: `totalUsd` on a buy, the gross on a sell.
+    private func charged(_ q: Quote) -> Double { q.totalUsd ?? q.inUsd ?? 0 }
     private var busy: Bool { [.signing, .submitting, .confirming].contains(store.phase) }
     private var sellValue: Double { store.holding?.valueUsd ?? 0 }
     private var sellQty: Double { sellValue > 0 ? (store.holding?.amount ?? 0) * min(usd, sellValue) / sellValue : 0 }
@@ -81,7 +90,7 @@ struct TradeSheetView: View {
 
     private func requote() {
         switch side {
-        case .buy: store.requote(usd: usd, taker: app.walletAddress, cashUsd: cash)
+        case .buy: store.requote(usd: usd, estimatedTotal: estimatedTotal(usd), taker: app.walletAddress, cashUsd: cash)
         case .sell:
             guard let h = store.holding, let raw = h.raw, let r = Decimal(string: raw), let value = h.valueUsd, value > 0, usd > 0 else { store.requote(rawAmount: nil, taker: app.walletAddress, cashUsd: 0); return }
             // More than they hold → stop, like Buy does. All of it → the whole position, so no dust is left.
@@ -218,7 +227,7 @@ struct TradeSheetView: View {
     /// Amount step button. Purely local — nothing is fetched until Review order.
     @ViewBuilder private var primary: some View {
         if usd <= 0 { BigButton(label: "Enter an amount", style: .off) {} }
-        else if side == .buy, usd > cash + 0.000001 { BigButton(label: "Deposit to buy", style: .white) { dismiss(); app.sheet = .deposit } }
+        else if side == .buy, estimatedTotal(usd) > cash + 0.000001 { BigButton(label: "Deposit to buy", style: .white) { dismiss(); app.sheet = .deposit } }
         else if side == .sell, usd > sellValue + 0.005 { BigButton(label: "You hold \(Fmt.cash(sellValue)) · Sell all", style: .white) { amount = String(format: "%.2f", floor(sellValue * 100) / 100); pct = 100 } }
         else { BigButton(label: "Review order", style: side == .sell ? .sell : .buy) { Haptic.light(); reviewing = true; requote() } }
     }
@@ -286,7 +295,7 @@ struct TradeSheetView: View {
             }
             if let q = store.quote {
                 VStack(spacing: 0) {
-                    row(side == .buy ? "Receive" : "Selling",
+                    row(side == .buy ? "You buy" : "Selling",
                         side == .buy ? "≈ \(store.youGet) · \(Fmt.cash(q.swapUsd ?? q.outUsd))" : Fmt.qty(sellQty, symbol: asset.symbol),
                         .outcome)
                     Divider().overlay(Theme.line)
@@ -297,7 +306,7 @@ struct TradeSheetView: View {
                 if let i = q.priceImpactPct, i > 2 { note("Thin market: you're paying \(String(format: "%.1f", i))% above the current price.").padding(.top, 14) }
                 if side == .buy, asset.isStock, let p = q.premiumPct, p > 5 { note("Trading \(String(format: "%.0f", p))% above \(asset.isPreIPO ? "its fair value" : "the Nasdaq price").").padding(.top, 14) }
                 if let rent = rentUsd(q) {
-                    note("First time holding \(asset.symbol): \(Fmt.cash(rent)) of this is a one-time network fee to open the token in your wallet. Next time it's just \(Fmt.cash(feesTotal(q) - rent)).")
+                    note("First time holding \(asset.symbol): \(Fmt.cash(rent)) is a one-time network fee to open the token in your wallet, added on top. Next time you'd pay just \(Fmt.cash(feesTotal(q) - rent)) on this order.")
                         .padding(.top, 14)
                 }
                 errorBox.padding(.top, 14)
@@ -305,8 +314,8 @@ struct TradeSheetView: View {
                 // Footer: total on the left, details underneath, one button.
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(side == .buy ? "\(Fmt.cash(q.inUsd)) total" : "\(Fmt.cash(q.outUsd)) you get").font(.system(size: 20, weight: .semibold)).tracking(-0.4).monospacedDigit()
-                        Text(side == .buy ? "\(Fmt.cash(q.swapUsd ?? q.outUsd)) of \(asset.symbol) · \(Fmt.cash(feesTotal(q))) fees" : "after \(Fmt.cash(feesTotal(q))) fees").font(.sub).foregroundStyle(Theme.muted)
+                        Text(side == .buy ? "\(Fmt.cash(charged(q))) total" : "\(Fmt.cash(q.outUsd)) you get").font(.system(size: 20, weight: .semibold)).tracking(-0.4).monospacedDigit()
+                        Text(side == .buy ? "\(Fmt.cash(q.swapUsd ?? q.outUsd)) of \(asset.symbol) + \(Fmt.cash(feesTotal(q))) fees" : "after \(Fmt.cash(feesTotal(q))) fees").font(.sub).foregroundStyle(Theme.muted)
                     }
                     Spacer()
                     HStack(spacing: 6) {
@@ -347,7 +356,7 @@ struct TradeSheetView: View {
     private func feesRow(_ q: Quote) -> some View {
         var parts: [String] = ["ApeMe \(String(format: "%g", Double(q.fee?.bps ?? 100) / 100))% \(Fmt.cash(q.fee?.usd ?? 0))"]
         if let f = q.issuerFee, let bps = f.bps, bps > 0 { parts.append("Issuer \(String(format: "%g", Double(bps) / 100))% \(Fmt.cash(f.usd ?? 0))") }
-        if let rent = rentUsd(q) { parts.append("\(Fmt.cash(rent)) one-time network fee") }
+        if let rent = rentUsd(q) { parts.append("\(Fmt.cash(rent)) account setup, one time") }
         return VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text("Fees").font(.system(size: 15)).foregroundStyle(Theme.muted)
@@ -379,8 +388,9 @@ struct TradeSheetView: View {
     /// anything. Applies to a sell the same way.
     private func feesAreNotable(_ q: Quote) -> Bool {
         if rentUsd(q) != nil { return true }
-        guard let charged = q.inUsd, charged > 0 else { return false }
-        return feesTotal(q) / charged > 0.05
+        let total = charged(q)
+        guard total > 0 else { return false }
+        return feesTotal(q) / total > 0.05
     }
 
     /// Solana's token-account rent, only when this trade opens the account.

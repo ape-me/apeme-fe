@@ -877,11 +877,12 @@ const acct={
       gas:{paidBy:'apeme',priority}, slippageBps:slippageBps||suggested, suggestedSlippageBps:suggested,
       premiumPct:item.premiumPct??0.09, markUsd:item.markUsd||price*0.999, expiresAt:Date.now()/1000+45 };
     if(side==='buy'){
-      /* the typed amount is the TOTAL debit: our fee, the issuer's skim and rent all come out of it */
-      const inUsd=usd, fee=inUsd*0.01, rent=first?0.24:0, issuer=pre?(inUsd-fee-rent)*0.01:0;
-      const swapUsd=Math.max(0,inUsd-fee-rent-issuer), outUsd=swapUsd*(1-impact/100);
-      return {...base, inUsd, swapUsd, outUsd, outQty:outUsd/price, fee:{usd:fee,bps:100},
-        issuerFee:{usd:issuer,bps:pre?100:0}, rent:{usd:rent,accounts:first?1:0}, totalChargeUsd:fee+rent}; }
+      /* the typed amount is what they RECEIVE — our 1%, the issuer's skim and the one-time account
+         rent are all charged ON TOP, and totalUsd is what actually leaves the wallet */
+      const swapUsd=usd, fee=swapUsd*0.01, rent=first?0.25:0, issuer=pre?swapUsd*0.01:0;
+      const outUsd=swapUsd*(1-impact/100), totalUsd=swapUsd+fee+rent+issuer;
+      return {...base, inUsd:swapUsd, swapUsd, totalUsd, outUsd, outQty:outUsd/price, fee:{usd:fee,bps:100},
+        issuerFee:{usd:issuer,bps:pre?100:0}, rent:{usd:rent,accounts:first?1:0}, totalChargeUsd:fee+rent+issuer}; }
     const gross=usd, fee=gross*0.01, issuer=pre?gross*0.01:0, outUsd=(gross-fee-issuer)*(1-impact/100);
     return {...base, inUsd:gross, swapUsd:gross, outUsd, outQty:null, fee:{usd:fee,bps:100},
       issuerFee:{usd:issuer,bps:pre?100:0}, rent:{usd:0,accounts:0}, totalChargeUsd:fee};
@@ -889,11 +890,11 @@ const acct={
   /* apply a confirmed trade to the mock wallet */
   settle(q,item,holding){
     const w=acct.wallet(); const price=item.priceUsd||holding?.priceUsd||1;
-    if(q.side==='buy'){ w.holdings[0].valueUsd=+(w.holdings[0].valueUsd-q.inUsd).toFixed(2); w.holdings[0].amount=w.holdings[0].valueUsd;
+    if(q.side==='buy'){ w.holdings[0].valueUsd=+(w.holdings[0].valueUsd-(q.totalUsd||q.inUsd)).toFixed(2); w.holdings[0].amount=w.holdings[0].valueUsd;
       let h=acct.holds(item.mint); if(!h){ h={mint:item.mint,kind:item.kind==='meme'||item.quoteMint?'meme':'stock',symbol:item.symbol,name:item.name,image:item.logo||item.image,quoteSymbol:item.quoteMint?state.stocksByMint[item.quoteMint]?.symbol:undefined,amount:0,raw:'0',decimals:item.quoteMint?6:8,priceUsd:price,valueUsd:0,change24h:item.change24h,costUsd:0,pnlUsd:0,pnlPct:0}; w.holdings.push(h); }
       h.amount+=q.outQty; h.valueUsd=+(h.amount*price).toFixed(2); h.costUsd=(h.costUsd||0)+q.swapUsd; h.feesUsd=(h.feesUsd||0)+q.fee.usd+(q.issuerFee?.usd||0)+q.rent.usd;
       h.avgEntryUsd=h.amount>0?h.costUsd/h.amount:null; h.pnlUsd=h.valueUsd-h.costUsd; h.pnlPct=h.costUsd>0?h.pnlUsd/h.costUsd*100:0; h.raw=String(Math.round(h.amount*10**h.decimals));
-      w.activity.unshift({sig:'5Kd'+Math.random().toString(36).slice(2,12)+'…',ts:Math.floor(Date.now()/1000),type:'buy',status:'confirmed',source:'apeme',symbol:item.symbol,image:item.logo||item.image,stockSymbol:h.quoteSymbol,amount:q.outQty,usd:q.inUsd,feeUsd:q.fee.usd,rentUsd:q.rent.usd});
+      w.activity.unshift({sig:'5Kd'+Math.random().toString(36).slice(2,12)+'…',ts:Math.floor(Date.now()/1000),type:'buy',status:'confirmed',source:'apeme',symbol:item.symbol,image:item.logo||item.image,stockSymbol:h.quoteSymbol,amount:q.outQty,usd:q.totalUsd||q.inUsd,feeUsd:q.fee.usd,rentUsd:q.rent.usd});
     } else { const part=holding.amount*q.pct/100; holding.amount-=part; holding.valueUsd=+(holding.amount*price).toFixed(2); holding.raw=String(Math.round(holding.amount*10**holding.decimals));
       if(holding.amount<=1e-9) w.holdings.splice(w.holdings.indexOf(holding),1);
       w.holdings[0].valueUsd=+(w.holdings[0].valueUsd+q.outUsd).toFixed(2); w.holdings[0].amount=w.holdings[0].valueUsd;
@@ -953,6 +954,12 @@ function tradeSheet({side,item,stock,holding,resume}){
   const youGet=()=>!q?'—':side==='sell'?fmt.cash(q.outUsd):fmt.qty(q.outQty,item.symbol);
   const rent=()=>q&&q.rent.accounts>0&&q.rent.usd>0?q.rent.usd:null;
   const fees=()=>q?q.fee.usd+(q.issuerFee?.usd||0)+(q.rent.accounts>0?q.rent.usd:0):0;
+  const charged=()=>q?(q.totalUsd!=null?q.totalUsd:q.inUsd):0;
+  /* Max solves backwards: the most they can receive is (balance − rent) / 1.01, because our 1%
+     and the one-time account fee are charged on top of whatever they type. */
+  const holdsAlready=!!acct.holds(item.mint), rentIfFirst=holdsAlready?0:0.25;
+  const estTotal=r=>r*1.01+rentIfFirst;
+  const maxBuy=()=>Math.max(0,Math.floor(((cash-rentIfFirst)/1.01)*100)/100);
   const AVC={22:'b',36:'t',48:'h',64:'xl'};
   const pic=n=>isStock?logo({symbol:item.symbol,logo:item.logo||item.image},n):avatar({symbol:item.symbol,image:item.logo||item.image},AVC[n]||'');
   const markLabel=pre?'Fair value':'Nasdaq price';
@@ -970,14 +977,14 @@ function tradeSheet({side,item,stock,holding,resume}){
   const header=()=>`<div class="sheet-title" style="padding-top:14px"><div style="display:flex;align-items:center;gap:14px">${pic(48)}<div><div class="h2">${verb} ${esc(item.symbol)}</div><div class="sub mono" style="font-size:15px">${side==='sell'?`You hold ${fmt.qty(holding.amount,item.symbol)} · ${fmt.cash(held())}`:`Cash ${fmt.cash(cash)}`}</div></div></div><button class="iconbtn" data-close aria-label="Close">${I.x}</button></div>`;
 
   const chips=()=>{ const items=side==='buy'
-      ?[...(st.quickBuyUsd||[10,25,50,100]).map(v=>['$'+v,null,v]),['Max',null,Math.floor(cash*100)/100]]
+      ?[...(st.quickBuyUsd||[10,25,50,100]).map(v=>['$'+v,null,v]),['Max',null,maxBuy()]]
       :(st.quickSellPct||[25,50,100]).map(p=>[p+'%',fmt.usd(held()*p/100),held()*p/100]);
     return `<div class="presets">${items.map(([l,sub,v])=>`<button data-v="${v}" class="${Math.abs(v-usd())<0.006&&usd()>0?'on':''}"${sub?' style="height:52px"':''}>${l}${sub?`<span class="csub">${sub}</span>`:''}</button>`).join('')}</div>`; };
 
   /* purely local: nothing is fetched until they ask to review */
   const primary=()=>{
     if(usd()<=0) return '<button class="btn off">Enter an amount</button>';
-    if(side==='buy'&&usd()>cash+1e-6) return '<button class="btn white" id="dep">Deposit to buy</button>';
+    if(side==='buy'&&estTotal(usd())>cash+1e-6) return '<button class="btn white" id="dep">Deposit to buy</button>';
     if(side==='sell'&&usd()>held()+0.005) return `<button class="btn white" id="all">You hold ${fmt.cash(held())} · Sell all</button>`;
     return `<button class="btn ${side==='sell'?'sellb':'buy'}" id="go">Review order</button>`; };
 
@@ -1008,13 +1015,13 @@ function tradeSheet({side,item,stock,holding,resume}){
   const row=(k,v,rank)=>`<div style="height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px"><span style="font-size:15px;color:var(--muted)">${k}</span><b class="mono" style="font-size:${rank==='outcome'?16:15}px;font-weight:${rank==='outcome'?700:600};color:${rank==='reference'?'var(--muted)':'var(--ink)'}">${v}</b></div>`;
   /* Amber is for a cost worth pausing on: a one-time account fee, or fees eating more than 5% of
      the order. A routine 1% on a $50 buy stays ink — flag everything and amber means nothing. */
-  const feesNotable=()=>!!rent()||(q.inUsd>0&&fees()/q.inUsd>0.05);
+  const feesNotable=()=>!!rent()||(charged()>0&&fees()/charged()>0.05);
   const hr='<div style="height:1px;background:var(--line)"></div>';
 
   /* every fee, named: ours, the issuer's, and Solana's one-time rent */
   const feesRow=()=>{ const parts=[`ApeMe ${q.fee.bps/100}% ${fmt.cash(q.fee.usd)}`];
     if(q.issuerFee?.bps>0) parts.push(`Issuer ${q.issuerFee.bps/100}% ${fmt.cash(q.issuerFee.usd)}`);
-    if(rent()) parts.push(`${fmt.cash(rent())} one-time network fee`);
+    if(rent()) parts.push(`${fmt.cash(rent())} account setup, one time`);
     return `<div style="padding:12px 0"><div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:15px;color:var(--muted)">Fees</span><b class="mono" style="font-size:15px;font-weight:600;color:${feesNotable()?'var(--amber)':'var(--ink)'}">${fmt.cash(fees())}</b></div><div style="font-size:13px;color:var(--faint);margin-top:4px">${parts.join(' · ')}</div></div>`; };
 
   const detailsBlock=()=>`<div><button class="lnk" id="dets" style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--muted)">Details<span style="display:inline-flex;transform:rotate(${dets?90:0}deg);transition:transform .15s">${I.chev.replace('width="16"','width="12"').replace('height="16"','height="12"')}</span></button>
@@ -1028,16 +1035,16 @@ function tradeSheet({side,item,stock,holding,resume}){
     ${phase==='failed'?`<button class="btn ${side==='sell'?'sellb':'buy'}" id="again">Try again</button>`:'<button class="btn off">Getting price…</button>'}`;
 
   const quoted=()=>`<div style="padding-top:28px">
-      ${row(side==='buy'?'Receive':'Selling',side==='buy'?`≈ ${youGet()} · ${fmt.cash(q.swapUsd)}`:fmt.qty(sellQty(),item.symbol),'outcome')}
+      ${row(side==='buy'?'You buy':'Selling',side==='buy'?`≈ ${youGet()} · ${fmt.cash(q.swapUsd)}`:fmt.qty(sellQty(),item.symbol),'outcome')}
       ${isStock&&q.markUsd?hr+row(markLabel,fmt.usd(q.markUsd),'reference'):''}
       ${hr}${feesRow()}</div>
     ${q.priceImpactPct>2?`<div class="notice" style="margin-top:14px">Thin market: you're paying ${q.priceImpactPct.toFixed(1)}% above the current price.</div>`:''}
     ${side==='buy'&&isStock&&q.premiumPct>5?`<div class="notice" style="margin-top:14px">Trading ${q.premiumPct.toFixed(0)}% above ${pre?'its fair value':'the Nasdaq price'}.</div>`:''}
-    ${rent()?`<div class="notice" style="margin-top:14px;display:block;line-height:19px">First time holding ${esc(item.symbol)}: ${fmt.cash(rent())} of this is a one-time network fee to open the token in your wallet. Next time it's just ${fmt.cash(fees()-rent())}.</div>`:''}
+    ${rent()?`<div class="notice" style="margin-top:14px;display:block;line-height:19px">First time holding ${esc(item.symbol)}: ${fmt.cash(rent())} is a one-time network fee to open the token in your wallet, added on top. Next time you'd pay just ${fmt.cash(fees()-rent())} on this order.</div>`:''}
     <div style="height:28px"></div>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
-      <div><div style="font-size:20px;font-weight:600;letter-spacing:-.025em;font-variant-numeric:tabular-nums">${side==='buy'?`${fmt.cash(q.inUsd)} total`:`${fmt.cash(q.outUsd)} you get`}</div>
-        <div class="sub" style="margin-top:2px">${side==='buy'?`${fmt.cash(q.swapUsd)} of ${esc(item.symbol)} · ${fmt.cash(fees())} fees`:`after ${fmt.cash(fees())} fees`}</div></div>
+      <div><div style="font-size:20px;font-weight:600;letter-spacing:-.025em;font-variant-numeric:tabular-nums">${side==='buy'?`${fmt.cash(charged())} total`:`${fmt.cash(q.outUsd)} you get`}</div>
+        <div class="sub" style="margin-top:2px">${side==='buy'?`${fmt.cash(q.swapUsd)} of ${esc(item.symbol)} + ${fmt.cash(fees())} fees`:`after ${fmt.cash(fees())} fees`}</div></div>
       <div style="display:flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;background:var(--surface2);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;flex-shrink:0"><img src="${USDC_LOGO}" width="18" height="18" style="border-radius:999px" alt="">USDC · ${fmt.cash(cash)}</div>
     </div>
     <div style="height:14px"></div>${detailsBlock()}

@@ -28,6 +28,8 @@ struct Quote: Codable, Hashable {
     let rent: Rent?
     /// fee + rent in $, charged on top of `inUsd` for buys.
     let totalChargeUsd: Double?
+    /// Buys: what actually leaves the wallet — the typed amount plus fee and rent. Sells: nil.
+    let totalUsd: Double?
     let gas: Gas?
     let premiumPct: Double?
     let markUsd: Double?
