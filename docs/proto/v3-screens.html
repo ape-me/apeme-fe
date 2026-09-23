@@ -142,7 +142,7 @@ SCREENS.stock={
     <div class="scroll" id="sc"><div id="body"><div class="pad"><div class="skel" style="width:40%;margin-top:12px"></div><div class="skel" style="height:44px;margin-top:10px"></div><div class="skel" style="height:200px;margin-top:20px"></div></div></div></div>`; },
   async mount(el,p){
     let s; try{ s=await api('/stocks/'+p.mint); state.stocksByMint[s.mint]=s; }catch(e){ s=state.stocksByMint[p.mint]; if(!s){ el.querySelector('#body').innerHTML=`<div class="errbar">Couldn't load this stock.</div>`; return; } }
-    const body=el.querySelector('#body'); let range='1d', longR='1w', stab='overview', ins=null, depth=null, fresh=0;
+    const body=el.querySelector('#body'); let range='1d', longR='1w', stab='news', ins=null, depth=null, fresh=0;
     const RANGES={live:{api:'5m',label:'LIVE',cap:'live'},'1h':{api:'1h',label:'1H',cap:'past hour'},'1d':{api:'1d',label:'1D',cap:'today'},'1w':{api:'1w',label:'7D',cap:'past 7 days'},'1m':{api:'1m',label:'30D',cap:'past 30 days'},all:{api:'1m',label:'ALL',cap:'all time'}};
     el.querySelector('#csub').innerHTML=`<span class="${fmt.cls(s.change24h)}">${fmt.arrow(s.change24h)}</span> today`;
     const abs=s.change24h==null?null:s.priceUsd-s.priceUsd/(1+s.change24h/100);
@@ -159,7 +159,8 @@ SCREENS.stock={
       <div class="pad" style="margin-top:18px"><div class="btns"><button class="btn buy" id="buy">Buy</button><button class="btn sellb" id="sell">Sell</button></div></div>
       <div class="hr" style="margin-top:26px"></div>
       <div id="earn"></div>
-      <div class="tabs fill" id="stabs" style="padding-inline:20px;margin-top:20px"><button data-st="overview" class="on">Overview</button><button data-st="news">News<i class="ndot" hidden></i></button><button data-st="about">About</button></div>
+      <div id="ordcard"></div>
+      <div class="tabs fill" id="stabs" style="padding-inline:20px;margin-top:20px"><button data-st="news" class="on">News<i class="ndot" hidden></i></button><button data-st="overview">Overview</button><button data-st="about">About</button></div>
       <div id="stab"></div>
       <div class="pad" style="margin-top:20px"><span class="cc" data-data-status></span></div>`;
     updateDataStatus();
@@ -184,6 +185,17 @@ SCREENS.stock={
         ${tradingHere(s,depth)}
         ${dividendCard(ins)}
       </div>`;
+    const paintOrders=()=>{ const box=el.querySelector('#ordcard'); if(!box) return;
+      const os=acct.openOrders(s.mint); if(!os.length){ box.innerHTML=''; return; }
+      const o=os[0], away=s.priceUsd?((o.triggerUsd-s.priceUsd)/s.priceUsd*100):null;
+      box.innerHTML=`<div class="pad" style="margin-top:14px"><button class="row m" id="toorders" style="width:100%;border-radius:14px;background:var(--surface);padding:14px 16px">
+        <div class="grow" style="text-align:left"><div class="t"><span class="sym">${os.length} order${os.length===1?'':'s'} waiting</span></div>
+        <div class="s mono">${esc(o.side)} ${fmt.cash(o.makingUsd)} at ${fmt.usd(o.triggerUsd)}${away!=null?` · ${away>=0?'+':'−'}${Math.abs(away).toFixed(1)}% away`:''}</div></div>
+        <div class="r">${I.chev}</div></button></div>`;
+      box.querySelector('#toorders').onclick=()=>{ state._wtab='orders'; state._oview='open'; root('portfolio'); };
+    };
+    paintOrders();
+
     const paintStab=()=>{ const m=el.querySelector('#stab'); if(!m) return;
       if(stab==='news'){ el.querySelector('#stabs .ndot').hidden=true; fresh=0; paintNewsList(m,`/stocks/${s.mint}/news?`,s.symbol); return; }
       m.innerHTML=stab==='about'?aboutCards(s,ins):overview();

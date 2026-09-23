@@ -72,7 +72,7 @@ Object.assign(acct,{
       orderUsd:usd, triggerUsd, escrowUsd:side==='buy'?usd+fee+rentUsd:null,
       fee:{bps,usd:fee,rentUsd,totalUsd:fee+rentUsd,when:'on fill'} };
   },
-  openOrders(){ return MOCK.orders.filter(o=>o.status==='open'); },
+  openOrders(mint){ return MOCK.orders.filter(o=>o.status==='open'&&(!mint||o.mint===mint)); },
   submitOrder(q,item){
     MOCK.orders.unshift({ id:q.id, mint:item.mint, symbol:item.symbol, side:q.side, status:'open',
       makingUsd:q.orderUsd, triggerUsd:q.triggerUsd, escrowUsd:q.escrowUsd,
@@ -135,7 +135,7 @@ function tradeSheet({side,item,stock,holding,resume}){
       dets=false, slipFails=resume?.slipFails||0, slipBps=resume?.slipBps||null, timer=null, expiryT=null;
   /* Jupiter refuses triggers on the pre-IPO names, so limit simply isn't offered there. */
   const canLimit=!pre&&isStock;
-  let mode='market', trigger='', focus='amount', oq=null;
+  let mode='market', trigger='', priceStep=false, oq=null;
   const trig=()=>Number(trigger)||0;
   const away=()=>price&&trig()?((trig()-price)/price*100):0;
   const w=openSheet('<div class="grab"></div>'); const sheet=w.querySelector('.sheet'); sheet.classList.add('tall');
@@ -168,10 +168,31 @@ function tradeSheet({side,item,stock,holding,resume}){
   /* ---- amount ---- */
   const header=()=>`<div class="sheet-title" style="padding-top:14px"><div style="display:flex;align-items:center;gap:14px">${pic(48)}<div><div class="h2">${verb} ${esc(item.symbol)}</div><div class="sub mono" style="font-size:15px">${side==='sell'?`You hold ${fmt.qty(holding.amount,item.symbol)} · ${fmt.cash(held())}`:`Cash ${fmt.cash(cash)}`}</div></div></div><button class="iconbtn" data-close aria-label="Close">${I.x}</button></div>`;
 
-  /* Offsets from the live price, the way every exchange offers them. */
-  const triggerChips=()=>{ const offs=side==='buy'?[-10,-5,-2]:[2,5,10];
-    return `<div class="presets">${offs.map(o=>`<button data-trig="${o}">${o>0?'+':'−'}${Math.abs(o)}%</button>`).join('')}
-      <button data-trig="0">Now</button></div>`; };
+  /* Phantom's Set Limit Price, in our clothes: one number, the distance from now under it,
+     offsets sitting on top of the keys. */
+  const priceView=()=>set(`<div class="sheet-title" style="padding-top:8px"><button class="iconbtn" id="pback" aria-label="Back">${I.back}</button>
+      <div style="flex:1"><div class="h3">Set trigger price</div><div class="sub">${esc(item.symbol)} now ${fmt.usd(price)}</div></div>
+      <span style="width:40px"></span></div>
+    <div style="flex:1;min-height:20px"></div>
+    <div style="text-align:center">
+      <div class="amountbig" style="justify-content:center"><span class="cur" style="font-size:34px;align-self:flex-start;margin-top:6px">$</span><span>${esc(trigger||'0')}</span></div>
+      <div class="mono" style="margin-top:6px;font-size:15px;font-weight:600;color:${!trig()?'var(--faint)':away()>=0?'var(--amber)':'var(--green)'}">${!trig()?'0%':`${away()>=0?'+':'−'}${Math.abs(away()).toFixed(2)}%`} ⇅</div>
+    </div>
+    <div style="flex:1;min-height:20px"></div>
+    <div class="presets">${(side==='buy'?[['mid','Mid'],[-1,'−1%'],[-2,'−2%'],[-5,'−5%']]:[['mid','Mid'],[1,'+1%'],[2,'+2%'],[5,'+5%']]).map(([v,l])=>`<button data-trig="${v}">${l}</button>`).join('')}</div>
+    <div class="numpad" style="margin-top:8px">${['1','2','3','4','5','6','7','8','9','.','0','⌫'].map(k=>`<button data-pk="${k}">${k==='⌫'?I.del:k}</button>`).join('')}</div>
+    <div style="flex:1;min-height:12px"></div>
+    <button class="btn ${trig()?(side==='sell'?'sellb':'buy'):'off'}" id="setdone">Set</button>`,()=>{
+    sheet.querySelector('#pback').onclick=()=>{ priceStep=false; paint(); };
+    sheet.querySelector('#setdone').onclick=()=>{ if(trig()){ priceStep=false; paint(); } };
+    sheet.querySelectorAll('[data-pk]').forEach(b=>b.onclick=()=>{ const k=b.dataset.pk;
+      if(k==='⌫') trigger=trigger.slice(0,-1);
+      else if(k==='.'){ if(!trigger.includes('.')) trigger=(trigger||'0')+'.'; }
+      else if(trigger.length<10&&(!trigger.includes('.')||trigger.split('.')[1].length<2)) trigger=trigger==='0'?k:trigger+k;
+      paint(); });
+    sheet.querySelectorAll('[data-trig]').forEach(b=>b.onclick=()=>{ const v=b.dataset.trig;
+      trigger=(v==='mid'?price:price*(1+Number(v)/100)).toFixed(2); paint(); });
+  });
 
   const chips=()=>{ const items=side==='buy'
       ?[...(st.quickBuyUsd||[10,25,50,100]).map(v=>['$'+v,null,v]),['Max',null,maxBuy()]]
@@ -194,45 +215,39 @@ function tradeSheet({side,item,stock,holding,resume}){
 
   const modeTabs=()=>!canLimit?'':`<div class="tabs fill" style="margin-top:14px">
     <button data-mode="market" class="${mode==='market'?'on':''}">Market</button>
-    <button data-mode="limit" class="${mode==='limit'?'on':''}">Limit</button></div>`;
+    <button data-mode="limit" class="${mode==='limit'?'on':''}">Limit</button></div>
+    <div class="sub" style="text-align:center;margin-top:8px;font-size:12.5px">${mode==='limit'
+      ? `Fills only at your price or better. Nothing is charged until it does.`
+      : `Fills now at the best price available.`}</div>`;
 
-  /* Two fields, one numpad. Tapping a field points the keys at it. */
-  const field=(key,label,value,sub)=>`<button data-focus="${key}" style="flex:1;text-align:left;padding:12px 14px;border-radius:14px;background:${focus===key?'var(--surface2)':'transparent'};border:1px solid ${focus===key?'var(--line)':'transparent'}">
-    <div style="font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--muted)">${label}</div>
-    <div class="mono" style="font-size:22px;font-weight:700;margin-top:3px;color:${value?'var(--ink)':'var(--faint)'}">${value||'0'}</div>
-    ${sub?`<div class="sub" style="font-size:11px;margin-top:2px">${sub}</div>`:''}</button>`;
-
-  const limitFields=()=>`<div style="display:flex;gap:8px;margin-top:4px">
-    ${field('amount',side==='buy'?'YOU BUY':'YOU SELL','$'+(amount||'0'))}
-    ${field('trigger','WHEN PRICE HITS','$'+(trigger||'0'), trig()?`${away()>=0?'+':'−'}${Math.abs(away()).toFixed(1)}% from now`:`now ${fmt.usd(price)}`)}
-  </div>`;
+  /* The price deserves the same big-number screen the amount gets, not a squeezed field. */
+  const triggerRow=()=>`<button id="setprice" class="row m" style="width:100%;border-radius:14px;background:var(--surface);padding:14px 16px;margin-top:16px">
+    <div class="grow" style="text-align:left"><div class="s" style="font-size:12px;color:var(--muted)">When price hits</div>
+      <div class="mono" style="font-size:19px;font-weight:700;margin-top:2px;color:${trig()?'var(--ink)':'var(--faint)'}">${trig()?fmt.usd(trig()):'Set a price'}</div></div>
+    <div class="r" style="display:flex;align-items:center;gap:6px">${trig()?`<span class="mono" style="font-size:13px;font-weight:600;color:${away()>=0?'var(--amber)':'var(--green)'}">${away()>=0?'+':'−'}${Math.abs(away()).toFixed(1)}%</span>`:''}${I.chev}</div></button>`;
 
   const form=()=>set(`${header()}
     ${modeTabs()}
     <div style="flex:1;min-height:8px"></div>
-    ${mode==='limit'?limitFields():`<div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+    ${`<div style="display:flex;flex-direction:column;align-items:center;gap:8px">
       <div class="amountbig" style="align-items:center;gap:10px"><img src="${USDC_LOGO}" width="36" height="36" style="border-radius:999px" alt="USDC"><span>${esc(amount||'0')}</span></div>
       ${side==='sell'&&usd()>0&&held()>0?`<div class="sub mono" style="font-size:15px">≈ ${fmt.qty(sellQty(),item.symbol)} · ${Math.round(Math.min(100,usd()/held()*100))}%</div>`:''}
     </div>`}
+    ${mode==='limit'?triggerRow():''}
     <div style="flex:1;min-height:8px"></div>
-    ${mode==='limit'&&focus==='trigger'?triggerChips():chips()}
+    ${chips()}
     <div style="flex:1;min-height:8px"></div>
     <div class="numpad">${['1','2','3','4','5','6','7','8','9','.','0','⌫'].map(k=>`<button data-k="${k}">${k==='⌫'?I.del:k}</button>`).join('')}</div>
     <div style="flex:1;min-height:12px"></div>
     ${primary()}`,()=>{
     sheet.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{ const v=Number(b.dataset.v); amount=v.toFixed(2).replace(/\.00$/,''); q=null; phase='idle'; paint(); });
     sheet.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{ const k=b.dataset.k;
-      const editing=(mode==='limit'&&focus==='trigger')?'trigger':'amount';
-      let v=editing==='trigger'?trigger:amount;
-      if(k==='⌫') v=v.slice(0,-1);
-      else if(k==='.'){ if(!v.includes('.')) v=(v||'0')+'.'; }
-      else if(v.length<10&&(!v.includes('.')||v.split('.')[1].length<2)) v=v==='0'?k:v+k;
-      if(editing==='trigger') trigger=v; else amount=v;
+      if(k==='⌫') amount=amount.slice(0,-1);
+      else if(k==='.'){ if(!amount.includes('.')) amount=(amount||'0')+'.'; }
+      else if(amount.length<8&&(!amount.includes('.')||amount.split('.')[1].length<2)) amount=amount==='0'?k:amount+k;
       q=null; phase='idle'; paint(); });
-    sheet.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{ mode=b.dataset.mode; focus='amount'; q=null; oq=null; phase='idle'; paint(); });
-    sheet.querySelectorAll('[data-focus]').forEach(b=>b.onclick=()=>{ focus=b.dataset.focus; paint(); });
-    sheet.querySelectorAll('[data-trig]').forEach(b=>b.onclick=()=>{ const o=Number(b.dataset.trig);
-      trigger=(price*(1+o/100)).toFixed(2); paint(); });
+    sheet.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{ mode=b.dataset.mode; q=null; oq=null; phase='idle'; paint(); });
+    sheet.querySelector('#setprice')?.addEventListener('click',()=>{ priceStep=true; paint(); });
     sheet.querySelector('#dep')?.addEventListener('click',()=>{ w.close(); depositSheet(); });
     sheet.querySelector('#all')?.addEventListener('click',()=>{ amount=(Math.floor(held()*100)/100).toFixed(2); paint(); });
     sheet.querySelector('#go')?.addEventListener('click',()=>{
@@ -344,7 +359,7 @@ function tradeSheet({side,item,stock,holding,resume}){
       if(state.tab==='portfolio'&&state.stack.length===1) render(false);
     },1400); };
 
-  const paint=()=>{ if(!w.isConnected) return; reviewing?reviewV():form(); };
+  const paint=()=>{ if(!w.isConnected) return; priceStep?priceView():reviewing?reviewV():form(); };
   paint();
 }
 
@@ -375,13 +390,22 @@ SCREENS.portfolio={
     const activity=()=>{ if(!w.activity.length) return '<div class="empty"><b>Nothing yet.</b><span class="sub">Your deposits and trades show up here.</span></div>'; const groups=[]; w.activity.sort((a,b)=>(b.ts||0)-(a.ts||0)); const pend=w.activity.filter(a=>a.status==='pending'); if(pend.length) groups.push(['Pending',pend]); for(const a of w.activity.filter(a=>a.status!=='pending')){ const l=dayLabel(a.ts); const g=groups.find(x=>x[0]===l); if(g) g[1].push(a); else groups.push([l,[a]]); } return groups.map(([l,items])=>`<div class="eyebrow" style="margin-top:18px">${l}</div><div class="card">${items.map(actRow).join('')}</div>`).join(''); };
     /* Waiting orders, with what each one has reserved. Nothing is charged until one fills. */
     const openOrders=acct.openOrders();
+    const pastOrders=MOCK.orders.filter(o=>o.status!=='open');
+    let oview=state._oview||'open';
     const orderRow=o=>{ const s=state.stocksByMint[o.mint]; const away=s&&s.priceUsd?((o.triggerUsd-s.priceUsd)/s.priceUsd*100):null;
       return `<div class="row m" style="align-items:center">${logo({symbol:o.symbol,logo:s?.logo},40)}
         <div class="grow"><div class="t"><span class="sym">${esc(o.symbol)}</span><span class="badge ${o.side==='buy'?'up':'dn'}" style="padding:2px 6px;font-size:9px;background:var(--${o.side==='buy'?'greenT':'redT'});color:var(--${o.side==='buy'?'green':'red'})">${o.side.toUpperCase()}</span></div>
           <div class="s mono">${fmt.cash(o.makingUsd)} at ${fmt.usd(o.triggerUsd)}${away!=null?` · ${away>=0?'+':'−'}${Math.abs(away).toFixed(1)}% away`:''}</div></div>
         <button class="pill xs" data-cancel="${o.id}">Cancel</button></div>`; };
-    const orders=()=>{ if(!openOrders.length) return '<div class="empty"><b>No waiting orders.</b><span class="sub">Set a price with Limit on any stock and it fills while you sleep.</span></div>';
-      return `<div class="card">${openOrders.map(orderRow).join('')}</div>
+    const pastRow=o=>{ const s=state.stocksByMint[o.mint];
+      return `<div class="row m" style="align-items:center">${logo({symbol:o.symbol,logo:s?.logo},40)}
+        <div class="grow"><div class="t"><span class="sym">${esc(o.symbol)}</span><span class="faint" style="font-size:11px;font-weight:500">${o.status}</span></div>
+          <div class="s mono">${fmt.cash(o.makingUsd)} at ${fmt.usd(o.triggerUsd)} · ${fmt.ago(o.createdAt)} ago</div></div></div>`; };
+    const orders=()=>{
+      const pills=`<div style="display:flex;gap:8px;margin-bottom:12px"><button class="pill sm ${oview==='open'?'on':''}" data-ov="open">Open orders</button><button class="pill sm ${oview==='past'?'on':''}" data-ov="past">Order history</button></div>`;
+      if(oview==='past') return pills+(pastOrders.length?`<div class="card">${pastOrders.map(pastRow).join('')}</div>`:'<div class="empty"><b>Nothing here yet.</b><span class="sub">Filled and cancelled orders show up here.</span></div>');
+      if(!openOrders.length) return pills+'<div class="empty"><b>No waiting orders.</b><span class="sub">Set a price with Limit on any stock and it fills while you sleep.</span></div>';
+      return pills+`<div class="card">${openOrders.map(orderRow).join('')}</div>
         <div class="sub" style="margin-top:12px;padding-inline:4px">${fmt.cash(acct.reservedUsd())} reserved across ${openOrders.length} order${openOrders.length===1?'':'s'} — not spendable until they fill or you cancel.</div>`; };
 
     const paint=()=>{ const inv=w.totalUsd-w.cashUsd;
@@ -397,6 +421,7 @@ SCREENS.portfolio={
       if(!ape) body.querySelectorAll('[data-token]').forEach(b=>b.removeAttribute('data-token')); bindRows(el);
       body.querySelectorAll('[data-wt]').forEach(b=>b.onclick=()=>{ tab=b.dataset.wt; state._wtab=tab; paint(); });
       body.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=()=>{ acct.cancelOrder(b.dataset.cancel); toast('Order cancelled · funds returned'); render(false); });
+      body.querySelectorAll('[data-ov]').forEach(b=>b.onclick=()=>{ oview=b.dataset.ov; state._oview=oview; paint(); });
       body.querySelector('#addcash').onclick=depositSheet; body.querySelector('[data-act="dep"]').onclick=depositSheet; body.querySelector('[data-act="wd"]').onclick=()=>toast('Withdraw is coming soon');
       body.querySelectorAll('[data-tx]').forEach(b=>b.onclick=()=>txSheet(w.activity[+b.dataset.tx]));
       /* positions in the wallet open a sell/buy chooser instead of the page */
