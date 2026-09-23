@@ -390,11 +390,19 @@ struct TradeSheetView: View {
         }
     }
 
-    /// Buys give USDC at 6dp; sells give raw token units, which must actually exist.
+    /// Buys give USDC at 6dp. Sells give raw token units — and only the share the user actually
+    /// asked for: the amount is typed in dollars, so it has to be scaled against the position's
+    /// value, or every partial limit sell would quietly sell the whole holding.
     private var orderAmountRaw: String? {
         if side == .buy { return String(Int64((usd * 1_000_000).rounded())) }
-        guard let raw = store.holding?.raw, raw != "0", !raw.isEmpty else { return nil }
-        return raw
+        guard let h = store.holding, let raw = h.raw, !raw.isEmpty, raw != "0",
+              let total = Decimal(string: raw), let value = h.valueUsd, value > 0, usd > 0 else { return nil }
+        // All of it, within rounding: send the exact balance so no dust is stranded.
+        if usd >= value - 0.005 || pct == 100 { return raw }
+        var scaled = total * Decimal(usd) / Decimal(value)
+        var floored = Decimal()
+        NSDecimalRound(&floored, &scaled, 0, .down)
+        return floored > 0 ? "\(floored)" : nil
     }
 
     private func loadOrderQuote() async {
