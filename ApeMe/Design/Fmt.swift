@@ -96,6 +96,15 @@ enum Fmt {
         return big(n / pow(10, Double(dec)), "")
     }
 
+    /// Plain digits a numpad can round-trip — no grouping separators, no symbol.
+    static func plain(_ v: Double) -> String {
+        if v >= 1000 { return String(format: "%.2f", v) }
+        var s = String(format: "%.8f", v)
+        while s.contains("."), s.hasSuffix("0") { s.removeLast() }
+        if s.hasSuffix(".") { s.removeLast() }
+        return s
+    }
+
     static func qty(_ n: Double, symbol: String) -> String {
         let s = n > 1000 ? group(n, 0) : trimmed(n, 5)
         return "\(s) \(symbol)"

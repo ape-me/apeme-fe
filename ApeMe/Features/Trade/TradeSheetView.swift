@@ -223,11 +223,19 @@ struct TradeSheetView: View {
                         .lineLimit(1).minimumScaleFactor(0.5)
                 }
                 if limitSell {
-                    Text(triggerUsd > 0 && tokenQty > 0
-                         ? "\(asset.symbol) · you'd get \(Fmt.cash(proceedsAtTrigger)) at \(Fmt.usd(triggerUsd))"
-                         : "\(asset.symbol) · you hold \(Fmt.qty(heldQty, symbol: ""))")
-                        .font(.system(size: 15)).monospacedDigit().foregroundStyle(Theme.muted)
-                        .lineLimit(1).minimumScaleFactor(0.7)
+                    HStack(spacing: 5) {
+                        if triggerUsd > 0, tokenQty > 0 {
+                            Text("you'd get").foregroundStyle(Theme.muted)
+                            Text(Fmt.cash(proceedsAtTrigger)).foregroundStyle(Theme.green).fontWeight(.bold)
+                            Text("at \(Fmt.usd(triggerUsd))").foregroundStyle(Theme.muted)
+                        } else {
+                            Text("you hold").foregroundStyle(Theme.muted)
+                            Text(Fmt.qty(heldQty, symbol: asset.symbol)).foregroundStyle(Theme.green).fontWeight(.bold)
+                            Text("·").foregroundStyle(Theme.faint)
+                            Text(Fmt.usd(spot)).foregroundStyle(Theme.green).fontWeight(.bold)
+                        }
+                    }
+                    .font(.system(size: 15)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                 } else if side == .sell, hasAmount, sellValue > 0 {
                     Text("≈ \(Fmt.qty(sellQty, symbol: asset.symbol)) · \(Fmt.n(min(100, usd / sellValue * 100).rounded()))%").font(.system(size: 15)).monospacedDigit().foregroundStyle(Theme.muted)
                 }
@@ -239,7 +247,7 @@ struct TradeSheetView: View {
                 chips((settings.quickBuyUsd ?? [10, 25, 50, 100]).map { ("$" + Fmt.n($0), nil, $0) } + [("Max", nil, maxCash)], selected: usd) { amount = String(format: $0 == maxCash ? "%.2f" : "%g", $0); pct = nil }
             } else if limitSell {
                 chips((settings.quickSellPct ?? [25, 50, 100]).map { p in (Fmt.n(p) + "%", Fmt.qty(heldQty * p / 100, symbol: ""), heldQty * p / 100) }, selected: tokenQty) { q in
-                    tokens = Fmt.qty(q, symbol: "").replacingOccurrences(of: ",", with: "")
+                    tokens = Fmt.plain(q)
                     pct = abs(q - heldQty) < heldQty * 0.0001 ? 100 : nil
                 }
             } else {
@@ -276,7 +284,7 @@ struct TradeSheetView: View {
     private func chips(_ items: [(String, String?, Double)], selected: Double, pick: @escaping (Double) -> Void) -> some View {
         HStack(spacing: 8) {
             ForEach(items, id: \.0) { label, sub, v in
-                let on = abs(v - selected) < 0.006
+                let on = abs(v - selected) <= max(abs(v), abs(selected)) * 0.001 + 1e-9
                 Button { Haptic.selection(); pick(v) } label: {
                     VStack(spacing: 2) {
                         Text(label).font(.system(size: 14, weight: .semibold))
@@ -335,32 +343,48 @@ struct TradeSheetView: View {
 
     /// Amount step button. Purely local — nothing is fetched until Review order.
     @ViewBuilder private var primary: some View {
-        if limitSell, tokenQty <= 0 { BigButton(label: "Enter an amount", style: .off) {} }
-        else if limitSell, tokenQty > heldQty + heldQty * 0.0001 {
+        if limit { limitPrimary } else { marketPrimary }
+    }
+
+    /// Everything a limit order is gated on, in one place, reading the token amount when that is
+    /// what the sheet is asking for and dollars when it is not.
+    @ViewBuilder private var limitPrimary: some View {
+        let min = OrdersStore.shared.minUsd
+        let value = limitSell ? limitSellUsd : usd
+        if limitSell, tokenQty <= 0 {
+            BigButton(label: "Enter an amount", style: .off) {}
+        } else if !limitSell, usd <= 0 {
+            BigButton(label: "Enter an amount", style: .off) {}
+        } else if limitSell, tokenQty > heldQty * 1.0001 {
             BigButton(label: "You hold \(Fmt.qty(heldQty, symbol: asset.symbol)) · Sell all", style: .white) {
-                tokens = Fmt.qty(heldQty, symbol: "").replacingOccurrences(of: ",", with: ""); pct = 100
+                Haptic.light(); tokens = Fmt.plain(heldQty)
+            }
+        } else if limitSell, let min, sellValue < min - 0.005 {
+            // The whole position is under the floor, so no trigger will ever be taken. Market
+            // sells have no minimum, so send them there rather than leaving a dead control.
+            BigButton(label: "Only \(Fmt.cash(sellValue)) here · sell at market", style: .white) {
+                Haptic.light(); limit = false
+                amount = String(format: "%.2f", floor(sellValue * 100) / 100); pct = 100
+            }
+        } else if let min, value < min {
+            BigButton(label: "Limit orders start at \(Fmt.cash(min))", style: .off) {}
+        } else if triggerUsd <= 0 {
+            BigButton(label: "Set a trigger price", style: .off) { Haptic.light(); settingPrice = true }
+        } else if let max = OrdersStore.shared.config.maxOpen, OrdersStore.shared.open.count >= max {
+            BigButton(label: "\(max) open orders is the limit", style: .off) {}
+        } else if side == .buy,
+                  usd * (1 + OrdersStore.shared.config.buyFeeRate) + (OrdersStore.shared.config.accountCostUsd ?? 0) > cash + 0.000001 {
+            BigButton(label: "Deposit to place this", style: .white) { dismiss(); app.sheet = .deposit }
+        } else {
+            BigButton(label: "Review order", style: side == .sell ? .sell : .buy) {
+                Haptic.light(); reviewing = true; Task { await loadOrderQuote() }
             }
         }
-        else if usd <= 0, !limitSell { BigButton(label: "Enter an amount", style: .off) {} }
-        else if limit {
-            // Jupiter measures the output side, so a position worth less than the floor can
-            // never carry a trigger at any price. Market sells have no minimum, so send them
-            // there rather than leaving a control that cannot work.
-            if side == .sell, let min = OrdersStore.shared.minUsd, sellValue < min - 0.005 {
-                // The whole position is under the floor, so no trigger will ever be taken.
-                BigButton(label: "Only \(Fmt.cash(sellValue)) here · sell at market", style: .white) {
-                    Haptic.light()
-                    limit = false
-                    amount = String(format: "%.2f", floor(sellValue * 100) / 100)
-                    pct = 100
-                }
-            }
-            else if let min = OrdersStore.shared.minUsd, (limitSell ? limitSellUsd : usd) < min { BigButton(label: "Limit orders start at \(Fmt.cash(min))", style: .off) {} }
-            else if triggerUsd <= 0 { BigButton(label: "Set a trigger price", style: .off) { Haptic.light(); settingPrice = true } }
-            else if let max = OrdersStore.shared.config.maxOpen, OrdersStore.shared.open.count >= max { BigButton(label: "\(max) open orders is the limit", style: .off) {} }
-            else if side == .buy, usd * (1 + OrdersStore.shared.config.buyFeeRate) + (OrdersStore.shared.config.accountCostUsd ?? 0) > cash + 0.000001 { BigButton(label: "Deposit to place this", style: .white) { dismiss(); app.sheet = .deposit } }
-            else { BigButton(label: "Review order", style: side == .sell ? .sell : .buy) { Haptic.light(); reviewing = true; Task { await loadOrderQuote() } } }
-        }
+    }
+
+    /// Market: purely local, nothing is fetched until Review order.
+    @ViewBuilder private var marketPrimary: some View {
+        if usd <= 0 { BigButton(label: "Enter an amount", style: .off) {} }
         else if side == .buy, estimatedTotal(usd) > cash + 0.000001 { BigButton(label: "Deposit to buy", style: .white) { dismiss(); app.sheet = .deposit } }
         else if side == .sell, usd > sellValue + 0.005 { BigButton(label: "You hold \(Fmt.cash(sellValue)) · Sell all", style: .white) { amount = String(format: "%.2f", floor(sellValue * 100) / 100); pct = 100 } }
         else { BigButton(label: "Review order", style: side == .sell ? .sell : .buy) { Haptic.light(); reviewing = true; requote() } }
