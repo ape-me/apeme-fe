@@ -51,6 +51,11 @@ struct OrderQuote: Codable, Hashable {
     let takingRaw: String?
     let orderUsd: Double?
     let escrowUsd: Double?
+    /// On-chain cost charged on top of the escrow: Jupiter's order deposit, plus the token
+    /// account the first time this stonk is held. Buys only.
+    let costUsd: Double?
+    /// escrowUsd + costUsd — what actually leaves the wallet to place the order.
+    let totalUsd: Double?
     let triggerUsd: Double?
     let fee: Fee?
 }

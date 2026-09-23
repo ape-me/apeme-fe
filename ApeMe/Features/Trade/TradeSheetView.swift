@@ -418,8 +418,9 @@ struct TradeSheetView: View {
             }
         } else if let max = OrdersStore.shared.config.maxOpen, OrdersStore.shared.open.count >= max {
             BigButton(label: "\(max) open orders is the limit", style: .off) {}
-        } else if side == .buy,
-                  usd * (1 + OrdersStore.shared.config.buyFeeRate) + (OrdersStore.shared.config.accountCostUsd ?? 0) > cash + 0.000001 {
+        } else if side == .buy, usd > cash + 0.000001 {
+            // Only the obvious case locally — the on-chain cost is the BE's to price, and its
+            // insufficient_usdc carries the exact shortfall.
             BigButton(label: "Deposit to place this", style: .white) { dismiss(); app.sheet = .deposit }
         } else {
             BigButton(label: "Review order", style: side == .sell ? .sell : .buy) {
@@ -588,16 +589,22 @@ struct TradeSheetView: View {
                     row("Price now", Fmt.usd(spot), .reference)
                     Divider().overlay(Theme.line)
                     feeLine(q.fee)
+                    if side == .buy, let cost = q.costUsd, cost > 0 {
+                        Divider().overlay(Theme.line)
+                        costLine(cost)
+                        Divider().overlay(Theme.line)
+                        row("Total", Fmt.cash(q.totalUsd ?? (q.escrowUsd ?? 0) + cost), .outcome)
+                    }
                 }
                 .padding(.top, 28)
                 note(side == .buy
-                     ? "\(Fmt.cash(q.escrowUsd)) is reserved while this order waits. Nothing is charged unless it fills, and cancelling returns all of it."
+                     ? "\(Fmt.cash(q.escrowUsd)) is reserved for the stock and comes back in full if you cancel. Nothing is charged for the trade unless it fills."
                      : "Your \(asset.symbol) is reserved while this order waits. Cancel any time to get it back.")
                     .padding(.top, 14)
                 Color.clear.frame(height: 24)
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(side == .buy ? "\(Fmt.cash(q.escrowUsd)) reserved" : "\(Fmt.cash(proceedsAtTrigger)) if it fills")
+                        Text(side == .buy ? "\(Fmt.cash(q.totalUsd ?? q.escrowUsd)) leaves your wallet" : "\(Fmt.cash(proceedsAtTrigger)) if it fills")
                             .font(.system(size: 20, weight: .semibold)).tracking(-0.4).monospacedDigit()
                         Text("at \(Fmt.usd(q.triggerUsd)) · \(awayPct >= 0 ? "+" : "−")\(String(format: "%.1f", abs(awayPct)))% from now")
                             .font(.sub).foregroundStyle(Theme.muted)
@@ -629,6 +636,25 @@ struct TradeSheetView: View {
                 BigButton(label: "Pricing your order…", style: .off) {}.padding(.top, 20)
             }
         }
+    }
+
+    /// Jupiter's order deposit comes back in SOL when the order closes, filled or cancelled, so
+    /// it is not a fee and must not read like one. The token account is a genuine one-time cost,
+    /// the same one a market buy already charges, and only lands on a stonk never held before.
+    private func costLine(_ cost: Double) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(holdsAlready ? "Order deposit" : "Deposit + account setup")
+                    .font(.system(size: 15)).foregroundStyle(Theme.muted)
+                Spacer()
+                Text(Fmt.cash(cost)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
+            }
+            Text(holdsAlready
+                 ? "Solana holds this while the order waits and returns it to your wallet when it closes — filled or cancelled."
+                 : "The deposit comes back to your wallet when the order closes. The account setup is a one-time cost for holding \(asset.symbol) and doesn't.")
+                .font(.sub).foregroundStyle(Theme.faint).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 12)
     }
 
     /// A free buy is worth saying out loud, not hiding.
