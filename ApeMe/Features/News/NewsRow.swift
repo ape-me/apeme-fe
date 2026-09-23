@@ -113,18 +113,31 @@ struct NewsRow: View {
     private var dot: some View { Text("·").foregroundStyle(Theme.faint) }
 }
 
-/// The top story earns a picture at full width. Only when the article actually brought one —
-/// a stock logo stretched to 16:9 is worse than no lead at all.
+/// The top story earns a picture at full width. Pre-IPO stories arrive through Google News
+/// wrappers that no server-side scrape can open, so they will never carry a photo — those fall
+/// back to the stock's mark centred on a tinted panel, which reads as designed. Stretching the
+/// logo would read as broken, and dropping the lead entirely would leave the marquee names
+/// looking like the poor relation of the tickers that happen to have art.
 struct NewsLead: View {
     let item: NewsItem
     var showSymbol = true
     let open: (NewsItem) -> Void
     let openStock: (String) -> Void
 
+    @ViewBuilder private var art: some View {
+        if let photo = item.photoURL {
+            RemoteImage(url: photo, fallback: "")
+        } else {
+            ZStack {
+                RadialGradient(colors: [Theme.surface2, Theme.surface], center: .init(x: 0.5, y: 0.45), startRadius: 0, endRadius: 220)
+                Logo(url: item.logoURL, symbol: item.symbol, size: 76)
+            }
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            RemoteImage(url: item.photoURL, fallback: "")
-                .frame(maxWidth: .infinity).aspectRatio(16 / 9, contentMode: .fill)
+            art.frame(maxWidth: .infinity).aspectRatio(16 / 9, contentMode: .fill)
                 .clipShape(.rect(cornerRadius: 14))
             HStack(spacing: 5) {
                 if showSymbol {
