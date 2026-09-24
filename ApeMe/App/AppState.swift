@@ -70,9 +70,9 @@ final class AppState {
     }
 
     func push(_ r: Route) {
-        // The last word on navigation: while the meme side is hidden nothing reaches a floor or
-        // a token page, whatever calls this.
-        guard Feature.ape || !r.needsApe else { return }
+        // The last word on navigation: a screen that is switched off cannot be opened, whatever
+        // calls this.
+        guard r.isAvailable else { return }
         path.append(r)
     }
 

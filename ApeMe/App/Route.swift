@@ -7,11 +7,12 @@ enum Route: Hashable {
     case settings
     case referrals
 
-    /// Destinations that belong to the meme side, and are unreachable while it is hidden.
-    var needsApe: Bool {
+    /// Whether this destination is switched on. `push` refuses anything that is not.
+    var isAvailable: Bool {
         switch self {
-        case .floor, .token: true
-        case .stock, .settings, .referrals: false
+        case .floor, .token: Feature.ape
+        case .referrals: Feature.referrals
+        case .stock, .settings: true
         }
     }
 }
