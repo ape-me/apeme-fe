@@ -9,7 +9,7 @@ struct HomeView: View {
         ScrollView {
             VStack(spacing: 0) {
                 header
-                strip
+                strip.padding(.top, 8)
                 // The strip teases news from the other tabs; on News itself it is the same
                 // stories twice on one screen, so it stands down.
                 if !app.isApe, store.investTab != .news {
@@ -37,14 +37,17 @@ struct HomeView: View {
         .refreshable { await store.load(app: app) }
     }
 
-    /// Title left, mode switch right. Nothing about the wallet lives here — that's Portfolio.
-    private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Text(app.isApe ? "Floors" : "Home").h1Text()
-            Spacer()
-            if Feature.ape { ModeSwitch() }
+    /// No title: the tab bar already says which screen this is, and the market should be the
+    /// first thing on it. Only the mode switch needs a row, and only while it exists.
+    @ViewBuilder private var header: some View {
+        if Feature.ape {
+            HStack(alignment: .center, spacing: 12) {
+                Text(app.isApe ? "Floors" : "Home").h1Text()
+                Spacer()
+                ModeSwitch()
+            }
+            .padding(.horizontal, 20).padding(.top, 16)
         }
-        .padding(.horizontal, 20).padding(.top, 16)
     }
 
     @ViewBuilder private var strip: some View {

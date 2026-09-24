@@ -7,11 +7,8 @@ struct MarketsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text(app.isApe ? "Floors" : "Markets").h1Text()
-                search
-            }
-            .padding(.horizontal, 20).padding(.top, 16)
+            // Search leads: the tab bar names the screen, so the title was a row of nothing.
+            search.padding(.horizontal, 20).padding(.top, 12)
             chips.padding(.top, 12).padding(.bottom, 4)
             ScrollView {
                 list.padding(.horizontal, 20).padding(.bottom, 24)
