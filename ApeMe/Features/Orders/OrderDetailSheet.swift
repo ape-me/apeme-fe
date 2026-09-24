@@ -62,7 +62,7 @@ struct OrderDetailSheet: View {
 
     private var statusLine: String {
         if o.isPartial { return "Part filled · still open" }
-        if o.isExpired { return "Expired · not cancelled yet" }
+        if o.isExpired { return "Expired · your money is still held" }
         switch o.status {
         case "open": return "Waiting for your price"
         case "filled": return o.filledAt.map { "Filled \(Fmt.ago($0)) ago" } ?? "Filled"
@@ -161,19 +161,24 @@ struct OrderDetailSheet: View {
 
     private var cancel: some View {
         VStack(spacing: 10) {
-            BigButton(label: store.cancelling == o.id ? "Cancelling…" : "Cancel order", style: .ghost) {
+            BigButton(label: store.cancelling == o.id ? (o.needsReclaim ? "Releasing…" : "Cancelling…")
+                                                      : (o.needsReclaim ? "Reclaim funds" : "Cancel order"),
+                      style: o.needsReclaim ? .buy : .ghost) {
                 guard let w = app.auth.activeWallet else { app.show("Sign in first.", error: true); return }
                 Haptic.medium()
                 Task {
                     do {
                         try await store.cancel(o.id, wallet: w)
-                        app.show("Order cancelled · funds returned")
+                        app.show(o.needsReclaim ? "Funds released back to your balance" : "Order cancelled · funds returned")
                         dismiss()
                     } catch { app.show(OrdersStore.message(error), error: true) }
                 }
             }
             .disabled(store.cancelling != nil)
-            Text(o.isBuy ? "The reserved cash goes back to your balance." : "Your position stays where it is.")
+            Text(o.needsReclaim
+                 ? (o.isBuy ? "This order passed its deadline without filling. The cash is still reserved on chain until you release it."
+                            : "This order passed its deadline without filling. Releasing it closes the order out.")
+                 : (o.isBuy ? "The reserved cash goes back to your balance." : "Your position stays where it is."))
                 .font(.sub).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
         }
         .padding(.horizontal, 20).padding(.top, 24)

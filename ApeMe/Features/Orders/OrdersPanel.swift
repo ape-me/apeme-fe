@@ -10,7 +10,12 @@ struct OrdersPanel: View {
     @State private var showPast = false
     @State private var detail: LimitOrder?
 
-    private var open: [LimitOrder] { mint.map(store.open(for:)) ?? store.open }
+    private var open: [LimitOrder] {
+        let all = mint.map(store.open(for:)) ?? store.open
+        // Expired orders are still holding money and need a tap, so they lead.
+        return all.filter(\.needsReclaim) + all.filter { !$0.needsReclaim }
+    }
+    private var expired: [LimitOrder] { open.filter(\.needsReclaim) }
     private var past: [LimitOrder] { (mint.map(store.all(for:)) ?? store.orders).filter { !$0.isOpen } }
     private var reserved: Double { open.filter(\.isBuy).reduce(0) { $0 + ($1.escrowUsd ?? 0) } }
 
@@ -30,6 +35,21 @@ struct OrdersPanel: View {
             } else if open.isEmpty {
                 EmptyState(title: "No waiting orders.", subtitle: "Set a price with Limit and it fills while you sleep.")
             } else {
+                // The money is still theirs and only a tap gets it back, so say so before the list.
+                if !expired.isEmpty {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.circle.fill").font(.system(size: 14)).foregroundStyle(Theme.amber)
+                        Text(expired.count == 1
+                             ? "One order expired without filling. Your money is still held — tap Reclaim to get it back."
+                             : "\(expired.count) orders expired without filling. Your money is still held — tap Reclaim to get it back.")
+                            .font(.sub).foregroundStyle(Theme.ink).lineSpacing(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(Theme.amberT, in: .rect(cornerRadius: 12))
+                    .padding(.bottom, 12)
+                }
                 KCard { ForEach(open) { row($0) } }
                 if reserved > 0 {
                     Text("\(Fmt.cash(reserved)) reserved — not spendable until they fill or you cancel.")
@@ -128,7 +148,7 @@ struct OrdersPanel: View {
         }
         // Past its deadline. We do not know yet whether Jupiter returns the escrow on its own,
         // so this says what to do and promises nothing.
-        if o.isExpired { return head + " · cancel to close it out" }
+        if o.isExpired { return head + " · funds still held" }
         if o.isOpen, let away {
             let gap = " · \(away >= 0 ? "+" : "−")\(String(format: "%.1f", abs(away)))% away"
             // Only once the clock is worth watching — an order with three weeks left says nothing.
@@ -147,16 +167,23 @@ struct OrdersPanel: View {
             guard let w = app.auth.activeWallet else { app.show("Sign in first.", error: true); return }
             Haptic.medium()
             Task {
-                do { try await store.cancel(o.id, wallet: w); app.show("Order cancelled · funds returned") }
+                do {
+                    try await store.cancel(o.id, wallet: w)
+                    app.show(o.needsReclaim ? "Funds released back to your balance" : "Order cancelled · funds returned")
+                }
                 catch { app.show(OrdersStore.message(error), error: true) }
             }
         } label: {
             Group {
                 if store.cancelling == o.id { ProgressView().tint(Theme.ink).scaleEffect(0.7) }
-                else { Text("Cancel").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink) }
+                else {
+                    Text(o.needsReclaim ? "Reclaim" : "Cancel")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(o.needsReclaim ? Theme.ground : Theme.ink)
+                }
             }
             .padding(.horizontal, 12).frame(height: 32)
-            .background(Theme.surface2, in: .capsule)
+            .background(o.needsReclaim ? Theme.amber : Theme.surface2, in: .capsule)
         }
         .buttonStyle(.plain)
         .disabled(store.cancelling != nil)

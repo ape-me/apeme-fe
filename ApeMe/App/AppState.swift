@@ -112,6 +112,8 @@ final class AppState {
                 let of = order.makingUsd.map { " of \(Fmt.cash($0))" } ?? ""
                 show("\(symbol) partly filled\(part.map { " · \(Fmt.cash($0))" } ?? "")\(of) · still open", image: img)
                 Task { await self.loadWallet(bustCache: true) }
+            } else if order.status == "expired" {
+                show("\(symbol) order expired — your money is still held, tap Reclaim", image: img)
             } else if order.status == "cancelled" {
                 show("\(symbol) order cancelled", image: img)
             }

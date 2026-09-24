@@ -191,8 +191,7 @@ struct TradeSheetView: View {
                         .buttonStyle(.plain).frame(maxWidth: .infinity)
                     }
                 }
-                Text(limit ? "Fills only at your price or better. Nothing is charged until it does."
-                           : "Fills now at the best price available.")
+                Text(limit ? limitNote : "Fills now at the best price available.")
                     .font(.system(size: 12.5)).foregroundStyle(Theme.muted)
                     .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }
@@ -355,6 +354,14 @@ struct TradeSheetView: View {
             Text("req \(r)").font(.system(size: 10)).foregroundStyle(Theme.faint).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
         }
         #endif
+    }
+
+    /// What a limit order does, including the part people only find out later: after the
+    /// deadline it stops working but keeps the money until it is cancelled.
+    private var limitNote: String {
+        let base = "Fills only at your price or better. Nothing is charged until it does."
+        guard let days = OrdersStore.shared.config.ttlDays else { return base }
+        return base + " After \(days) days it stops trying — your \(side == .buy ? "money" : "position") stays reserved until you cancel it."
     }
 
     /// Amount step button. Purely local — nothing is fetched until Review order.

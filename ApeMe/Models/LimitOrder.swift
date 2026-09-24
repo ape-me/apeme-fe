@@ -11,7 +11,7 @@ struct LimitOrder: Codable, Hashable, Identifiable {
     let takingRaw: String?
     let makingUsd: Double?
     let triggerUsd: Double?
-    let status: String          // quoted | open | partial | filled | cancelled | failed
+    let status: String          // quoted | open | partial | expired | filled | cancelled | failed
     let signature: String?
     let createdAt: Int?
     let filledAt: Int?
@@ -26,8 +26,10 @@ struct LimitOrder: Codable, Hashable, Identifiable {
     let remainingMakingRaw: String?
     let remainingTakingRaw: String?
 
-    /// A partly filled order is still working, so it belongs with the open ones.
-    var isOpen: Bool { status == "open" || status == "partial" }
+    /// Still holding the user's money, so it belongs with the open ones. An expired order is
+    /// not finished: Jupiter keeps it in its active list and the escrow only comes back on a
+    /// cancel, which we confirmed against the program rather than the docs.
+    var isOpen: Bool { status == "open" || status == "partial" || status == "expired" }
     var isBuy: Bool { side == "buy" }
 
     /// How much of the order has been taken, 0…1. nil when the BE says nothing about it.
@@ -52,12 +54,16 @@ struct LimitOrder: Codable, Hashable, Identifiable {
         guard let f = filledFraction, let m = makingUsd else { return isOpen ? nil : fillUsd }
         return m * f
     }
-    /// Past its deadline but not closed. Until we have proof Jupiter returns the money on its
-    /// own, the row treats this as "still yours, cancel to get it back".
+    /// Past its deadline and still holding the escrow. Either the backend says so outright, or
+    /// the deadline has passed and it has not closed.
     var isExpired: Bool {
+        if status == "expired" { return true }
         guard isOpen, let e = expiresAt else { return false }
         return Double(e) <= Date.now.timeIntervalSince1970
     }
+
+    /// Needs the user to do something before the money comes back.
+    var needsReclaim: Bool { isExpired }
 
     /// What this order has locked up — only buys reserve USDC, and only the unfilled part.
     var escrowUsd: Double? {
