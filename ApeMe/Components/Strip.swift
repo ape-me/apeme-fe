@@ -37,6 +37,8 @@ struct Strip: View {
                             Text(change(it))
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundStyle(Theme.change(it.change))
+                                .contentTransition(.numericText())
+                                .animation(.easeOut(duration: 0.35), value: it.change)
                                 .padding(.horizontal, 7).frame(height: 22)
                                 .background((it.change ?? 0) >= 0 ? Theme.greenT : Theme.redT, in: .capsule)
                         }

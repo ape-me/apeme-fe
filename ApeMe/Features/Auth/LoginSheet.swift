@@ -7,7 +7,8 @@ struct LoginView: View {
         VStack(alignment: .leading, spacing: 0) {
             Spacer()
             Text("ApeMe").font(.system(size: 40, weight: .semibold)).tracking(-1.8)
-            Text("The trading floor for tokenized stocks.")
+            // The first line a judge reads. "Trading floor" belongs to the side we are hiding.
+            Text(Feature.ape ? "The trading floor for tokenized stocks." : "Tokenized stocks, bought and sold 24/7.")
                 .font(.system(size: 17)).foregroundStyle(Theme.muted).padding(.top, 6)
             LoginForm().padding(.top, 36)
             Spacer(minLength: 24)

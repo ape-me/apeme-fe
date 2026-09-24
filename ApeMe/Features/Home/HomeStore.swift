@@ -98,6 +98,16 @@ final class HomeStore {
         headlinesLoading = false
     }
 
+    /// Home is the first screen anyone sees, and the floor is no longer there to supply the
+    /// motion. Only the prices are refetched — news and collections will not have moved in
+    /// fifteen seconds, and both reads are edge-cached anyway.
+    func refreshPrices(app: AppState) async {
+        async let p = API.shared.stocks(issuer: "prestocks")
+        async let m = API.shared.movers(limit: 5)
+        if let pr = try? await p { preipo = pr.stocks; app.index(pr.stocks) }
+        if let mr = try? await m { movers = mr }
+    }
+
     func loadWatch(app: AppState) async {
         let mints = app.watch
         guard !mints.isEmpty else { watched = []; return }

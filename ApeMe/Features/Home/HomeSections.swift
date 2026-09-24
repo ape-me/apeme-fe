@@ -64,6 +64,8 @@ struct FeatureCard: View {
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     Text(app.isApe ? Fmt.big(stock.memeVol24hUsd) : Fmt.usd(stock.priceUsd))
+                        .contentTransition(.numericText())
+                        .animation(.easeOut(duration: 0.35), value: stock.priceUsd)
                         .font(.system(size: 34, weight: .semibold)).tracking(-1.5).monospacedDigit()
                     if app.isApe {
                         Text("traded on the floor today · \(Fmt.n(stock.wallets24h)) apes").font(.sub).foregroundStyle(Theme.muted)

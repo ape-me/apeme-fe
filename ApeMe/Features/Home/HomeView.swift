@@ -25,7 +25,14 @@ struct HomeView: View {
         }
         .scrollIndicators(.hidden)
         .background(Theme.ground)
-        .task(id: app.mode) { await store.load(app: app) }
+        .task(id: app.mode) {
+            await store.load(app: app)
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(15))
+                if Task.isCancelled { break }
+                await store.refreshPrices(app: app)
+            }
+        }
         .onDisappear { store.disconnect() }
         .refreshable { await store.load(app: app) }
     }
