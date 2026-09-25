@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Attached to the footer, not floating. Icons only, accent when active.
+/// Attached to the footer, not floating. Icon over word, accent when active — a wallet
+/// and a person glyph are not distinguishable enough at this size to stand alone.
 struct TabBar: View {
     @Environment(AppState.self) private var app
     @Environment(\.skin) private var skin
@@ -9,14 +10,18 @@ struct TabBar: View {
         HStack(spacing: 0) {
             ForEach(Tab.allCases) { tab in
                 Button { app.root(tab) } label: {
-                    Image(systemName: tab.symbol)
-                        .font(.system(size: 21, weight: app.tab == tab ? .semibold : .regular))
-                        .symbolVariant(app.tab == tab ? .fill : .none)
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(app.tab == tab ? skin.accent : Theme.faint)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 46)
-                        .contentTransition(.symbolEffect(.replace))
+                    VStack(spacing: 3) {
+                        Image(systemName: tab.symbol)
+                            .font(.system(size: 19, weight: app.tab == tab ? .semibold : .regular))
+                            .symbolVariant(app.tab == tab ? .fill : .none)
+                            .symbolRenderingMode(.hierarchical)
+                            .contentTransition(.symbolEffect(.replace))
+                        Text(tab.label)
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                    .foregroundStyle(app.tab == tab ? skin.accent : Theme.faint)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(tab.label)

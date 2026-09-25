@@ -10,13 +10,10 @@ struct HomeView: View {
             VStack(spacing: 0) {
                 header
                 strip.padding(.top, 8)
-                // The strip teases news from the other tabs; on News itself it is the same
-                // stories twice on one screen, so it stands down.
-                if !app.isApe, store.investTab != .news {
-                    if store.headlines.isEmpty, store.headlinesLoading { HeadlineStripSkeleton().padding(.top, 12) }
-                    else { HeadlineStrip(items: store.headlines).padding(.top, 12) }
-                }
-                HR().padding(.top, 8)
+                // The headline strip used to sit here. Two horizontal scrollers stacked above
+                // the tabs meant four things to swipe before a single price was legible, and
+                // News is already a tab of its own.
+                HR().padding(.top, 14)
                 tabs
                 body_
             }

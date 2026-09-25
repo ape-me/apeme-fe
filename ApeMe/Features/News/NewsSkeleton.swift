@@ -63,29 +63,6 @@ struct NewsListSkeleton: View {
     }
 }
 
-/// The same 214pt cards the strip will fill, so the row below never shifts down.
-struct HeadlineStripSkeleton: View {
-    var body: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 8) {
-                ForEach(0..<3, id: \.self) { _ in
-                    VStack(alignment: .leading, spacing: 7) {
-                        Bar(width: 96, height: 10)
-                        Bar(height: 11)
-                        Bar(width: 130, height: 11)
-                    }
-                    .frame(width: 214, alignment: .topLeading)
-                    .padding(.horizontal, 12).padding(.vertical, 11)
-                    .background(Theme.surface, in: .rect(cornerRadius: 14))
-                }
-            }
-            .padding(.horizontal, 20)
-        }
-        .scrollIndicators(.hidden)
-        .disabled(true)
-    }
-}
-
 /// Placeholder for an Overview card that is waiting on /insights.
 struct InsightCardSkeleton: View {
     let title: String

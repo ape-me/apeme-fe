@@ -114,14 +114,10 @@ struct PortfolioView: View {
             }
             .padding(16).background(Theme.surface, in: .rect(cornerRadius: 16)).padding(.top, 18)
 
-            HStack(spacing: 8) {
-                Pill(label: "Deposit", filled: true, icon: "plus") { app.sheet = .deposit }
-                Pill(label: "Withdraw · soon") { app.show("Withdraw is coming soon") }.opacity(0.5)
-            }
-            .padding(.top, 16)
-
+            // Withdraw was a half-opaque button that only ever produced a toast, and the
+            // Deposit beside it was the second Deposit on the screen.
             UnderlineTabs(items: Tab.allCases, selected: tab, label: \.label) { tab = $0 }
-                .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 22)
+                .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 24)
 
             Group {
                 switch tab {
@@ -450,6 +446,20 @@ struct PositionSheet: View {
 
     private var entry: Double? { holding.avgEntryUsd ?? holding.costUsd.map { $0 / max(holding.amount, 1e-12) } }
 
+    private var stats: [Stat] {
+        [
+            Stat(holding.kind == "meme" ? "Tokens" : "Shares", Text(Fmt.qty(holding.amount, symbol: ""))),
+            Stat("Entry", entry.map { Text(Fmt.usd($0)) } ?? Text("—").foregroundStyle(Theme.muted)),
+            Stat("Now", Text(Fmt.usd(holding.priceUsd))),
+            Stat("Profit", profit),
+        ]
+    }
+
+    private var profit: Text {
+        guard holding.costUsd != nil, let p = holding.pnlUsd else { return Text("—").foregroundStyle(Theme.muted) }
+        return Text("\(Fmt.signedCash(p)) (\(Fmt.pct(holding.pnlPct, 1)))").foregroundStyle(Theme.change(p))
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -464,15 +474,7 @@ struct PositionSheet: View {
                     Spacer()
                     IconButton(symbol: "xmark", label: "Close") { dismiss() }
                 }
-                KCard {
-                    KV(holding.kind == "meme" ? "Tokens" : "Shares", Fmt.qty(holding.amount, symbol: ""))
-                    if let e = entry { KV("Entry", Fmt.usd(e)) }
-                    KV("Now", Fmt.usd(holding.priceUsd))
-                    KV("Profit") {
-                        if holding.costUsd != nil, let p = holding.pnlUsd { Text("\(Fmt.signedCash(p)) (\(Fmt.pct(holding.pnlPct, 1)))").foregroundStyle(Theme.change(p)) }
-                        else { Text("—").foregroundStyle(Theme.muted) }
-                    }
-                }
+                StatGrid(stats: stats)
                 HStack(spacing: 10) {
                     BigButton(label: "Buy", style: .buy) {
                         dismiss()
@@ -492,7 +494,8 @@ struct PositionSheet: View {
             .padding(.horizontal, 20).padding(.top, 28).padding(.bottom, 18)
         }
         .scrollIndicators(.hidden)
-        .presentationDetents([.medium])
+        // The 2x2 grid took roughly 120pt off the content, and .medium left that as dead space.
+        .presentationDetents([.height(370)])
         .presentationBackground(Theme.surface)
         .presentationDragIndicator(.visible)
     }

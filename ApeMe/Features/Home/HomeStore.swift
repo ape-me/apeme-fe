@@ -35,9 +35,6 @@ final class HomeStore {
     var exploreId: String?
     var flashes: [String: Flash] = [:]
     var socketStatus: LiveSocket.Status = .connecting
-    /// One curated headline per stock for the strip, and the full feed for the News tab.
-    var headlines: [NewsItem] = []
-    var headlinesLoading = true
     var feed: [NewsItem] = []
     /// How many items at the head of `feed` are about stocks the user holds or watches.
     var ownedCount = 0
@@ -104,9 +101,6 @@ final class HomeStore {
         }
         loading = false
         if Feature.ape, let t = try? await API.shared.ticker(memes: 10, stonks: 1) { ticker = t.tokens }
-        // One headline per stock, material or better, newest first — the BE does the curation now.
-        if let h = try? await API.shared.news(limit: 12, minImpact: "material", perStock: 1) { headlines = h.items }
-        headlinesLoading = false
     }
 
     /// Home is the first screen anyone sees, and the floor is no longer there to supply the

@@ -82,3 +82,56 @@ struct SectionTitle<Trailing: View>: View {
         .padding(.bottom, 10)
     }
 }
+
+/// One cell of a `StatGrid`. The value is a `Text` so a caller can colour it — a `Text`'s own
+/// style survives the grid's.
+struct Stat: Identifiable {
+    let label: String
+    let value: Text
+    var id: String { label }
+
+    init(_ label: String, _ value: Text) {
+        self.label = label
+        self.value = value
+    }
+}
+
+/// Four numbers in a 2×2, hairlined into quarters. Four full-width `KV` rows spend twice the
+/// height on the same four numbers, which on a medium sheet is the difference between the
+/// buttons being on screen and not. The label sits above the value because a half-width cell
+/// has no room for the leader gap a full-width row leans on.
+struct StatGrid: View {
+    let stats: [Stat]
+
+    var body: some View {
+        let rows = stride(from: 0, to: stats.count, by: 2).map { Array(stats[$0..<min($0 + 2, stats.count)]) }
+        VStack(spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { i, row in
+                if i > 0 { Divider().overlay(Theme.line) }
+                HStack(spacing: 0) {
+                    ForEach(Array(row.enumerated()), id: \.element.id) { j, stat in
+                        if j > 0 { Divider().overlay(Theme.line) }
+                        cell(stat)
+                    }
+                    if row.count == 1 { Color.clear.frame(maxWidth: .infinity) }
+                }
+                .frame(minHeight: 60)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .background(Theme.surface, in: .rect(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1))
+    }
+
+    private func cell(_ stat: Stat) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(stat.label).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.muted)
+            stat.value
+                .font(.system(size: 16, weight: .semibold)).monospacedDigit()
+                .foregroundStyle(Theme.ink)
+                .lineLimit(1).minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16).padding(.vertical, 12)
+    }
+}

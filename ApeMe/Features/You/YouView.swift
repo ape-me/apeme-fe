@@ -2,6 +2,7 @@ import SwiftUI
 
 struct YouView: View {
     @Environment(AppState.self) private var app
+    @Environment(\.skin) private var skin
     @State private var confirmOnboarding = false
     @State private var confirmSignOut = false
     @State private var editingHandle = false
@@ -10,25 +11,9 @@ struct YouView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Text("You").h1Text().frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 20).padding(.top, 16)
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    // Who you are
-                    Button { handle = app.auth.me?.handle ?? ""; handleError = nil; editingHandle = true } label: {
-                        HStack(spacing: 12) {
-                            Text(String((app.auth.me?.handle ?? app.auth.accountLabel ?? "?").prefix(1)).uppercased())
-                                .font(.system(size: 20, weight: .semibold)).foregroundStyle(Theme.ink)
-                                .frame(width: 56, height: 56).background(Theme.surface2, in: .circle)
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(app.auth.me?.handle.map { "@" + $0 } ?? "Pick a handle").font(.system(size: 17, weight: .semibold))
-                                Text([app.auth.accountLabel, app.auth.me?.createdAt.map { "since " + Fmt.dateTime($0) }].compactMap { $0 }.joined(separator: " · ")).font(.sub).foregroundStyle(Theme.muted)
-                            }
-                            Spacer()
-                            Image(systemName: "pencil").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.muted)
-                        }
-                        .padding(.vertical, 8).contentShape(.rect)
-                    }
-                    .buttonStyle(RowPress())
+                    identity
 
                     if Feature.referrals {
                     Button { app.push(.referrals) } label: {
@@ -52,14 +37,20 @@ struct YouView: View {
                                    trailing: AnyView(SwitchShape(on: app.isApe, tint: Skin(mode: app.mode ?? .invest).accent))) { app.toggleMode() }
                     }
                     KCard {
-                        SettingRow(symbol: "slider.horizontal.3", title: "Trading settings", sub: "Slippage, quick amounts, priority, confirmations") { app.push(.settings) }
+                        SettingRow(symbol: "slider.horizontal.3", title: "Trading settings", sub: "Slippage, quick amounts, confirmations") { app.push(.settings) }
                         if let address = app.walletAddress {
-                            SettingRow(symbol: "doc.on.doc", title: "Wallet address", sub: Fmt.short(address)) { app.copy(address) }
+                            SettingRow(symbol: "wallet.bifold", title: "Wallet address", sub: Fmt.short(address), accessory: .copy) { app.copy(address) }
                         }
-                        SettingRow(symbol: "arrow.counterclockwise", title: "Show onboarding again", sub: Feature.ape ? "Three slides and the mode question" : "The three slides you saw first") { confirmOnboarding = true }
-                        SettingRow(symbol: "rectangle.portrait.and.arrow.right", title: "Sign out", sub: app.auth.accountLabel ?? "Signed in") { confirmSignOut = true }
+                        SettingRow(symbol: "play.rectangle", title: "Replay the intro", sub: Feature.ape ? "Three slides and the mode question" : "The three slides you saw first") { confirmOnboarding = true }
                     }
-                    .padding(.top, 8)
+                    .padding(.top, 14)
+
+                    // Signing out is not navigation and does not belong in a stack of chevrons.
+                    KCard {
+                        SettingRow(symbol: "rectangle.portrait.and.arrow.right", tint: Theme.red,
+                                   title: "Sign out", sub: app.auth.accountLabel ?? "Signed in", accessory: .none, destructive: true) { confirmSignOut = true }
+                    }
+                    .padding(.top, 12)
                     #if DEBUG
                     if Feature.debugTools {
                     SettingRow(symbol: "bell", title: "Preview toasts", sub: "Success, then error") {
@@ -71,13 +62,16 @@ struct YouView: View {
                     }
                     }
                     #endif
+                    Text(Self.version)
+                        .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.faint)
+                        .frame(maxWidth: .infinity).padding(.top, 28)
                 }
                 .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
         }
         .background(Theme.ground)
-        .appDialog("Show onboarding again?", isPresented: $confirmOnboarding,
+        .appDialog("Replay the intro?", isPresented: $confirmOnboarding,
                    message: "You'll pick a mode again. Nothing else changes.", confirm: "Show it") {
             app.onboarded = false; app.path.removeAll()
         }
@@ -92,6 +86,42 @@ struct YouView: View {
         } message: { Text(handleError ?? "3–20 characters: letters, numbers, underscore.") }
     }
 
+    /// The screen's own header — the tab bar already says "You", and a grey circle with a
+    /// single grey letter in it was the most template-looking thing on the screen.
+    private var identity: some View {
+        Button { handle = app.auth.me?.handle ?? ""; handleError = nil; editingHandle = true } label: {
+            HStack(spacing: 14) {
+                Text(String((app.auth.me?.handle ?? app.auth.accountLabel ?? "?").prefix(1)).uppercased())
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(skin.accent)
+                    .frame(width: 62, height: 62)
+                    .background(skin.accentTint, in: .circle)
+                    .overlay { Circle().stroke(skin.accent.opacity(0.35), lineWidth: 1) }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(app.auth.me?.handle.map { "@" + $0 } ?? "Pick a handle")
+                        .font(.system(size: 22, weight: .semibold)).tracking(-0.5)
+                    Text([app.auth.accountLabel, app.auth.me?.createdAt.map { "since " + Fmt.date($0) }].compactMap { $0 }.joined(separator: " · "))
+                        .font(.sub).foregroundStyle(Theme.muted).lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "pencil")
+                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.muted)
+                    .frame(width: 30, height: 30)
+                    .background(Theme.surface, in: .circle)
+                    .overlay { Circle().stroke(Theme.line, lineWidth: 1) }
+            }
+            .padding(.vertical, 6).contentShape(.rect)
+        }
+        .buttonStyle(RowPress())
+    }
+
+    private static var version: String {
+        let b = Bundle.main.infoDictionary
+        let v = b?["CFBundleShortVersionString"] as? String ?? "0"
+        let n = b?["CFBundleVersion"] as? String ?? "0"
+        return "ApeMe \(v) (\(n))"
+    }
+
     private func saveHandle() {
         let h = handle.lowercased().trimmingCharacters(in: .whitespaces)
         guard h.range(of: "^[a-z0-9_]{3,20}$", options: .regularExpression) != nil else { handleError = "3–20 characters: letters, numbers, underscore."; editingHandle = true; return }
@@ -103,37 +133,50 @@ struct YouView: View {
     }
 }
 
+/// A settings line: glyph in a fixed leading column, title over subtitle, accessory on the
+/// right. There is deliberately no chip behind the glyph — a grey rounded square around every
+/// icon turns four different actions into one repeated shape, and that sameness is what made
+/// this screen read as a template rather than a product.
 struct SettingRow: View {
-    var symbol: String?
-    var glyph: String? = nil
+    enum Accessory { case chevron, copy, none }
+
+    let symbol: String
+    var tint: Color = Theme.muted
     let title: String
     let sub: String
+    var accessory: Accessory = .chevron
+    var destructive = false
     var trailing: AnyView? = nil
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
-                Group {
-                    if let symbol {
-                        Image(systemName: symbol).font(.system(size: 15, weight: .medium)).symbolRenderingMode(.hierarchical)
-                    } else {
-                        Text(glyph ?? "").font(.system(size: 15, weight: .medium))
-                    }
-                }
-                .foregroundStyle(Theme.ink)
-                .frame(width: 32, height: 32)
-                .background(Theme.surface2, in: .rect(cornerRadius: 9))
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title).font(.system(size: 15, weight: .semibold))
-                    Text(sub).font(.system(size: 12.5)).foregroundStyle(Theme.muted).lineLimit(1)
+            HStack(spacing: 14) {
+                Image(systemName: symbol)
+                    .font(.system(size: 17, weight: .medium))
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(tint)
+                    .frame(width: 26)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 16, weight: .semibold)).tracking(-0.2)
+                        .foregroundStyle(destructive ? Theme.red : Theme.ink)
+                    Text(sub).font(.system(size: 13)).foregroundStyle(Theme.muted).lineLimit(1)
                 }
                 Spacer(minLength: 8)
-                if let trailing { trailing }
-                else { Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint) }
+                if let trailing { trailing } else { accessoryView }
             }
-            .padding(.vertical, 9).frame(minHeight: 52).contentShape(.rect)
+            .padding(.vertical, 11).frame(minHeight: 58).contentShape(.rect)
         }
         .buttonStyle(RowPress())
+    }
+
+    @ViewBuilder private var accessoryView: some View {
+        switch accessory {
+        // The address row copies; a chevron would promise a page that is not there.
+        case .copy: Image(systemName: "square.on.square").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.faint)
+        case .chevron: Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint)
+        case .none: EmptyView()
+        }
     }
 }

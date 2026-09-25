@@ -113,6 +113,10 @@ enum Fmt {
     static func time(_ ts: Int) -> String {
         Date(timeIntervalSince1970: TimeInterval(ts)).formatted(.dateTime.hour().minute().locale(locale))
     }
+    /// Day only. A join date does not need the minute it happened at.
+    static func date(_ ts: Int) -> String {
+        Date(timeIntervalSince1970: TimeInterval(ts)).formatted(.dateTime.month(.abbreviated).day().year().locale(locale))
+    }
     static func dateTime(_ ts: Int) -> String {
         Date(timeIntervalSince1970: TimeInterval(ts)).formatted(.dateTime.month(.abbreviated).day().hour().minute().locale(locale))
     }
