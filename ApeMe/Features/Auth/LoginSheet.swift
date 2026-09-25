@@ -1,35 +1,19 @@
 import SwiftUI
 import AuthenticationServices
 
-/// Full-screen gate. Nothing in the app is reachable until this succeeds.
-struct LoginView: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Spacer()
-            Text("ApeMe").font(.system(size: 40, weight: .semibold)).tracking(-1.8)
-            // The first line a judge reads. "Trading floor" belongs to the side we are hiding.
-            Text(Feature.ape ? "The trading floor for tokenized stocks." : "Tokenized stocks, bought and sold 24/7.")
-                .font(.system(size: 17)).foregroundStyle(Theme.muted).padding(.top, 6)
-            LoginForm().padding(.top, 36)
-            Spacer(minLength: 24)
-        }
-        .padding(.horizontal, 20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.ground)
-    }
-}
-
 /// Same form inside a bottom sheet — used when a signed-out state is reached later (sign out from You).
 struct LoginSheet: View {
+    /// From the welcome screen, where Apple already has its own button.
+    var emailOnly = false
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("Sign in").h2Text()
+                Text(emailOnly ? "Continue with email" : "Sign in").h2Text()
                 Spacer()
                 IconButton(symbol: "xmark", label: "Close") { dismiss() }
             }
-            LoginForm(onDone: { dismiss() })
+            LoginForm(emailOnly: emailOnly, onDone: { dismiss() })
         }
         .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 18)
         .frame(maxHeight: .infinity, alignment: .top)
@@ -41,6 +25,7 @@ struct LoginSheet: View {
 
 /// Apple first, then email + 6-digit code.
 struct LoginForm: View {
+    var emailOnly = false
     var onDone: () -> Void = {}
     @Environment(AppState.self) private var app
     @State private var email = ""
@@ -57,6 +42,7 @@ struct LoginForm: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("A wallet is created for you. No seed phrase.").font(.sub).foregroundStyle(Theme.muted)
 
+            if !emailOnly {
             Button { run(.apple) { try await app.auth.loginWithApple() } } label: {
                 HStack(spacing: 8) {
                     if busy == .apple { ProgressView().tint(Theme.ground) }
@@ -74,6 +60,7 @@ struct LoginForm: View {
                 Rectangle().fill(Theme.line).frame(height: 1)
                 Text("or").font(.sub).foregroundStyle(Theme.faint)
                 Rectangle().fill(Theme.line).frame(height: 1)
+            }
             }
 
             if codeSent {
@@ -146,7 +133,7 @@ struct LoginForm: View {
     }
 
     /// Cancelling is not an error. Everything else gets one plain sentence.
-    private static func message(for error: Error, emailCode: Bool) -> String? {
+    static func message(for error: Error, emailCode: Bool) -> String? {
         let ns = error as NSError
         if ns.domain == ASAuthorizationError.errorDomain {
             switch ASAuthorizationError.Code(rawValue: ns.code) {

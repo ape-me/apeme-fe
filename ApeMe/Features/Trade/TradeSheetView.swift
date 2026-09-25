@@ -723,11 +723,11 @@ struct TradeSheetView: View {
             if showDetails {
                 KCard {
                     if side == .buy { KV("Buys of \(asset.symbol)", Fmt.cash(q.swapUsd ?? q.outUsd)) }
-                    KV("ApeMe fee", Fmt.cash(q.fee?.usd ?? 0))
+                    KV("Stonks247 fee", Fmt.cash(q.fee?.usd ?? 0))
                     if let f = q.issuerFee, let bps = f.bps, bps > 0 { KV("Issuer fee \(String(format: "%g", Double(bps) / 100))%", Fmt.cash(f.usd ?? 0)) }
                     if let rent = rentUsd(q) {
                         KV("One-time network fee", Fmt.cash(rent))
-                        Text("Charged by Solana to open \(asset.symbol) in your wallet, not by ApeMe. Never again for this token.")
+                        Text("Charged by Solana to open \(asset.symbol) in your wallet, not by Stonks247. Never again for this token.")
                             .font(.system(size: 12)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 10)
                     }
                     KV("Gas", "Free")
@@ -828,7 +828,7 @@ struct TradeSheetView: View {
 
     /// Every fee, named: ours, the issuer's (PreStocks only), and Solana's one-time rent.
     private func feesRow(_ q: Quote) -> some View {
-        var parts: [String] = ["ApeMe \(String(format: "%g", Double(q.fee?.bps ?? 100) / 100))% \(Fmt.cash(q.fee?.usd ?? 0))"]
+        var parts: [String] = ["Stonks247 \(String(format: "%g", Double(q.fee?.bps ?? 100) / 100))% \(Fmt.cash(q.fee?.usd ?? 0))"]
         if let f = q.issuerFee, let bps = f.bps, bps > 0 { parts.append("Issuer \(String(format: "%g", Double(bps) / 100))% \(Fmt.cash(f.usd ?? 0))") }
         if let rent = rentUsd(q) { parts.append("\(Fmt.cash(rent)) account setup, one time") }
         return VStack(alignment: .leading, spacing: 4) {

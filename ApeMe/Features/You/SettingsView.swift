@@ -21,7 +21,7 @@ struct SettingsView: View {
                     section("Quick sell %") {
                         editableChips(values: s.quickSellPct ?? [], suffix: "%", max: 4) { s.quickSellPct = $0; save(["quickSellPct": $0]) }
                     }
-                    section("Priority fee", note: "ApeMe pays the gas.") {
+                    section("Priority fee", note: "Stonks247 pays the gas.") {
                         chips([("normal", "Normal"), ("fast", "Fast"), ("turbo", "Turbo")], selected: s.priority ?? "normal") { s.priority = $0; save(["priority": $0]) }
                     }
                     KCard {

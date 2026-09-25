@@ -34,7 +34,7 @@ struct PositionCard: View {
                     stat("Cost", holding.costUsd.map(Fmt.cash) ?? "—", trailing: true)
                 }
                 if holding.costUsd == nil {
-                    Text("Bought outside ApeMe, so there's no cost to compare against.")
+                    Text("Bought outside Stonks247, so there's no cost to compare against.")
                         .font(.sub).foregroundStyle(Theme.faint)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }

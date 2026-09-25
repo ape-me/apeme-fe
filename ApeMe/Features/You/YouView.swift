@@ -24,7 +24,7 @@ struct YouView: View {
                                 Spacer()
                                 Text("\(app.auth.me?.referral?.invitesLeft ?? 0) left · earned \(Fmt.usd(app.auth.me?.referral?.earnedUsd ?? 0))").font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
                             }
-                            Text("20% of ApeMe's fee on every trade they make, forever.").font(.sub).foregroundStyle(Theme.muted)
+                            Text("20% of Stonks247's fee on every trade they make, forever.").font(.sub).foregroundStyle(Theme.muted)
                         }
                         .padding(16).frame(maxWidth: .infinity, alignment: .leading).background(Theme.surface, in: .rect(cornerRadius: 16)).contentShape(.rect)
                     }
@@ -119,7 +119,7 @@ struct YouView: View {
         let b = Bundle.main.infoDictionary
         let v = b?["CFBundleShortVersionString"] as? String ?? "0"
         let n = b?["CFBundleVersion"] as? String ?? "0"
-        return "ApeMe \(v) (\(n))"
+        return "Stonks247 \(v) (\(n))"
     }
 
     private func saveHandle() {

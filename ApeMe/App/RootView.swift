@@ -9,10 +9,10 @@ struct RootView: View {
         @Bindable var app = app
         ZStack {
         Group {
-            if !app.auth.ready {
-                Color.clear
+            if !app.auth.ready || (splashing && !app.signedIn) {
+                Color.clear                   // the launch overlay is the welcome while it is up
             } else if !app.signedIn {
-                SignedOutFlow()               // slides → Get started → Sign in, every launch until login succeeds
+                WelcomeView(kind: .signedOut) // reached by signing out
             } else if app.auth.me == nil {
                 AccountLoadingView(failed: app.auth.meTried)
             } else if app.needsInvite {
@@ -24,8 +24,16 @@ struct RootView: View {
             }
         }
         .animation(.easeOut(duration: 0.25), value: app.signedIn)
+            #if DEBUG
+            // `-previewWelcome` shows the signed-out welcome without signing anyone out.
+            if ProcessInfo.processInfo.arguments.contains("-previewWelcome") {
+                WelcomeView(kind: .signedOut).zIndex(2)
+            }
+            #endif
             if splashing {
-                SplashView { splashing = false }
+                // Cold launch: the logo builds here, then either fades into the app or docks
+                // and becomes the welcome, staying up until sign-in succeeds.
+                WelcomeView(kind: .launch) { splashing = false }
                     .transition(.identity)
                     .zIndex(1)
             }
@@ -66,19 +74,6 @@ private struct ToastOverlay: ViewModifier {
     }
 }
 extension View { func toastOverlay() -> some View { modifier(ToastOverlay()) } }
-
-/// Slides first, then the login screen. Nothing is persisted until the user is actually signed in.
-private struct SignedOutFlow: View {
-    @State private var showLogin = false
-    var body: some View {
-        if showLogin {
-            LoginView()
-                .transition(.move(edge: .trailing).combined(with: .opacity))
-        } else {
-            OnboardingView(onGetStarted: { withAnimation(.easeOut(duration: 0.25)) { showLogin = true } })
-        }
-    }
-}
 
 /// Four root tabs in one navigation stack. The tab bar shows only at the root.
 struct MainShell: View {

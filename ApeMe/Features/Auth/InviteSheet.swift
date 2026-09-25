@@ -16,7 +16,7 @@ struct InviteView: View {
         VStack(alignment: .leading, spacing: 0) {
             Spacer()
             Text("Invite code").font(.system(size: 40, weight: .semibold)).tracking(-1.8)
-            Text("ApeMe is invite-only for now. Drop the code you were given.")
+            Text("Stonks247 is invite-only for now. Drop the code you were given.")
                 .font(.system(size: 17)).foregroundStyle(Theme.muted).padding(.top, 6)
 
             TextField("Code", text: $code)
@@ -31,7 +31,7 @@ struct InviteView: View {
                 .onSubmit(submit)
                 .padding(.top, 36)
 
-            BigButton(label: busy ? "Checking…" : "Unlock ApeMe", style: .white, action: submit)
+            BigButton(label: busy ? "Checking…" : "Unlock Stonks247", style: .white, action: submit)
                 .disabled(code.count < 4 || busy).opacity(code.count < 4 ? 0.5 : 1)
                 .padding(.top, 12)
 

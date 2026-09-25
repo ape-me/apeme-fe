@@ -15,7 +15,7 @@ struct ReferralsView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text(r?.code ?? app.auth.me?.referral?.code ?? "——————").font(.system(size: 40, weight: .semibold)).tracking(4).monospacedDigit()
                         Text("\(r?.invitesLeft ?? app.auth.me?.referral?.invitesLeft ?? 0) invites left").font(.sub).foregroundStyle(Theme.muted)
-                        Text("You earn 20% of ApeMe's fee on every trade they make, forever.").font(.system(size: 15)).foregroundStyle(Theme.ink)
+                        Text("You earn 20% of Stonks247's fee on every trade they make, forever.").font(.system(size: 15)).foregroundStyle(Theme.ink)
                         HStack(spacing: 8) {
                             if let link = r?.link, let url = URL(string: link) {
                                 ShareLink(item: url) { Pill(label: "Share link", icon: "square.and.arrow.up") {}.allowsHitTesting(false) }
