@@ -73,7 +73,7 @@ struct YouView: View {
         .background(Theme.ground)
         .appDialog("Replay the intro?", isPresented: $confirmOnboarding,
                    message: Feature.ape ? "You'll pick a mode again. Nothing else changes." : "Nothing about your account changes.", confirm: "Show it") {
-            app.onboarded = false; app.path.removeAll()
+            app.replayingIntro = true; app.path.removeAll()
         }
         .appDialog("Sign out?", isPresented: $confirmSignOut,
                    message: "Your wallet stays with your account. Sign back in any time.", confirm: "Sign out", destructive: true) {

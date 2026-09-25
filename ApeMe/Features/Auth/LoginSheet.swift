@@ -1,31 +1,26 @@
 import SwiftUI
 import AuthenticationServices
 
-/// Same form inside a bottom sheet — used when a signed-out state is reached later (sign out from You).
+/// Sign-in as a sheet, in the brand's look: black, Barlow, lime for the one thing to press.
+/// From the welcome it is email only; from elsewhere (`app.sheet = .login`) Apple is offered too.
 struct LoginSheet: View {
-    /// From the welcome screen, where Apple already has its own button.
     var emailOnly = false
     @Environment(\.dismiss) private var dismiss
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text(emailOnly ? "Continue with email" : "Sign in").h2Text()
-                Spacer()
-                IconButton(symbol: "xmark", label: "Close") { dismiss() }
-            }
-            LoginForm(emailOnly: emailOnly, onDone: { dismiss() })
-        }
-        .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 18)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .presentationDetents([.large])
-        .presentationBackground(Theme.surface)
-        .presentationDragIndicator(.visible)
+        LoginForm(emailOnly: emailOnly, onClose: { dismiss() }, onDone: { dismiss() })
+            .padding(.horizontal, 24).padding(.top, 22).padding(.bottom, 18)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .presentationDetents([.large])
+            .presentationBackground(Brand.black)
+            .presentationDragIndicator(.visible)
+            .presentationCornerRadius(32)
     }
 }
 
-/// Apple first, then email + 6-digit code.
+/// Email, then a six-digit code that signs in the moment the last digit lands.
 struct LoginForm: View {
     var emailOnly = false
+    var onClose: (() -> Void)? = nil
     var onDone: () -> Void = {}
     @Environment(AppState.self) private var app
     @State private var email = ""
@@ -38,77 +33,170 @@ struct LoginForm: View {
     @FocusState private var focus: Field?
     private enum Field { case email, code }
 
+    private var emailValid: Bool {
+        email.trimmingCharacters(in: .whitespaces).range(of: #"^[^@\s]+@[^@\s]+\.[^@\s]+$"#, options: .regularExpression) != nil
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("A wallet is created for you. No seed phrase.").font(.sub).foregroundStyle(Theme.muted)
-
-            if !emailOnly {
-            Button { run(.apple) { try await app.auth.loginWithApple() } } label: {
-                HStack(spacing: 8) {
-                    if busy == .apple { ProgressView().tint(Theme.ground) }
-                    else { Image(systemName: "apple.logo").font(.system(size: 17, weight: .semibold)) }
-                    Text("Continue with Apple").font(.system(size: 17, weight: .semibold)).tracking(-0.2)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top) {
+                if codeSent {
+                    Button { withAnimation(.snappy) { codeSent = false; code = ""; error = nil }; focus = .email } label: {
+                        Image(systemName: "chevron.left").font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Brand.white).frame(width: 40, height: 40)
+                            .background(Brand.charcoal, in: .circle)
+                    }
+                    .accessibilityLabel("Back")
                 }
-                .foregroundStyle(Theme.ground)
-                .frame(maxWidth: .infinity).frame(height: 52)
-                .background(Color.white, in: .capsule)
+                Spacer()
+                if let onClose {
+                    Button(action: onClose) {
+                        Image(systemName: "xmark").font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Brand.white).frame(width: 40, height: 40)
+                            .background(Brand.charcoal, in: .circle)
+                    }
+                    .accessibilityLabel("Close")
+                }
             }
-            .buttonStyle(PressScale())
-            .disabled(busy != nil)
 
-            HStack(spacing: 12) {
-                Rectangle().fill(Theme.line).frame(height: 1)
-                Text("or").font(.sub).foregroundStyle(Theme.faint)
-                Rectangle().fill(Theme.line).frame(height: 1)
+            // One Text per line so the lines can sit as tight as the kit sets them; SwiftUI
+            // ignores negative line spacing.
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(codeSent ? ["CHECK YOUR", "EMAIL"] : ["WHAT’S YOUR", "EMAIL?"], id: \.self) { line in
+                    Text(line).font(Brand.display(48)).foregroundStyle(Brand.white)
+                        .frame(height: 48 * 0.9, alignment: .center)
+                }
             }
+            .padding(.top, 18)
+            .id(codeSent)
+            .transition(.opacity)
+            Group {
+                if codeSent {
+                    Text("We sent a 6-digit code to \(Text(email).foregroundStyle(Brand.white)).")
+                } else {
+                    Text("We’ll send you a code. A wallet is set up for you, no seed phrase.")
+                }
             }
+            .font(Brand.body(17)).foregroundStyle(Brand.muted).lineSpacing(2)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.top, 12)
 
             if codeSent {
-                field("6-digit code", text: $code, keyboard: .numberPad, focus: .code)
-                Text("Sent to \(email)").font(.sub).foregroundStyle(Theme.muted)
-                BigButton(label: busy == .email ? "Signing in…" : "Sign in", style: .primary) {
-                    run(.email, emailCode: true) { try await app.auth.loginWithCode(code.trimmingCharacters(in: .whitespaces), email: email) }
-                }
-                .disabled(code.count < 6 || busy != nil).opacity(code.count < 6 ? 0.5 : 1)
-                Button("Use a different email") { codeSent = false; code = ""; focus = .email }
-                    .font(.sub.weight(.semibold)).foregroundStyle(Theme.ink)
-                    .frame(maxWidth: .infinity)
-            } else {
-                field("Email", text: $email, keyboard: .emailAddress, focus: .email)
-                BigButton(label: busy == .email ? "Sending…" : "Send code", style: .primary) {
-                    run(.email, stay: true) {
-                        try await app.auth.sendCode(to: email.trimmingCharacters(in: .whitespaces))
-                        codeSent = true; focus = .code
+                CodeBoxes(code: $code, focused: focus == .code)
+                    .padding(.top, 28)
+                    .overlay {
+                        // The real field, invisible, carrying the keyboard and one-time-code autofill.
+                        TextField("", text: $code)
+                            .keyboardType(.numberPad)
+                            .textContentType(.oneTimeCode)
+                            .focused($focus, equals: .code)
+                            .foregroundStyle(.clear).tint(.clear)
+                            .padding(.top, 28)
+                            .onChange(of: code) { _, v in
+                                let digits = String(v.filter(\.isNumber).prefix(6))
+                                if digits != v { code = digits }
+                                if digits.count == 6 { verify() }
+                            }
                     }
-                }
-                .disabled(!email.contains("@") || busy != nil).opacity(email.contains("@") ? 1 : 0.5)
+                Button("Resend code") { send() }
+                    .font(Brand.body(16, semibold: true)).foregroundStyle(Brand.muted)
+                    .padding(.top, 20)
+                    .disabled(busy != nil)
+            } else {
+                TextField("", text: $email)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .textContentType(.emailAddress)
+                    .submitLabel(.send)
+                    .onSubmit { if emailValid { send() } }
+                    .font(Brand.body(20, semibold: true)).foregroundStyle(Brand.white)
+                    .tint(Brand.lime)
+                    .padding(.horizontal, 18).frame(height: 62)
+                    .background(alignment: .leading) {
+                        if email.isEmpty {
+                            Text("you@email.com").font(Brand.body(20, semibold: true))
+                                .foregroundStyle(Color(hex: 0x55555B)).padding(.horizontal, 18)
+                        }
+                    }
+                    .background(Brand.charcoal, in: .rect(cornerRadius: 16, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(focus == .email ? Brand.lime : Brand.line, lineWidth: focus == .email ? 1.5 : 1))
+                    .focused($focus, equals: .email)
+                    .padding(.top, 28)
             }
 
             if let error {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(error).font(.sub).foregroundStyle(Theme.red)
-                    #if DEBUG
-                    if let detail { Text(detail).font(.system(size: 11)).foregroundStyle(Theme.muted).textSelection(.enabled) }
-                    #endif
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 14).padding(.vertical, 12)
-                .background(Theme.redT, in: .rect(cornerRadius: 12))
+                Text(error).font(Brand.body(15)).foregroundStyle(Theme.red)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 14)
+                #if DEBUG
+                if let detail { Text(detail).font(.system(size: 11)).foregroundStyle(Brand.muted).textSelection(.enabled).padding(.top, 6) }
+                #endif
             }
+
+            if !codeSent {
+                limeButton(busy == .email ? "SENDING…" : "SEND CODE", enabled: emailValid && busy == nil) { send() }
+                    .padding(.top, 18)
+                if !emailOnly {
+                    Text("or").font(Brand.body(15)).foregroundStyle(Brand.muted)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    Button { run(.apple) { try await app.auth.loginWithApple() } } label: {
+                        HStack(spacing: 10) {
+                            if busy == .apple { ProgressView().tint(Brand.black) }
+                            else { Image(systemName: "apple.logo").font(.system(size: 19, weight: .semibold)) }
+                            Text("Continue with Apple").font(Brand.body(19, semibold: true))
+                        }
+                        .foregroundStyle(Brand.black)
+                        .frame(maxWidth: .infinity).frame(height: 58)
+                        .background(Brand.white, in: .rect(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(PressScale())
+                    .disabled(busy != nil)
+                }
+            } else if busy == .email {
+                HStack(spacing: 10) {
+                    ProgressView().tint(Brand.lime)
+                    Text("Signing you in").font(Brand.body(16, semibold: true)).foregroundStyle(Brand.muted)
+                }
+                .padding(.top, 20)
+            }
+        }
+        .animation(.snappy(duration: 0.25), value: codeSent)
+        .animation(.easeOut(duration: 0.2), value: error)
+        .onAppear { focus = codeSent ? .code : .email }
+    }
+
+    private func limeButton(_ label: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(Brand.display(22)).tracking(0.6)
+                .foregroundStyle(enabled ? Brand.black : Color(hex: 0x5A5A60))
+                .frame(maxWidth: .infinity).frame(height: 58)
+                .background(enabled ? Brand.lime : Brand.charcoal, in: .rect(cornerRadius: 16, style: .continuous))
+                .overlay {
+                    if !enabled { RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Brand.line, lineWidth: 1) }
+                }
+        }
+        .buttonStyle(PressScale())
+        .disabled(!enabled)
+        .animation(.easeOut(duration: 0.15), value: enabled)
+    }
+
+    private func send() {
+        if !Feature.ape, app.mode == nil { app.mode = .invest }
+        run(.email, stay: true) {
+            try await app.auth.sendCode(to: email.trimmingCharacters(in: .whitespaces))
+            code = ""; codeSent = true; focus = .code
         }
     }
 
-    private func field(_ placeholder: String, text: Binding<String>, keyboard: UIKeyboardType, focus f: Field) -> some View {
-        TextField(placeholder, text: text)
-            .keyboardType(keyboard)
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
-            .textContentType(f == .email ? .emailAddress : .oneTimeCode)
-            .font(.system(size: 17, weight: .medium)).monospacedDigit()
-            .foregroundStyle(Theme.ink)
-            .padding(.horizontal, 16).frame(height: 52)
-            .background(Theme.surface2, in: .capsule)
-            .focused($focus, equals: f)
+    private func verify() {
+        guard busy == nil else { return }
+        run(.email, emailCode: true) {
+            do { try await app.auth.loginWithCode(code, email: email.trimmingCharacters(in: .whitespaces)) }
+            catch { code = ""; Haptic.error(); throw error }
+        }
     }
 
     /// Runs one auth step. On a completed login: load the wallet, hand back, and open the invite gate if needed.
@@ -153,5 +241,31 @@ struct LoginForm: View {
         if emailCode, text.lowercased().contains("invalid") || text.lowercased().contains("code") { return "That code didn't match. Check it and try again." }
         if text.lowercased().contains("cancel") { return nil }
         return text.isEmpty ? "Something went wrong. Try again." : text
+    }
+}
+
+/// Six boxes for the code, the next one lit. Display only; the hidden field above does the typing.
+private struct CodeBoxes: View {
+    @Binding var code: String
+    let focused: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(0..<6, id: \.self) { i in
+                let chars = Array(code)
+                let filled = i < chars.count
+                let current = focused && i == chars.count
+                Text(filled ? String(chars[i]) : "")
+                    .font(Brand.display(32)).foregroundStyle(Brand.white)
+                    .frame(maxWidth: .infinity).frame(height: 64)
+                    .background(Brand.charcoal, in: .rect(cornerRadius: 14, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(current ? Brand.lime : (filled ? Color(hex: 0x3A3A40) : Brand.line), lineWidth: current ? 1.5 : 1))
+                    .scaleEffect(filled ? 1 : 0.97)
+                    .animation(.spring(duration: 0.25, bounce: 0.3), value: filled)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Code, \(code.count) of 6 digits entered")
     }
 }

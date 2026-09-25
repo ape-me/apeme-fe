@@ -15,6 +15,10 @@ final class AppState {
     var watch: [String] { didSet { defaults.set(watch, forKey: "apeme.watch") } }
     var tokenWatch: [String] { didSet { defaults.set(tokenWatch, forKey: "apeme.tokenWatch") } }
 
+    /// Replay the intro from You. Not persisted: a fresh install with a restored session should
+    /// land in the app, not on a welcome with nothing to do but Continue.
+    var replayingIntro = false
+
     var tab: Tab = .home
     var path: [Route] = []
     var sheet: TradeSheet?

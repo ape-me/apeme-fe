@@ -17,8 +17,8 @@ struct RootView: View {
                 AccountLoadingView(failed: app.auth.meTried)
             } else if app.needsInvite {
                 InviteView()                  // wall: nothing behind it until /v1/me says active
-            } else if !app.onboarded || app.mode == nil {
-                OnboardingView()              // replay from You
+            } else if (Feature.ape && app.mode == nil) || app.replayingIntro {
+                OnboardingView()              // the ape mode question, or the replay from You
             } else {
                 MainShell().task(id: app.auth.me?.userId) { await app.syncWatchlist() }
             }
