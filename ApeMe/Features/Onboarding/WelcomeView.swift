@@ -37,9 +37,6 @@ struct WelcomeView: View {
     private static let centerW: CGFloat = 224
     private static let dockW: CGFloat = 124
 
-    private let out = Animation.timingCurve(0.16, 1, 0.3, 1, duration: 0.6)
-    private let ios = Animation.timingCurve(0.32, 0.72, 0, 1, duration: 0.65)
-    private let pop = Animation.timingCurve(0.34, 1.56, 0.64, 1, duration: 0.52)
 
     var body: some View {
         GeometryReader { g in
@@ -70,11 +67,14 @@ struct WelcomeView: View {
             .opacity(leaving ? 0 : 1)
             .scaleEffect(leaving && !reduceMotion ? 1.04 : 1)
         }
-        .background(Brand.black)
+        // No background out here: it would sit outside the fade and hold a black sheet over the
+        // app until the overlay was removed. The ZStack's own black fades with everything else.
         .task { await run() }
         .onChange(of: app.signedIn) { _, now in
-            // Signed in from this screen: step aside for the app underneath.
-            if now, kind == .launch { finish() }
+            // Signed in from this screen: step aside for the app underneath. Only once the
+            // welcome is showing — restoring a saved session on launch flips this too, well
+            // before the account has loaded, and fading then landed on an empty screen.
+            if now, kind == .launch, docked { finish() }
         }
         .sheet(isPresented: $emailSheet) { LoginSheet(emailOnly: true) }
     }
@@ -168,47 +168,50 @@ struct WelcomeView: View {
 
     // MARK: - Sequence
 
+    /// The logo is built in half a second, and nothing holds it there once it is.
     private func run() async {
         if reduceMotion { return await runReduced() }
-        try? await sleep(180)
-        withAnimation(pop) { top = 1 }
-        try? await sleep(340)                                  // 520
-        withAnimation(.timingCurve(0.16, 1, 0.3, 1, duration: 0.24)) { arrow = 1 }
-        try? await sleep(180)                                  // 700
-        withAnimation(out) { glow = 1 }
-        try? await sleep(60)                                   // 760
-        withAnimation(.timingCurve(0.34, 1.56, 0.64, 1, duration: 0.29)) { arrow = 2 }
-        try? await sleep(60)                                   // 820
-        withAnimation(.timingCurve(0.16, 1, 0.3, 1, duration: 0.53)) { bottom = 1 }
-        try? await sleep(1080)                                 // 1900
+        withAnimation(.timingCurve(0.34, 1.56, 0.64, 1, duration: 0.36)) { top = 1 }
+        withAnimation(.timingCurve(0.16, 1, 0.3, 1, duration: 0.4)) { glow = 1 }
+        try? await sleep(110)
+        withAnimation(.timingCurve(0.16, 1, 0.3, 1, duration: 0.16)) { arrow = 1 }
+        try? await sleep(50)
+        withAnimation(.timingCurve(0.16, 1, 0.3, 1, duration: 0.34)) { bottom = 1 }
+        try? await sleep(110)
+        withAnimation(.timingCurve(0.34, 1.56, 0.64, 1, duration: 0.2)) { arrow = 2 }
+        try? await sleep(230)                                  // ≈ 500ms: built
 
         if kind == .launch {
             let deadline = Date.now.addingTimeInterval(5)
-            while !app.auth.ready, Date.now < deadline { try? await sleep(50) }
-            if app.signedIn { return finish() }
+            while !app.auth.ready, Date.now < deadline { try? await sleep(30) }
+            if app.signedIn {
+                // Hold until the account has loaded, so the fade lands on Home and not on a
+                // blank loading screen.
+                while app.auth.me == nil, !app.auth.meTried, Date.now < deadline { try? await sleep(30) }
+                return finish()
+            }
         }
         await reveal()
     }
 
-    /// 1900 onwards in the kit's timeline: the glow blows out, the logo docks, the page rises.
+    /// The glow blows out, the logo docks, and the page rises under it in well under a second.
     private func reveal() async {
-        withAnimation(.timingCurve(0.32, 0.72, 0, 1, duration: 0.6)) { glowGone = true }
-        try? await sleep(100)
-        withAnimation(ios) { docked = true }
-        try? await sleep(150)
-        withAnimation(out) { card = true }
+        withAnimation(.timingCurve(0.32, 0.72, 0, 1, duration: 0.4)) { glowGone = true }
+        withAnimation(.timingCurve(0.32, 0.72, 0, 1, duration: 0.45)) { docked = true }
+        try? await sleep(80)
+        withAnimation(.timingCurve(0.16, 1, 0.3, 1, duration: 0.45)) { card = true }
         for i in 0..<3 {
-            try? await sleep(i == 0 ? 100 : 90)
-            withAnimation(.timingCurve(0.16, 1, 0.3, 1, duration: 0.7)) { lines[i] = true }
+            try? await sleep(50)
+            withAnimation(.timingCurve(0.16, 1, 0.3, 1, duration: 0.45)) { lines[i] = true }
         }
-        try? await sleep(120)
-        withAnimation(out) { sub = true }
+        try? await sleep(60)
+        withAnimation(.timingCurve(0.16, 1, 0.3, 1, duration: 0.4)) { sub = true }
         for i in 0..<2 {
-            try? await sleep(90)
-            withAnimation(out) { buttons[i] = true }
+            try? await sleep(50)
+            withAnimation(.timingCurve(0.16, 1, 0.3, 1, duration: 0.4)) { buttons[i] = true }
         }
-        try? await sleep(200)
-        withAnimation(.easeOut(duration: 0.4)) { terms = true }
+        try? await sleep(100)
+        withAnimation(.easeOut(duration: 0.3)) { terms = true }
     }
 
     private func runReduced() async {
@@ -224,8 +227,9 @@ struct WelcomeView: View {
     }
 
     private func finish() {
-        withAnimation(.timingCurve(0.32, 0.72, 0, 1, duration: 0.5)) { glowGone = true; leaving = true }
-        Task { try? await sleep(480); onFinish() }
+        guard !leaving else { return }
+        withAnimation(.easeOut(duration: 0.25)) { glowGone = true; leaving = true }
+        Task { try? await sleep(240); onFinish() }
     }
 
     private func sleep(_ ms: Int) async throws { try await Task.sleep(for: .milliseconds(ms)) }
@@ -307,11 +311,12 @@ private struct MarketCard: View {
         }
     }
 
-    static func time(_ d: Date) -> String {
+    private static let clock: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX"); f.timeZone = ny; f.dateFormat = "h:mm a"
-        return f.string(from: d).uppercased()
-    }
+        return f
+    }()
+    static func time(_ d: Date) -> String { clock.string(from: d).uppercased() }
 
     /// Regular session, weekdays 9:30–16:00 New York. Holidays are not modelled.
     static func nyseOpen(_ d: Date) -> Bool {

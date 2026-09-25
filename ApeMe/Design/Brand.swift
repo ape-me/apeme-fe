@@ -84,13 +84,17 @@ struct Arrow: Shape {
 struct LogoMetrics {
     let topSize, botSize, arrowW, arrowH, arrowMargin, gap, height: CGFloat
 
-    init(width w: CGFloat) {
+    /// Glyph widths at 100pt, measured once. Measuring inside `init` ran on every animation frame.
+    private static let base: (top: CGFloat, bottom: CGFloat) = {
         let f = UIFont(name: Brand.displayFace, size: 100) ?? .systemFont(ofSize: 100, weight: .black)
         func measure(_ s: String) -> CGFloat {
             (s as NSString).size(withAttributes: [.font: f, .kern: -1.0]).width
         }
-        let top100 = measure("24") + measure("7") + 100 * (0.511 + 0.04)
-        let bot100 = measure("STONKS")
+        return (measure("24") + measure("7") + 100 * (0.511 + 0.04), measure("STONKS"))
+    }()
+
+    init(width w: CGFloat) {
+        let top100 = Self.base.top, bot100 = Self.base.bottom
         topSize = 100 * w / top100
         botSize = 100 * w / bot100
         arrowW = topSize * 0.511
