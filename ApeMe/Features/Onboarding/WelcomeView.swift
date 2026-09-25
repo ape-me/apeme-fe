@@ -24,6 +24,7 @@ struct WelcomeView: View {
     @State private var docked = false
     // Welcome parts
     @State private var pouring = false
+    @State private var lines = [false, false]
     @State private var buttons = [false, false]
     @State private var terms = false
     @State private var leaving = false
@@ -106,13 +107,34 @@ struct WelcomeView: View {
         VStack(alignment: .leading, spacing: 0) {
             Color.clear.frame(height: logoHeight)
             Spacer(minLength: 20)
-            actions
+            VStack(alignment: .leading, spacing: 0) {
+                headline("WALL STREET,", 0, Brand.white)
+                headline("OPEN 24/7.", 1, Brand.lime)
+            }
+            .allowsHitTesting(false)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Wall Street, open 24/7.")
+            actions.padding(.top, 28)
             footnote
                 .frame(maxWidth: .infinity)
                 .padding(.top, 18)
                 .opacity(terms ? 1 : 0)
         }
         .padding(.horizontal, 24).padding(.top, 16).padding(.bottom, 6)
+    }
+
+    /// One line of the headline, rising out of its own mask.
+    private func headline(_ text: String, _ i: Int, _ color: Color) -> some View {
+        // 68pt: "WALL STREET," still fits a 375pt-wide phone inside the 24pt margins.
+        let size: CGFloat = 68
+        return Text(text)
+            .font(Brand.display(size)).tracking(-0.005 * size)
+            .foregroundStyle(color)
+            .fixedSize()
+            .frame(height: size * 0.86)
+            .offset(y: lines[i] ? 0 : size * 0.86 * 1.05)
+            .frame(height: size * 0.86, alignment: .top)
+            .clipped()
     }
 
     @ViewBuilder private var actions: some View {
@@ -198,6 +220,10 @@ struct WelcomeView: View {
         withAnimation(.timingCurve(0.32, 0.72, 0, 1, duration: 0.45)) { docked = true }
         try? await sleep(80)
         pouring = true
+        for i in lines.indices {
+            try? await sleep(60)
+            withAnimation(.timingCurve(0.16, 1, 0.3, 1, duration: 0.5)) { lines[i] = true }
+        }
         try? await sleep(40)
         for i in buttons.indices {
             try? await sleep(50)
@@ -215,7 +241,7 @@ struct WelcomeView: View {
             if app.signedIn { return finish() }
         }
         withAnimation(.easeOut(duration: 0.3)) {
-            docked = true; pouring = true; buttons = [true, true]; terms = true; glowGone = true
+            docked = true; pouring = true; lines = [true, true]; buttons = [true, true]; terms = true; glowGone = true
         }
     }
 
