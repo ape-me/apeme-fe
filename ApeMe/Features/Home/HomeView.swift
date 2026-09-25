@@ -106,6 +106,8 @@ struct CentsText: View {
         if let c = Fmt.cents(value) {
             Text("\(Text(c.whole))\(Text(c.cents).foregroundStyle(Theme.muted).fontWeight(.medium))")
                 .heroText()
+                .contentTransition(.numericText())
+                .animation(.easeOut(duration: 0.3), value: value)
         } else {
             Text("—").heroText()
         }

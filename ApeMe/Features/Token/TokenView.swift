@@ -143,7 +143,8 @@ struct TokenView: View {
         if store.chartLoading {
             Skeleton(height: 260).padding(.horizontal, 20)
         } else {
-            LineChart(points: store.linePoints, tint: store.direction, live: true, height: 260,
+            LineChart(points: store.linePoints, tint: store.direction, drawKey: store.range.rawValue,
+                      live: true, height: 260,
                       emptyTitle: "Live from now", emptySubtitle: "The first trade starts the chart.") { store.scrubPoint = $0 }
             .animation(.easeOut(duration: 0.3), value: store.linePoints.last?.price)
         }

@@ -80,12 +80,12 @@ struct OrdersPanel: View {
                 .padding(.horizontal, 12).frame(height: 32)
                 .background(on ? Theme.ink : Theme.surface2, in: .capsule)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RowPress())
     }
 
     private func row(_ o: LimitOrder) -> some View {
         Button { Haptic.selection(); detail = o } label: { rowBody(o) }
-            .buttonStyle(.plain)
+            .buttonStyle(RowPress())
     }
 
     private func rowBody(_ o: LimitOrder) -> some View {
@@ -185,7 +185,7 @@ struct OrdersPanel: View {
             .padding(.horizontal, 12).frame(height: 32)
             .background(o.needsReclaim ? Theme.amber : Theme.surface2, in: .capsule)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RowPress())
         .disabled(store.cancelling != nil)
     }
 }

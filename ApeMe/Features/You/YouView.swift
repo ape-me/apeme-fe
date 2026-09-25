@@ -28,7 +28,7 @@ struct YouView: View {
                         }
                         .padding(.vertical, 8).contentShape(.rect)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(RowPress())
 
                     if Feature.referrals {
                     Button { app.push(.referrals) } label: {
@@ -134,6 +134,6 @@ struct SettingRow: View {
             }
             .padding(.vertical, 9).frame(minHeight: 52).contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RowPress())
     }
 }

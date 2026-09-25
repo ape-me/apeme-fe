@@ -32,7 +32,7 @@ struct StockRow: View {
             .frame(minHeight: 64)
             .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RowPress())
     }
 
     @ViewBuilder private var subtitle: some View {

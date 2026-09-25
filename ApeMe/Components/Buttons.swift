@@ -79,3 +79,15 @@ struct BackButton: View {
         IconButton(symbol: "chevron.left", label: "Back") { dismiss() }
     }
 }
+
+
+/// Rows had no reaction to a tap at all, which reads as dead. A tint on press rather than a
+/// scale: a full-width row that shrinks looks like it is peeling off the screen.
+struct RowPress: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(configuration.isPressed ? Color.white.opacity(0.05) : .clear,
+                        in: .rect(cornerRadius: 12))
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}

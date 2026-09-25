@@ -8,6 +8,9 @@ struct LineChart: View {
     var reference: Double? = nil
     /// Overrides the accent, e.g. green/red by direction on the token page.
     var tint: Color? = nil
+    /// Changes when the user picks a different range, which is the only time the line redraws.
+    /// Live points appended every few seconds must not restart it.
+    var drawKey: String = ""
     /// Terminal look: line stops at 75% width, price tag, dashed current-price line, halo, smooth curve.
     var live = false
     var height: CGFloat = 200
@@ -17,6 +20,8 @@ struct LineChart: View {
 
     @Environment(\.skin) private var skin
     @State private var scrubIndex: Int? = nil
+    @State private var drawn: CGFloat = 1
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var color: Color { tint ?? skin.accent }
 
@@ -41,10 +46,12 @@ struct LineChart: View {
                         Path { p in p.move(to: CGPoint(x: 0, y: end.y)); p.addLine(to: CGPoint(x: g.size.width, y: end.y)) }
                             .stroke(color.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
                     }
-                    geo.linePath.stroke(color, style: StrokeStyle(lineWidth: live ? 3 : 2, lineCap: .round, lineJoin: .round))
-                    if live { Halo(color: color).position(end) }
+                    geo.linePath
+                        .trim(from: 0, to: drawn)
+                        .stroke(color, style: StrokeStyle(lineWidth: live ? 3 : 2, lineCap: .round, lineJoin: .round))
+                    if live { Halo(color: color).position(end).opacity(drawn) }
                     Circle().fill(color).frame(width: live ? 12 : 8, height: live ? 12 : 8)
-                        .position(end)
+                        .position(end).opacity(drawn)
                     if live {
                         Text(Fmt.usd(series.last!.price))
                             .font(.system(size: 13, weight: .semibold)).monospacedDigit()
@@ -72,6 +79,13 @@ struct LineChart: View {
                 )
             }
             .frame(height: height)
+            // A new range is a new picture, so it draws itself. Strong ease-out: most of the
+            // travel happens immediately, which is what keeps 450ms from feeling slow.
+            .onChange(of: drawKey, initial: true) { _, _ in
+                guard !reduceMotion else { drawn = 1; return }
+                drawn = 0
+                withAnimation(.timingCurve(0.19, 1, 0.22, 1, duration: 0.45)) { drawn = 1 }
+            }
             .accessibilityLabel("Price chart")
         }
     }

@@ -72,7 +72,7 @@ struct PortfolioView: View {
                 }
                 .contentShape(.rect)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(RowPress())
             Spacer()
             IconButton(symbol: "clock", label: "Activity") { tab = .activity }
         }
@@ -167,7 +167,7 @@ struct PositionRow: View {
             }
             .padding(.vertical, 8).frame(minHeight: 60).contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RowPress())
     }
 }
 
@@ -305,7 +305,7 @@ struct ActivityList: View {
                             .padding(.horizontal, 12).frame(height: 32)
                             .background(kind == k ? Theme.ink : Theme.surface2, in: .capsule)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(RowPress())
                 }
             }
             .padding(.vertical, 2)
@@ -386,7 +386,7 @@ struct ActivityRow: View {
             }
             .padding(.vertical, 8).frame(minHeight: 60).contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RowPress())
     }
 }
 
@@ -487,7 +487,7 @@ struct PositionSheet: View {
                 } label: {
                     Text("Open \(holding.kind == "meme" ? "token" : "stock") page ›").font(.sub.weight(.semibold)).foregroundStyle(Theme.ink).frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(RowPress())
             }
             .padding(.horizontal, 20).padding(.top, 28).padding(.bottom, 18)
         }
