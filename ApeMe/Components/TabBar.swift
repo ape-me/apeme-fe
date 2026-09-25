@@ -9,12 +9,14 @@ struct TabBar: View {
         HStack(spacing: 0) {
             ForEach(Tab.allCases) { tab in
                 Button { app.root(tab) } label: {
-                    Image(systemName: app.tab == tab ? tab.symbol + ".fill" : tab.symbol)
-                        .font(.system(size: 22, weight: .regular))
+                    Image(systemName: tab.symbol)
+                        .font(.system(size: 21, weight: app.tab == tab ? .semibold : .regular))
                         .symbolVariant(app.tab == tab ? .fill : .none)
-                        .foregroundStyle(app.tab == tab ? skin.accent : Theme.muted)
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(app.tab == tab ? skin.accent : Theme.faint)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 48)
+                        .frame(height: 46)
+                        .contentTransition(.symbolEffect(.replace))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(tab.label)

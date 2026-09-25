@@ -51,12 +51,15 @@ struct YouView: View {
                                    sub: app.isApe ? "Floors, kings and the live tape" : "Off · stocks and fair values",
                                    trailing: AnyView(SwitchShape(on: app.isApe, tint: Skin(mode: app.mode ?? .invest).accent))) { app.toggleMode() }
                     }
-                    SettingRow(symbol: "slider.horizontal.3", title: "Trading settings", sub: "Slippage, quick amounts, priority, confirmations") { app.push(.settings) }
-                    if let address = app.walletAddress {
-                        SettingRow(symbol: "doc.on.doc", title: "Wallet address", sub: Fmt.short(address)) { app.copy(address) }
+                    KCard {
+                        SettingRow(symbol: "slider.horizontal.3", title: "Trading settings", sub: "Slippage, quick amounts, priority, confirmations") { app.push(.settings) }
+                        if let address = app.walletAddress {
+                            SettingRow(symbol: "doc.on.doc", title: "Wallet address", sub: Fmt.short(address)) { app.copy(address) }
+                        }
+                        SettingRow(symbol: "arrow.counterclockwise", title: "Show onboarding again", sub: Feature.ape ? "Three slides and the mode question" : "The three slides you saw first") { confirmOnboarding = true }
+                        SettingRow(symbol: "rectangle.portrait.and.arrow.right", title: "Sign out", sub: app.auth.accountLabel ?? "Signed in") { confirmSignOut = true }
                     }
-                    SettingRow(symbol: "arrow.counterclockwise", title: "Show onboarding again", sub: Feature.ape ? "Three slides and the mode question" : "The three slides you saw first") { confirmOnboarding = true }
-                    SettingRow(symbol: "rectangle.portrait.and.arrow.right", title: "Sign out", sub: app.auth.accountLabel ?? "Signed in") { confirmSignOut = true }
+                    .padding(.top, 8)
                     #if DEBUG
                     if Feature.debugTools {
                     SettingRow(symbol: "bell", title: "Preview toasts", sub: "Success, then error") {
@@ -112,19 +115,24 @@ struct SettingRow: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Group {
-                    if let symbol { Image(systemName: symbol).font(.system(size: 16, weight: .medium)) }
-                    else { Text(glyph ?? "").font(.system(size: 16, weight: .medium)) }
+                    if let symbol {
+                        Image(systemName: symbol).font(.system(size: 15, weight: .medium)).symbolRenderingMode(.hierarchical)
+                    } else {
+                        Text(glyph ?? "").font(.system(size: 15, weight: .medium))
+                    }
                 }
-                .frame(width: 40, height: 40).background(Theme.surface2, in: .circle)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title).font(.rowTitle)
-                    Text(sub).font(.sub).foregroundStyle(Theme.muted).lineLimit(1)
+                .foregroundStyle(Theme.ink)
+                .frame(width: 32, height: 32)
+                .background(Theme.surface2, in: .rect(cornerRadius: 9))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title).font(.system(size: 15, weight: .semibold))
+                    Text(sub).font(.system(size: 12.5)).foregroundStyle(Theme.muted).lineLimit(1)
                 }
-                Spacer()
+                Spacer(minLength: 8)
                 if let trailing { trailing }
-                else { Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.muted) }
+                else { Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint) }
             }
-            .padding(.vertical, 8).frame(minHeight: 64).contentShape(.rect)
+            .padding(.vertical, 9).frame(minHeight: 52).contentShape(.rect)
         }
         .buttonStyle(.plain)
     }

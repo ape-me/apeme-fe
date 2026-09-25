@@ -20,7 +20,7 @@ struct KV<Value: View>: View {
                 .multilineTextAlignment(.trailing)
                 .lineLimit(1)
         }
-        .frame(minHeight: 46)
+        .frame(minHeight: 40)
     }
 }
 
@@ -46,6 +46,7 @@ struct KCard<Content: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surface, in: .rect(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1))
     }
 }
 

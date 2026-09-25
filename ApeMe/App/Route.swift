@@ -22,7 +22,10 @@ enum Tab: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var symbol: String {
         switch self {
-        case .home: "house"; case .markets: "chart.bar"; case .portfolio: "creditcard"; case .you: "person"
+        case .home: "house"
+        case .markets: "chart.line.uptrend.xyaxis"
+        case .portfolio: "wallet.bifold"
+        case .you: "person.crop.circle"
         }
     }
     var label: String { self == .portfolio ? "Wallet" : rawValue.capitalized }
