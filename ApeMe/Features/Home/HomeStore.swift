@@ -39,6 +39,8 @@ final class HomeStore {
     var headlines: [NewsItem] = []
     var headlinesLoading = true
     var feed: [NewsItem] = []
+    /// How many items at the head of `feed` are about stocks the user holds or watches.
+    var ownedCount = 0
     var feedLoading = false
     var feedLoaded = false
     var feedError: String?
@@ -55,7 +57,16 @@ final class HomeStore {
         let held = (app.wallet?.positions ?? []).filter { $0.kind == "stock" }.map(\.mint)
         let mints = Array(Set(app.watch + held))
         do {
-            feed = try await API.shared.news(mints: mints, limit: 30).items
+            // Capped per stock: one name having a loud day used to take the entire feed, so a
+            // wallet holding three stocks read as a single-company newspaper.
+            let mine = mints.isEmpty ? [] : try await API.shared.news(mints: mints, limit: 12, perStock: 2).items
+            let market = try await API.shared.news(limit: 30, perStock: 1).items
+            var seen = Set(mine.map(\.id))
+            // The user's own stocks lead, and within those a story with a picture leads, so the
+            // banner is never a market name sitting above the stocks they actually hold.
+            let ownFirst = mine.filter { $0.photoURL != nil } + mine.filter { $0.photoURL == nil }
+            feed = ownFirst + market.filter { seen.insert($0.id).inserted }
+            ownedCount = ownFirst.count
             feedError = nil
             feedLoaded = true
         } catch {

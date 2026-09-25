@@ -174,10 +174,13 @@ struct StockView: View {
                 EmptyState(title: "No news yet for \(s.symbol)",
                            subtitle: "Headlines land here within 20 minutes of publication.")
             } else {
-                if let first = store.news.first {
-                    NewsLead(item: first, showSymbol: false,
+                if let lead = store.news.first(where: { $0.photoURL != nil }) {
+                    NewsLead(item: lead, showSymbol: false,
                              open: { openArticle($0, openURL) }, openStock: { app.openStock($0) })
-                    NewsList(items: Array(store.news.dropFirst()), showSymbol: false, showThumb: false,
+                    NewsList(items: store.news.filter { $0.id != lead.id }, showSymbol: false, showThumb: false,
+                             open: { openArticle($0, openURL) }, openStock: { app.openStock($0) })
+                } else {
+                    NewsList(items: store.news, showSymbol: false, showThumb: false,
                              open: { openArticle($0, openURL) }, openStock: { app.openStock($0) })
                 }
                 if !store.newsExhausted {

@@ -61,7 +61,7 @@ struct NewsRow: View {
             }
             VStack(alignment: .leading, spacing: 5) {
                 meta
-                Text(item.title)
+                Text(item.displayTitle)
                     .font(.system(size: 15, weight: .semibold)).tracking(-0.2)
                     .foregroundStyle(Theme.ink).lineSpacing(2).lineLimit(2)
                     .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
@@ -152,19 +152,19 @@ struct NewsLead: View {
                             Text(item.symbol).foregroundStyle(Theme.ink)
                             if let c = item.change24h { Text(Fmt.arrow(c, 2)).foregroundStyle(Theme.change(c)) }
                         }
-                        .font(.system(size: 12, weight: .bold)).monospacedDigit().lineLimit(1)
+                        .font(.system(size: 12, weight: .bold)).monospacedDigit().lineLimit(1).fixedSize()
                     }
                     .buttonStyle(.plain)
                     Text("·").foregroundStyle(Theme.faint)
                 }
-                Text(item.source).lineLimit(1)
+                Text(item.source).lineLimit(1).layoutPriority(-1)
                 if let ts = item.publishedAt { Text("·").foregroundStyle(Theme.faint); Text("\(Fmt.ago(ts)) ago").lineLimit(1) }
                 if let i = item.impactBadge { NewsBadge.impact(i).padding(.leading, 2) }
                 if let d = item.direction { NewsBadge.direction(d) }
                 Spacer(minLength: 0)
             }
             .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.muted)
-            Text(item.title)
+            Text(item.displayTitle)
                 .font(.system(size: 19, weight: .bold)).tracking(-0.4).lineSpacing(3)
                 .foregroundStyle(Theme.ink).multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)

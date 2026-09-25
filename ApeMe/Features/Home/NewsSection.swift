@@ -21,7 +21,7 @@ struct HeadlineStrip: View {
                                     }
                                 }
                                 .font(.system(size: 11, weight: .semibold)).monospacedDigit().foregroundStyle(Theme.muted)
-                                Text(item.title)
+                                Text(item.displayTitle)
                                     .font(.system(size: 12.5, weight: .semibold)).tracking(-0.1)
                                     .foregroundStyle(Theme.ink).lineSpacing(2).lineLimit(2)
                                     .multilineTextAlignment(.leading)
@@ -68,18 +68,34 @@ struct NewsSection: View {
                         .font(.sub).foregroundStyle(Theme.muted)
                 }
                 .padding(.top, 20).padding(.bottom, 2)
-                if let first = store.feed.first {
-                    NewsLead(item: first, open: { openArticle($0, openURL) }, openStock: { app.openStock($0) })
-                    NewsList(items: Array(store.feed.dropFirst()),
+                if let lead = leadItem {
+                    NewsLead(item: lead, open: { openArticle($0, openURL) }, openStock: { app.openStock($0) })
+                    NewsList(items: store.feed.filter { $0.id != lead.id },
+                             open: { openArticle($0, openURL) }, openStock: { app.openStock($0) })
+                } else {
+                    NewsList(items: store.feed,
                              open: { openArticle($0, openURL) }, openStock: { app.openStock($0) })
                 }
             }
         }
         .padding(.horizontal, 20)
-        .task { await store.loadFeed(app: app) }
+        .task(id: ownedKey) { await store.loadFeed(app: app) }
     }
 
     private var hasOwn: Bool {
         !app.watch.isEmpty || (app.wallet?.positions ?? []).contains { $0.kind == "stock" }
+    }
+
+    /// The banner, chosen from the user's own stocks first. Signed out, or watching nothing,
+    /// any story with a picture may lead.
+    private var leadItem: NewsItem? {
+        let own = store.feed.prefix(store.ownedCount)
+        if let mine = own.first(where: { $0.photoURL != nil }) { return mine }
+        return store.ownedCount == 0 ? store.feed.first(where: { $0.photoURL != nil }) : nil
+    }
+
+    /// Changes the moment the wallet arrives, which is the signal to fetch the feed again.
+    private var ownedKey: String {
+        (app.watch + (app.wallet?.positions ?? []).filter { $0.kind == "stock" }.map(\.mint)).sorted().joined()
     }
 }

@@ -94,6 +94,13 @@ struct MainShell: View {
                 .toolbar(.hidden, for: .navigationBar)
         }
         .tint(Theme.ink)
+        // The wallet used to be fetched only when the Wallet tab opened, so Home's news, the
+        // position card on a stock page and the sell flow all behaved as though nothing was
+        // held until you had visited it once. Signed in is enough of a reason to load it.
+        .task(id: app.walletAddress) {
+            guard app.walletAddress != nil else { return }
+            await app.loadWallet(fresh: true)
+        }
     }
 
     @ViewBuilder private var tabRoot: some View {

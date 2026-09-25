@@ -20,6 +20,10 @@ struct NewsItem: Codable, Hashable, Identifiable {
     let confidence: Double?     // withheld below 0.5 server-side — never shown
     let tier1: Bool?
 
+    /// Feeds hand us entity-encoded titles — "Ownership &amp; Voting" — so decode before display.
+    var displayTitle: String { title.decodingHTMLEntities() }
+    var displaySummary: String? { summary?.decodingHTMLEntities() }
+
     var link: URL? { URL(string: url) }
     var logoURL: URL? { image.flatMap(URL.init(string:)) }
     var photoURL: URL? { articleImage.flatMap(URL.init(string:)) }
