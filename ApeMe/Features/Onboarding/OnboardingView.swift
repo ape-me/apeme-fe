@@ -21,22 +21,18 @@ struct OnboardingView: View {
                 topBar
                 TabView(selection: $index) {
                     Page(title: "Own it before\nthe IPO.",
-                         text: "OpenAI, Anthropic, Neuralink — tokenized on Solana. Start from $1, trade any hour.",
                          active: index == 0) { OrbitHero(active: index == 0) }
                         .tag(0)
                     Page(title: "Know what it's\nreally worth.",
-                         text: "Every stock carries a fair value, and shows how far the price has run from it.",
                          active: index == 1) { FairValueHero(active: index == 1) }
                         .tag(1)
                     if Feature.ape {
                         Page(title: "Every stock\nhas a floor.",
-                             text: "Community tokens launch against each stock. Buy the stock, or ape the memes on its floor.",
                              active: index == 2) { FloorHero() }
                             .tag(2)
                         question.tag(3)
                     } else {
                         Page(title: "Name your price.\nWalk away.",
-                             text: "Leave an order at the price you want and it waits there for you. No seed phrase, no wallet to manage.",
                              active: index == 2) { LimitHero(active: index == 2) }
                             .tag(2)
                     }
@@ -124,11 +120,10 @@ struct OnboardingView: View {
 
 // MARK: - Page chrome
 
-/// Hero on top, words underneath. The words rise in a beat after the page settles, so a swipe
-/// reads as the picture arriving first and the sentence explaining it.
+/// Hero on top, headline underneath. The headline rises a beat after the page settles, so a swipe
+/// reads as the picture arriving first.
 private struct Page<Hero: View>: View {
     let title: String
-    let text: String
     let active: Bool
     @ViewBuilder let hero: Hero
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -137,19 +132,13 @@ private struct Page<Hero: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             hero.frame(maxWidth: .infinity, maxHeight: .infinity)
-            VStack(alignment: .leading, spacing: 12) {
-                Text(title)
-                    .font(.system(size: 36, weight: .bold)).tracking(-1.4).lineSpacing(-2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .opacity(shown ? 1 : 0).offset(y: shown ? 0 : 18)
-                    .animation(ease.delay(0.05), value: shown)
-                Text(text)
-                    .font(.system(size: 16)).foregroundStyle(Theme.muted).lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .opacity(shown ? 1 : 0).offset(y: shown ? 0 : 14)
-                    .animation(ease.delay(0.12), value: shown)
-            }
-            .padding(.horizontal, 28).padding(.bottom, 12)
+            // A headline and nothing else. Nobody reads a paragraph on a screen they are swiping past.
+            Text(title)
+                .font(.system(size: 38, weight: .bold)).tracking(-1.5).lineSpacing(-2)
+                .fixedSize(horizontal: false, vertical: true)
+                .opacity(shown ? 1 : 0).offset(y: shown ? 0 : 18)
+                .animation(ease.delay(0.05), value: shown)
+                .padding(.horizontal, 28).padding(.bottom, 16)
         }
         .task { try? await Task.sleep(for: .milliseconds(180)); appeared = true }
     }
@@ -185,11 +174,9 @@ private struct Backdrop: View {
 
 private struct Chip: Identifiable {
     let id: String
-    let initial: String
-    let tint: Color
-    let ink: Color
     let ring: Int
     let phase: Double
+    var asset: String { "ob-" + id }
 }
 
 private struct OrbitHero: View {
@@ -199,20 +186,20 @@ private struct OrbitHero: View {
     @State private var start = Date.now
 
     private static let chips: [Chip] = [
-        Chip(id: "OPENAI", initial: "O", tint: .white, ink: .black, ring: 0, phase: 0.2),
-        Chip(id: "ANTHROPIC", initial: "A", tint: Color(hex: 0xd97757), ink: .white, ring: 0, phase: 1.8),
-        Chip(id: "NEURALINK", initial: "N", tint: Color(hex: 0xe8e8ec), ink: .black, ring: 0, phase: 3.4),
-        Chip(id: "POLYMARKET", initial: "P", tint: Color(hex: 0x2d6bff), ink: .white, ring: 0, phase: 4.9),
-        Chip(id: "KALSHI", initial: "K", tint: Color(hex: 0x00d3a1), ink: .black, ring: 1, phase: 0.9),
-        Chip(id: "ANDURIL", initial: "A", tint: Color(hex: 0x2a2e35), ink: .white, ring: 1, phase: 3.0),
-        Chip(id: "FIGUREAI", initial: "F", tint: .black, ink: .white, ring: 1, phase: 5.1),
+        Chip(id: "openai", ring: 0, phase: 0.2),
+        Chip(id: "anthropic", ring: 0, phase: 1.8),
+        Chip(id: "neuralink", ring: 0, phase: 3.4),
+        Chip(id: "polymarket", ring: 0, phase: 4.9),
+        Chip(id: "kalshi", ring: 1, phase: 0.9),
+        Chip(id: "anduril", ring: 1, phase: 3.0),
+        Chip(id: "figureai", ring: 1, phase: 5.1),
     ]
 
     var body: some View {
         GeometryReader { g in
             let c = CGPoint(x: g.size.width / 2, y: g.size.height / 2)
-            let radii = [CGSize(width: g.size.width * 0.33, height: g.size.height * 0.33),
-                         CGSize(width: g.size.width * 0.19, height: g.size.height * 0.19)]
+            let radii = [CGSize(width: g.size.width * 0.39, height: g.size.height * 0.33),
+                         CGSize(width: g.size.width * 0.23, height: g.size.height * 0.2)]
             TimelineView(.animation(paused: !active || reduceMotion)) { ctx in
                 let t = ctx.date.timeIntervalSince(start)
                 ZStack {
@@ -263,23 +250,16 @@ private struct OrbitHero: View {
     }
 }
 
+/// The company's own mark on a squircle — recognisable at a glance, so no name is needed.
 private struct ChipView: View {
     let chip: Chip
     var body: some View {
-        HStack(spacing: 8) {
-            Text(chip.initial)
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(chip.ink)
-                .frame(width: 24, height: 24)
-                .background(chip.tint, in: .circle)
-                .overlay(Circle().stroke(.white.opacity(0.12), lineWidth: 1))
-            Text(chip.id).font(.system(size: 13, weight: .semibold)).tracking(-0.2)
-        }
-        .fixedSize()
-        .padding(.leading, 6).padding(.trailing, 12).padding(.vertical, 6)
-        .background(Theme.surface.opacity(0.92), in: .capsule)
-        .overlay(Capsule().stroke(.white.opacity(0.08), lineWidth: 1))
-        .shadow(color: .black.opacity(0.5), radius: 14, y: 8)
+        Image(chip.asset)
+            .resizable().scaledToFill()
+            .frame(width: 56, height: 56)
+            .clipShape(.rect(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(.white.opacity(0.12), lineWidth: 1))
+            .shadow(color: .black.opacity(0.55), radius: 16, y: 10)
     }
 }
 
@@ -289,7 +269,6 @@ private struct FairValueHero: View {
     let active: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var drawn: CGFloat = 0
-    @State private var price: Double = 880
     @State private var tag = false
     @State private var pulse = false
 
@@ -301,7 +280,7 @@ private struct FairValueHero: View {
             RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .fill(Theme.surface.opacity(0.55))
                 .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(.white.opacity(0.05)))
-                .frame(height: 290)
+                .frame(height: 230)
                 .padding(.horizontal, 44)
                 .rotationEffect(.degrees(tag ? 5 : 0))
                 .offset(y: tag ? -26 : 0)
@@ -312,19 +291,7 @@ private struct FairValueHero: View {
     }
 
     private var card: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
-                Text("A").font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
-                    .frame(width: 34, height: 34).background(Color(hex: 0xd97757), in: .rect(cornerRadius: 10))
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("ANTHROPIC").font(.system(size: 15, weight: .semibold))
-                    Text("Pre-IPO").font(.system(size: 12)).foregroundStyle(Theme.muted)
-                }
-                Spacer()
-                Text(Fmt.usd(price))
-                    .font(.system(size: 20, weight: .bold)).monospacedDigit()
-                    .contentTransition(.numericText(value: price))
-            }
+        VStack(alignment: .leading, spacing: 0) {
             GeometryReader { g in
                 let w = g.size.width, h = g.size.height
                 let fair = h * 0.8
@@ -344,19 +311,16 @@ private struct FairValueHero: View {
                     Circle().fill(blue).frame(width: 10, height: 10)
                         .overlay(Circle().stroke(Theme.ground, lineWidth: 2))
                         .position(end).opacity(tag ? 1 : 0)
-                    Text("Fair value").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.amber)
-                        .position(x: 34, y: fair + 14)
-                        .opacity(drawn > 0.3 ? 1 : 0)
                     Path { p in p.move(to: .init(x: w, y: end.y + 10)); p.addLine(to: .init(x: w, y: fair)) }
                         .trim(from: 0, to: tag ? 1 : 0)
                         .stroke(Theme.amber.opacity(0.7), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
-                    Text("+15% above").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.amber)
+                    Text("+15%").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.amber)
                         .padding(.horizontal, 10).padding(.vertical, 5)
                         .background(Theme.amberT, in: .capsule)
                         .overlay(Capsule().stroke(Theme.amber.opacity(0.35), lineWidth: 1))
                         .scaleEffect(tag ? 1 : 0.4, anchor: .trailing)
                         .opacity(tag ? 1 : 0)
-                        .position(x: w - 58, y: (end.y + fair) / 2 + 8)
+                        .position(x: w - 38, y: (end.y + fair) / 2 + 8)
                 }
             }
             .frame(height: 170)
@@ -377,11 +341,11 @@ private struct FairValueHero: View {
     }
 
     private func play() {
-        guard !reduceMotion else { drawn = 1; price = 1027.90; tag = true; return }
+        guard !reduceMotion else { drawn = 1; tag = true; return }
         reset()
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(120))
-            withAnimation(.timingCurve(0.33, 1, 0.68, 1, duration: 1.3)) { drawn = 1; price = 1027.90 }
+            withAnimation(.timingCurve(0.33, 1, 0.68, 1, duration: 1.3)) { drawn = 1 }
             try? await Task.sleep(for: .milliseconds(1000))
             withAnimation(.spring(duration: 0.55, bounce: 0.3)) { tag = true }
             withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) { pulse = true }
@@ -390,7 +354,7 @@ private struct FairValueHero: View {
 
     private func reset() {
         var t = Transaction(); t.disablesAnimations = true
-        withTransaction(t) { drawn = 0; price = 880; tag = false; pulse = false }
+        withTransaction(t) { drawn = 0; tag = false; pulse = false }
     }
 }
 
@@ -422,15 +386,7 @@ private struct LimitHero: View {
     }
 
     private func card(prog: Double, filled: Bool, pop: Double, fade: Double) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Buy NVDAX at").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.muted)
-                    Text("$172.00").font(.system(size: 26, weight: .bold)).tracking(-0.8).monospacedDigit()
-                }
-                Spacer()
-                status(filled: filled, pop: pop).opacity(fade)
-            }
+        VStack(alignment: .leading, spacing: 0) {
             GeometryReader { g in
                 let w = g.size.width, h = g.size.height
                 let pts = samples(w, h)
@@ -441,8 +397,9 @@ private struct LimitHero: View {
                 ZStack(alignment: .topLeading) {
                     Path { p in p.move(to: .init(x: 0, y: target)); p.addLine(to: .init(x: w, y: target)) }
                         .stroke(Theme.amber.opacity(0.9), style: StrokeStyle(lineWidth: 1.5, dash: [4, 6]))
-                    Text("Your price").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.amber)
-                        .position(x: 34, y: target + 14)
+                    status(pop: pop)
+                        .opacity(filled ? fade : 0)
+                        .position(x: w - 44, y: target - 34)
                     Group {
                         Path { p in p.addLines(Array(pts[0...n])) }
                             .stroke(color, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
@@ -464,25 +421,15 @@ private struct LimitHero: View {
         .shadow(color: .black.opacity(0.55), radius: 30, y: 18)
     }
 
-    @ViewBuilder private func status(filled: Bool, pop: Double) -> some View {
-        ZStack {
-            HStack(spacing: 6) {
-                Circle().fill(Theme.amber).frame(width: 6, height: 6)
-                Text("Waiting").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.amber)
-            }
-            .padding(.horizontal, 10).padding(.vertical, 6)
-            .background(Theme.amberT, in: .capsule)
-            .opacity(filled ? 0 : 1)
-            HStack(spacing: 5) {
-                Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy))
-                Text("Filled").font(.system(size: 12, weight: .semibold))
-            }
-            .foregroundStyle(Theme.green)
-            .padding(.horizontal, 10).padding(.vertical, 6)
-            .background(Theme.greenT, in: .capsule)
-            .scaleEffect(filled ? 0.6 + 0.4 * pop : 0.6)
-            .opacity(filled ? 1 : 0)
+    private func status(pop: Double) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy))
+            Text("Filled").font(.system(size: 12, weight: .semibold))
         }
+        .foregroundStyle(Theme.green)
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(Theme.greenT, in: .capsule)
+        .scaleEffect(0.6 + 0.4 * pop, anchor: .bottom)
     }
 
     /// A price that wanders down to the line rather than walking straight to it.
