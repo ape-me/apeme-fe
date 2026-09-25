@@ -141,11 +141,6 @@ struct StockView: View {
             if let mark = fairMark(s), let p = fairPremium(s) {
                 FairValueBlock(stock: s, mark: mark, premium: p, insights: store.insights)
             }
-            if let stats = store.insights?.stats, let price = s.priceUsd {
-                YearRangeCard(stats: stats, price: price)
-            } else if store.insightsLoading {
-                InsightCardSkeleton(title: "Past 12 months", height: 92)
-            }
             TradingHereCard(stock: s, depth: store.depth)
             if let d = store.insights?.dividends { DividendCard(dividends: d) }
             else if store.insightsLoading { InsightCardSkeleton(title: "Dividends", height: 84) }

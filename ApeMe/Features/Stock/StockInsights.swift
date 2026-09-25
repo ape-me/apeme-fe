@@ -46,52 +46,6 @@ struct NasdaqCard: View {
     }
 }
 
-/// The 52-week range said out loud: a bar, the two ends, and a sentence. No vocabulary needed.
-struct YearRangeCard: View {
-    let stats: Insights.Stats
-    let price: Double
-
-    private var span: (low: Double, high: Double)? {
-        guard let low = stats.low52w, let high = stats.high52w, high > low else { return nil }
-        return (low, high)
-    }
-
-    private var position: Double {
-        guard let s = span else { return 0 }
-        return min(1, max(0, (price - s.low) / (s.high - s.low)))
-    }
-
-    private var sentence: String {
-        switch position {
-        case 0.8...: "Near its 12-month high."
-        case ...0.2: "Near its 12-month low."
-        case 0.55...: "In the upper half of its year."
-        case ...0.45: "In the lower half of its year."
-        default: "Right in the middle of its year."
-        }
-    }
-
-    var body: some View {
-        if let s = span {
-            VStack(alignment: .leading, spacing: 0) {
-                SectionTitle("Past 12 months")
-                KCard(padded: true) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        RangeBar(position: position)
-                        HStack {
-                            Text("\(Fmt.usd(s.low)) low")
-                            Spacer()
-                            Text("\(Fmt.usd(s.high)) high")
-                        }
-                        .font(.system(size: 12)).monospacedDigit().foregroundStyle(Theme.muted)
-                        Text(sentence).font(.sub.weight(.semibold)).foregroundStyle(Theme.ink)
-                    }
-                }
-            }
-        }
-    }
-}
-
 struct RangeBar: View {
     let position: Double
 
