@@ -71,11 +71,12 @@ struct Arrow: Shape {
         func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: r.minX + x * sx, y: r.minY + y * sy) }
         var shaft = Path()
         shaft.move(to: p(9, 54)); shaft.addLine(to: p(25.8, 25.7))
-        var out = shaft.strokedPath(StrokeStyle(lineWidth: 13 * sx, lineCap: .round))
+        let body = shaft.strokedPath(StrokeStyle(lineWidth: 13 * sx, lineCap: .round))
         var head = Path()
         head.move(to: p(38, 5)); head.addLine(to: p(37.8, 32.8)); head.addLine(to: p(13.7, 18.5)); head.closeSubpath()
-        out.addPath(head)
-        return out
+        // A union, not addPath: the stroked shaft and the head wind in opposite directions, so
+        // simply adding them cancelled the overlap and punched a notch out of the arrowhead.
+        return Path(body.cgPath.union(head.cgPath))
     }
 }
 
