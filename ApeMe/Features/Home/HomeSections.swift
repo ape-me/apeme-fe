@@ -103,7 +103,7 @@ struct FeatureCard: View {
             let hot = abs(p) >= 5
             let pctText = abs(p) < 1 ? String(format: "%.1f", abs(p)) : String(format: "%.0f", abs(p))
             HStack {
-                Text("Fair value \(Text(Fmt.usd(mark)).foregroundStyle(Theme.ink).fontWeight(.semibold)) · trades \(Text("\(pctText)% \(p >= 0 ? "above" : "below")").foregroundStyle(hot ? Theme.amber : Theme.ink).fontWeight(.semibold))")
+                Text("\(stock.isPreIPO ? "Last round" : "Nasdaq") \(Text(Fmt.usd(mark)).foregroundStyle(Theme.ink).fontWeight(.semibold)) · trades \(Text("\(pctText)% \(p >= 0 ? "above" : "below")").foregroundStyle(hot ? Theme.amber : Theme.ink).fontWeight(.semibold))")
                 Spacer()
                 Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
             }

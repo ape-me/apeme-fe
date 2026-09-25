@@ -19,7 +19,7 @@ struct OrderConfig: Codable, Hashable {
     let excludedIssuers: [String]?
 
     /// Used only until the real one arrives, and only to keep buttons sane on a cold launch.
-    static let provisional = OrderConfig(minUsd: nil, maxOpen: nil, buyFeeBps: 150, sellFeeBps: 0,
+    static let provisional = OrderConfig(minUsd: nil, maxOpen: nil, buyFeeBps: 0, sellFeeBps: 100,
                                          accountCostUsd: 0.48, minGapBps: 0, ttlDays: nil, excludedIssuers: nil)
 
     func allows(issuer: String) -> Bool {

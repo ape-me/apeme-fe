@@ -56,11 +56,9 @@ struct LimitOrder: Codable, Hashable, Identifiable {
     }
     /// Past its deadline and still holding the escrow. Either the backend says so outright, or
     /// the deadline has passed and it has not closed.
-    var isExpired: Bool {
-        if status == "expired" { return true }
-        guard isOpen, let e = expiresAt else { return false }
-        return Double(e) <= Date.now.timeIntervalSince1970
-    }
+    /// Orders no longer expire. This only catches rows from before that change, which still hold
+    /// money until cancelled, so the Reclaim path stays for them and nothing new reaches it.
+    var isExpired: Bool { status == "expired" }
 
     /// Needs the user to do something before the money comes back.
     var needsReclaim: Bool { isExpired }
@@ -108,7 +106,10 @@ struct OrderQuote: Codable, Hashable {
     let totalUsd: Double?
     let triggerUsd: Double?
     let fee: Fee?
-    /// Unix seconds. Jupiter drops the order at this point if it has not filled.
+    /// Sells only: what lands in the wallet after the 1% fee. The order is sized net of the fee,
+    /// so the trigger is the real fill price. Null on buys.
+    let proceedsUsd: Double?
+    /// Always null now: orders rest until filled or cancelled.
     let expiresAt: Int?
 }
 

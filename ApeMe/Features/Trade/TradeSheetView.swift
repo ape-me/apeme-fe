@@ -75,16 +75,31 @@ struct TradeSheetView: View {
     /// mints this opens up with no release.
     private var canLimit: Bool {
         guard asset.isStock else { return false }
-        let issuer = app.stocksByMint[asset.mint]?.issuer ?? (asset.isPreIPO ? "prestocks" : "")
+        let issuer = app.stocksByMint[asset.mint]?.issuer ?? (preIPO ? "prestocks" : "")
         return OrdersStore.shared.config.allows(issuer: issuer)
     }
+    /// Pre-IPO from any entry point. `asset.isPreIPO` only knows when the ticket was opened from
+    /// a stock; a sell opened from a holding fell through and labelled a funding round "Nasdaq price".
+    private var preIPO: Bool {
+        asset.isPreIPO || app.stocksByMint[asset.mint]?.isPreIPO == true || Self.preIPOSymbols.contains(asset.symbol.uppercased())
+    }
+    private static let preIPOSymbols: Set<String> = ["ANTHROPIC", "OPENAI", "POLYMARKET", "ANDURIL", "KALSHI", "NEURALINK", "FIGUREAI"]
+    /// What `markUsd` is, in words. Private companies have no listing to quote.
+    private var markLabel: String { preIPO ? "Last round" : "Nasdaq price" }
+
     private var triggerUsd: Double { Double(trigger) ?? 0 }
     private var limitSell: Bool { limit && side == .sell }
     private var tokenQty: Double { Double(tokens) ?? 0 }
     private var heldQty: Double { store.holding?.amount ?? 0 }
-    /// What the BE weighs against the minimum: the position's value at today's price.
-    /// What the order would actually return if it fills at the trigger.
+    /// Gross value at the trigger; what the BE weighs against the minimum.
     private var proceedsAtTrigger: Double { tokenQty * triggerUsd }
+    /// What actually lands in the wallet: the quote's `proceedsUsd` once there is one, and until
+    /// then the gross less the sell fee, which is how the BE sizes it.
+    private var payout: Double {
+        if let p = orderQuote?.proceedsUsd { return p }
+        let bps = Double(OrdersStore.shared.config.sellFeeBps ?? 100)
+        return proceedsAtTrigger * (1 - bps / 10_000)
+    }
 
     /// A buy has to sit below spot and a sell above it, by whatever gap the BE asks for.
     /// Otherwise the keeper fills it on the next pass and it is a market order dodging the fee.
@@ -241,7 +256,7 @@ struct TradeSheetView: View {
                     HStack(spacing: 5) {
                         if triggerUsd > 0, tokenQty > 0 {
                             Text("you'd get").foregroundStyle(Theme.muted)
-                            Text(Fmt.cash(proceedsAtTrigger)).foregroundStyle(Theme.green).fontWeight(.bold)
+                            Text(Fmt.cash(payout)).foregroundStyle(Theme.green).fontWeight(.bold)
                             Text("at \(Fmt.usd(triggerUsd))").foregroundStyle(Theme.muted)
                         } else {
                             Text("you hold").foregroundStyle(Theme.muted)
@@ -334,7 +349,7 @@ struct TradeSheetView: View {
     @ViewBuilder private var notes: some View {
         if let q = store.quote {
             if side == .buy, asset.isStock, let p = q.premiumPct, p > 5 {
-                note("Trading \(String(format: "%.0f", p))% above \(asset.isPreIPO ? "its fair value" : "the Nasdaq price").")
+                note("Trading \(String(format: "%.0f", p))% above \(preIPO ? "its last funding round" : "the Nasdaq price").")
             }
             if let i = q.priceImpactPct, i > 2 {
                 note("Thin market: you're paying \(String(format: "%.1f", i))% above the current price.")
@@ -356,12 +371,9 @@ struct TradeSheetView: View {
         #endif
     }
 
-    /// What a limit order does, including the part people only find out later: after the
-    /// deadline it stops working but keeps the money until it is cancelled.
+    /// Orders rest until they fill or are cancelled; there is no deadline any more.
     private var limitNote: String {
-        let base = "Fills only at your price or better. Nothing is charged until it does."
-        guard let days = OrdersStore.shared.config.ttlDays else { return base }
-        return base + " After \(days) days it stops trying — your \(side == .buy ? "money" : "position") stays reserved until you cancel it."
+        "Fills only at your price or better, and waits until it does. Cancel any time."
     }
 
     /// Amount step button. Purely local — nothing is fetched until Review order.
@@ -596,7 +608,7 @@ struct TradeSheetView: View {
                         .outcome)
                     if side == .sell {
                         Divider().overlay(Theme.line)
-                        row("You'd get", Fmt.cash(proceedsAtTrigger))
+                        row("You'd get", Fmt.cash(payout))
                     }
                     Divider().overlay(Theme.line)
                     row("When price hits", Fmt.usd(q.triggerUsd))
@@ -617,7 +629,7 @@ struct TradeSheetView: View {
                 Color.clear.frame(height: 24)
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(side == .buy ? "\(Fmt.cash(q.totalUsd ?? q.escrowUsd)) leaves your wallet" : "\(Fmt.cash(proceedsAtTrigger)) if it fills")
+                        Text(side == .buy ? "\(Fmt.cash(q.totalUsd ?? q.escrowUsd)) leaves your wallet" : "\(Fmt.cash(payout)) if it fills")
                             .font(.system(size: 20, weight: .semibold)).tracking(-0.4).monospacedDigit()
                         Text("at \(Fmt.usd(q.triggerUsd)) · \(awayPct >= 0 ? "+" : "−")\(String(format: "%.1f", abs(awayPct)))% from now")
                             .font(.sub).foregroundStyle(Theme.muted)
@@ -773,12 +785,12 @@ struct TradeSheetView: View {
                         side == .buy ? "≈ \(store.youGet) · \(Fmt.cash(q.swapUsd ?? q.outUsd))" : Fmt.qty(sellQty, symbol: asset.symbol),
                         .outcome)
                     Divider().overlay(Theme.line)
-                    if asset.isStock, let m = q.markUsd { row(asset.isPreIPO ? "Fair value" : "Nasdaq price", Fmt.usd(m), .reference); Divider().overlay(Theme.line) }
+                    if asset.isStock, let m = q.markUsd { row(markLabel, Fmt.usd(m), .reference); Divider().overlay(Theme.line) }
                     feesRow(q)
                 }
                 .padding(.top, 28)
                 if let i = q.priceImpactPct, i > 2 { note("Thin market: you're paying \(String(format: "%.1f", i))% above the current price.").padding(.top, 14) }
-                if side == .buy, asset.isStock, let p = q.premiumPct, p > 5 { note("Trading \(String(format: "%.0f", p))% above \(asset.isPreIPO ? "its fair value" : "the Nasdaq price").").padding(.top, 14) }
+                if side == .buy, asset.isStock, let p = q.premiumPct, p > 5 { note("Trading \(String(format: "%.0f", p))% above \(preIPO ? "its last funding round" : "the Nasdaq price").").padding(.top, 14) }
                 if let rent = rentUsd(q) {
                     note("First time holding \(asset.symbol): \(Fmt.cash(rent)) is a one-time network fee to open the token in your wallet, added on top. Next time you'd pay just \(Fmt.cash(feesTotal(q) - rent)) on this order.")
                         .padding(.top, 14)

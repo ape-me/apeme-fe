@@ -24,7 +24,6 @@ struct WelcomeView: View {
     @State private var docked = false
     // Welcome parts
     @State private var pouring = false
-    @State private var lines = [false, false, false]
     @State private var buttons = [false, false]
     @State private var terms = false
     @State private var leaving = false
@@ -107,33 +106,13 @@ struct WelcomeView: View {
         VStack(alignment: .leading, spacing: 0) {
             Color.clear.frame(height: logoHeight)
             Spacer(minLength: 20)
-            VStack(alignment: .leading, spacing: 0) {
-                // The one-liner. The kit's line until the final one is chosen.
-                headline("THE MARKET", 0, Brand.white)
-                headline("CLOSES.", 1, Brand.white)
-                headline("WE DON’T.", 2, Brand.lime)
-            }
-            .allowsHitTesting(false)
-            actions.padding(.top, 28)
+            actions
             footnote
                 .frame(maxWidth: .infinity)
                 .padding(.top, 18)
                 .opacity(terms ? 1 : 0)
         }
         .padding(.horizontal, 24).padding(.top, 16).padding(.bottom, 6)
-    }
-
-    private func headline(_ text: String, _ i: Int, _ color: Color) -> some View {
-        let size: CGFloat = 66
-        return Text(text)
-            .font(Brand.display(size)).tracking(-0.005 * size)
-            .foregroundStyle(color)
-            .frame(height: size * 0.86)
-            .offset(y: lines[i] ? 0 : size * 0.86 * 1.05)
-            .frame(height: size * 0.86, alignment: .top)
-            .clipped()
-            .accessibilityHidden(i > 0)
-            .accessibilityLabel(i == 0 ? "The market closes. We don’t." : "")
     }
 
     @ViewBuilder private var actions: some View {
@@ -219,11 +198,6 @@ struct WelcomeView: View {
         withAnimation(.timingCurve(0.32, 0.72, 0, 1, duration: 0.45)) { docked = true }
         try? await sleep(80)
         pouring = true
-        // Counts come from the arrays, so changing the headline can't overrun them again.
-        for i in lines.indices {
-            try? await sleep(50)
-            withAnimation(.timingCurve(0.16, 1, 0.3, 1, duration: 0.45)) { lines[i] = true }
-        }
         try? await sleep(40)
         for i in buttons.indices {
             try? await sleep(50)
@@ -241,7 +215,7 @@ struct WelcomeView: View {
             if app.signedIn { return finish() }
         }
         withAnimation(.easeOut(duration: 0.3)) {
-            docked = true; pouring = true; lines = [true, true, true]; buttons = [true, true]; terms = true; glowGone = true
+            docked = true; pouring = true; buttons = [true, true]; terms = true; glowGone = true
         }
     }
 
