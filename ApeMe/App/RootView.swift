@@ -2,9 +2,12 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppState.self) private var app
+    /// Once per cold launch. RootView lives as long as the process, so this never replays.
+    @State private var splashing = true
 
     var body: some View {
         @Bindable var app = app
+        ZStack {
         Group {
             if !app.auth.ready {
                 Color.clear
@@ -21,6 +24,12 @@ struct RootView: View {
             }
         }
         .animation(.easeOut(duration: 0.25), value: app.signedIn)
+            if splashing {
+                SplashView { splashing = false }
+                    .transition(.identity)
+                    .zIndex(1)
+            }
+        }
         .background(Theme.ground)
         .task(id: app.signedIn) { if app.signedIn { app.startOrderFeed() } }
         .sheet(item: $app.sheet) { sheet in

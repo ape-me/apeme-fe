@@ -72,7 +72,7 @@ struct YouView: View {
         }
         .background(Theme.ground)
         .appDialog("Replay the intro?", isPresented: $confirmOnboarding,
-                   message: "You'll pick a mode again. Nothing else changes.", confirm: "Show it") {
+                   message: Feature.ape ? "You'll pick a mode again. Nothing else changes." : "Nothing about your account changes.", confirm: "Show it") {
             app.onboarded = false; app.path.removeAll()
         }
         .appDialog("Sign out?", isPresented: $confirmSignOut,
