@@ -41,7 +41,7 @@ struct YouView: View {
                         if let address = app.walletAddress {
                             SettingRow(symbol: "wallet.bifold", title: "Wallet address", sub: Fmt.short(address), accessory: .copy) { app.copy(address) }
                         }
-                        SettingRow(symbol: "play.rectangle", title: "Replay the intro", sub: Feature.ape ? "Three slides and the mode question" : "The three slides you saw first") { confirmOnboarding = true }
+                        SettingRow(symbol: "play.rectangle", title: "Replay the intro", sub: Feature.ape ? "The welcome and the mode question" : "The welcome screen you saw first") { confirmOnboarding = true }
                     }
                     .padding(.top, 14)
 

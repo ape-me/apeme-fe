@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// Three pages, each built around one moving picture of the product: the stocks you can own
-/// orbiting the mark, a live price pulling away from its fair value, and an order filling at
-/// the price someone set. The picture plays when its page lands and rests when it leaves.
+/// One screen: the companies you can own orbiting the mark, one headline, one button. With Ape
+/// mode on, the floor page and the mode question follow it.
 struct OnboardingView: View {
     /// Signed out: Get started hands over to the login screen. Signed in (replay from You): straight back to Home.
     var onGetStarted: (() -> Void)? = nil
@@ -10,7 +9,7 @@ struct OnboardingView: View {
     @State private var index = 0
     @State private var choice: Mode? = nil
 
-    private static var pages: Int { Feature.ape ? 4 : 3 }
+    private static var pages: Int { Feature.ape ? 3 : 1 }
     private static var lastPage: Int { pages - 1 }
 
     var body: some View {
@@ -23,18 +22,11 @@ struct OnboardingView: View {
                     Page(title: "Own it before\nthe IPO.",
                          active: index == 0) { OrbitHero(active: index == 0) }
                         .tag(0)
-                    Page(title: "Know what it's\nreally worth.",
-                         active: index == 1) { FairValueHero(active: index == 1) }
-                        .tag(1)
                     if Feature.ape {
                         Page(title: "Every stock\nhas a floor.",
-                             active: index == 2) { FloorHero() }
-                            .tag(2)
-                        question.tag(3)
-                    } else {
-                        Page(title: "Name your price.\nWalk away.",
-                             active: index == 2) { LimitHero(active: index == 2) }
-                            .tag(2)
+                             active: index == 1) { FloorHero() }
+                            .tag(1)
+                        question.tag(2)
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
@@ -64,6 +56,7 @@ struct OnboardingView: View {
 
     private var footer: some View {
         VStack(spacing: 22) {
+            if Self.pages > 1 {
             HStack(spacing: 6) {
                 ForEach(0..<Self.pages, id: \.self) { i in
                     Capsule()
@@ -73,6 +66,7 @@ struct OnboardingView: View {
             }
             .animation(.spring(duration: 0.35, bounce: 0), value: index)
             .frame(maxWidth: .infinity, alignment: .leading)
+            }
             BigButton(label: index < Self.lastPage ? "Continue" : "Get started",
                       style: Feature.ape && index == Self.lastPage && choice == nil ? .off : .white) {
                 if index < Self.lastPage { withAnimation(.snappy) { index += 1 } } else { finish() }
@@ -260,191 +254,6 @@ private struct ChipView: View {
             .clipShape(.rect(cornerRadius: 16, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(.white.opacity(0.12), lineWidth: 1))
             .shadow(color: .black.opacity(0.55), radius: 16, y: 10)
-    }
-}
-
-// MARK: - Page 2: price vs fair value
-
-private struct FairValueHero: View {
-    let active: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var drawn: CGFloat = 0
-    @State private var tag = false
-    @State private var pulse = false
-
-    private let blue = Color(hex: 0x578bfa)
-
-    var body: some View {
-        ZStack {
-            // A second card behind for depth, the way a stack of stocks would sit.
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(Theme.surface.opacity(0.55))
-                .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(.white.opacity(0.05)))
-                .frame(height: 230)
-                .padding(.horizontal, 44)
-                .rotationEffect(.degrees(tag ? 5 : 0))
-                .offset(y: tag ? -26 : 0)
-            card
-                .padding(.horizontal, 28)
-        }
-        .onChange(of: active, initial: true) { _, on in on ? play() : reset() }
-    }
-
-    private var card: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            GeometryReader { g in
-                let w = g.size.width, h = g.size.height
-                let fair = h * 0.8
-                let end = CGPoint(x: w, y: h * 0.14)
-                ZStack(alignment: .topLeading) {
-                    Path { p in p.move(to: .init(x: 0, y: fair)); p.addLine(to: .init(x: w, y: fair)) }
-                        .stroke(Theme.amber.opacity(0.9), style: StrokeStyle(lineWidth: 1.5, dash: [4, 6]))
-                        .opacity(drawn > 0.3 ? 1 : 0)
-                    line(w, h).trim(from: 0, to: drawn)
-                        .stroke(blue, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-                    line(w, h).trim(from: 0, to: drawn)
-                        .stroke(blue.opacity(0.35), style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                        .blur(radius: 8)
-                    Circle().fill(blue.opacity(0.25)).frame(width: 30, height: 30)
-                        .scaleEffect(pulse ? 1.25 : 0.6).opacity(pulse ? 0 : 1)
-                        .position(end).opacity(tag ? 1 : 0)
-                    Circle().fill(blue).frame(width: 10, height: 10)
-                        .overlay(Circle().stroke(Theme.ground, lineWidth: 2))
-                        .position(end).opacity(tag ? 1 : 0)
-                    Path { p in p.move(to: .init(x: w, y: end.y + 10)); p.addLine(to: .init(x: w, y: fair)) }
-                        .trim(from: 0, to: tag ? 1 : 0)
-                        .stroke(Theme.amber.opacity(0.7), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
-                    Text("+15%").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.amber)
-                        .padding(.horizontal, 10).padding(.vertical, 5)
-                        .background(Theme.amberT, in: .capsule)
-                        .overlay(Capsule().stroke(Theme.amber.opacity(0.35), lineWidth: 1))
-                        .scaleEffect(tag ? 1 : 0.4, anchor: .trailing)
-                        .opacity(tag ? 1 : 0)
-                        .position(x: w - 38, y: (end.y + fair) / 2 + 8)
-                }
-            }
-            .frame(height: 170)
-        }
-        .padding(18)
-        .background(Theme.surface, in: .rect(cornerRadius: 26, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(.white.opacity(0.07), lineWidth: 1))
-        .shadow(color: .black.opacity(0.55), radius: 30, y: 18)
-    }
-
-    private func line(_ w: CGFloat, _ h: CGFloat) -> Path {
-        Path { p in
-            p.move(to: .init(x: 0, y: h * 0.84))
-            p.addCurve(to: .init(x: w * 0.3, y: h * 0.66), control1: .init(x: w * 0.1, y: h * 0.9), control2: .init(x: w * 0.2, y: h * 0.6))
-            p.addCurve(to: .init(x: w * 0.62, y: h * 0.42), control1: .init(x: w * 0.42, y: h * 0.74), control2: .init(x: w * 0.5, y: h * 0.4))
-            p.addCurve(to: .init(x: w, y: h * 0.14), control1: .init(x: w * 0.76, y: h * 0.46), control2: .init(x: w * 0.86, y: h * 0.12))
-        }
-    }
-
-    private func play() {
-        guard !reduceMotion else { drawn = 1; tag = true; return }
-        reset()
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(120))
-            withAnimation(.timingCurve(0.33, 1, 0.68, 1, duration: 1.3)) { drawn = 1 }
-            try? await Task.sleep(for: .milliseconds(1000))
-            withAnimation(.spring(duration: 0.55, bounce: 0.3)) { tag = true }
-            withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) { pulse = true }
-        }
-    }
-
-    private func reset() {
-        var t = Transaction(); t.disablesAnimations = true
-        withTransaction(t) { drawn = 0; tag = false; pulse = false }
-    }
-}
-
-// MARK: - Page 3: an order that fills itself
-
-private struct LimitHero: View {
-    let active: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var start = Date.now
-    @State private var lastCycle = -1
-
-    private static let period = 5.2
-    private static let travel = 2.6
-    private let blue = Color(hex: 0x578bfa)
-
-    var body: some View {
-        TimelineView(.animation(paused: !active || reduceMotion)) { ctx in
-            let e = reduceMotion ? Self.travel + 1 : ctx.date.timeIntervalSince(start)
-            let p = e.truncatingRemainder(dividingBy: Self.period)
-            let prog = easeInOut(min(p / Self.travel, 1))
-            let filled = p >= Self.travel
-            let pop = filled ? backOut(min((p - Self.travel) / 0.45, 1)) : 0
-            let fade = p > Self.period - 0.4 ? (Self.period - p) / 0.4 : 1
-            card(prog: prog, filled: filled, pop: pop, fade: reduceMotion ? 1 : fade)
-                .onChange(of: filled) { _, f in if f, active { Haptic.success() } }
-        }
-        .padding(.horizontal, 28)
-        .onChange(of: active) { _, on in if on { start = .now } }
-    }
-
-    private func card(prog: Double, filled: Bool, pop: Double, fade: Double) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            GeometryReader { g in
-                let w = g.size.width, h = g.size.height
-                let pts = samples(w, h)
-                let n = max(1, Int(Double(pts.count - 1) * prog))
-                let head = pts[n]
-                let target = h * 0.78
-                let color = filled ? Theme.buy : blue
-                ZStack(alignment: .topLeading) {
-                    Path { p in p.move(to: .init(x: 0, y: target)); p.addLine(to: .init(x: w, y: target)) }
-                        .stroke(Theme.amber.opacity(0.9), style: StrokeStyle(lineWidth: 1.5, dash: [4, 6]))
-                    status(pop: pop)
-                        .opacity(filled ? fade : 0)
-                        .position(x: w - 44, y: target - 34)
-                    Group {
-                        Path { p in p.addLines(Array(pts[0...n])) }
-                            .stroke(color, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-                        Circle().fill(color.opacity(0.3)).frame(width: 34, height: 34)
-                            .scaleEffect(filled ? 1 + pop * 0.4 : 0.6).opacity(filled ? 1 - pop * 0.8 : 0.8)
-                            .position(head)
-                        Circle().fill(color).frame(width: 11, height: 11)
-                            .overlay(Circle().stroke(Theme.ground, lineWidth: 2))
-                            .position(head)
-                    }
-                    .opacity(fade)
-                }
-            }
-            .frame(height: 170)
-        }
-        .padding(18)
-        .background(Theme.surface, in: .rect(cornerRadius: 26, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(.white.opacity(0.07), lineWidth: 1))
-        .shadow(color: .black.opacity(0.55), radius: 30, y: 18)
-    }
-
-    private func status(pop: Double) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy))
-            Text("Filled").font(.system(size: 12, weight: .semibold))
-        }
-        .foregroundStyle(Theme.green)
-        .padding(.horizontal, 10).padding(.vertical, 6)
-        .background(Theme.greenT, in: .capsule)
-        .scaleEffect(0.6 + 0.4 * pop, anchor: .bottom)
-    }
-
-    /// A price that wanders down to the line rather than walking straight to it.
-    private func samples(_ w: CGFloat, _ h: CGFloat) -> [CGPoint] {
-        (0...80).map { i in
-            let x = Double(i) / 80
-            let y = 0.2 + 0.58 * x + 0.07 * sin(x * 12) * (1 - x)
-            return CGPoint(x: CGFloat(x) * w, y: CGFloat(y) * h)
-        }
-    }
-
-    private func easeInOut(_ x: Double) -> Double { x < 0.5 ? 4 * x * x * x : 1 - pow(-2 * x + 2, 3) / 2 }
-    private func backOut(_ x: Double) -> Double {
-        let c1 = 1.70158, c3 = c1 + 1
-        return 1 + c3 * pow(x - 1, 3) + c1 * pow(x - 1, 2)
     }
 }
 
