@@ -2,9 +2,7 @@ import SwiftUI
 
 /// Horizontal ticker strip: symbol, price, arrow.
 struct StripItem: Identifiable, Hashable {
-    enum Kind { case stock, meme }
     let id: String
-    let kind: Kind
     let label: String
     let price: Double?
     let change: Double?
@@ -21,12 +19,7 @@ struct Strip: View {
             HStack(spacing: 18) {
                 ForEach(items) { it in
                     HStack(spacing: 6) {
-                        Button {
-                            switch it.kind {
-                            case .stock: app.openStock(it.id)
-                            case .meme: app.push(.token(it.id))
-                            }
-                        } label: {
+                        Button { app.openStock(it.id) } label: {
                             Text(it.label).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.muted).contentShape(.rect)
                         }
                         .buttonStyle(.plain)

@@ -146,7 +146,7 @@ struct WelcomeView: View {
             VStack(spacing: 12) {
                 brandButton(label: "Continue with Apple", icon: "apple.logo", light: true, shown: buttons[0]) { apple() }
                 brandButton(label: "Continue with email", icon: "envelope", light: false, shown: buttons[1]) {
-                    prepareMode(); emailSheet = true
+                    emailSheet = true
                 }
             }
             .disabled(busy)
@@ -255,13 +255,7 @@ struct WelcomeView: View {
 
     // MARK: - Sign in
 
-    /// One mode exists while Ape is hidden; set it before sign-in so the app does not ask after.
-    private func prepareMode() {
-        if !Feature.ape, app.mode == nil { app.mode = .invest }
-    }
-
     private func apple() {
-        prepareMode()
         error = nil; busy = true
         Task {
             defer { busy = false }

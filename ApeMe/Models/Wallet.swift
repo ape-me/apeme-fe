@@ -1,13 +1,12 @@
 import Foundation
 
-/// `GET /v1/wallet/:address`. `holdings[0]` is the cash row (USDC); positions are `stock` / `meme`.
+/// `GET /v1/wallet/:address`. `holdings[0]` is the cash row (USDC); positions are stocks.
 struct Wallet: Codable, Hashable {
     let address: String
     var totalUsd: Double?
     let cashUsd: Double?
     let solUsd: Double?
     var stocksUsd: Double?
-    var memesUsd: Double?
     let costUsd: Double?
     /// Total fees paid across the wallet.
     let feesUsd: Double?
@@ -21,28 +20,25 @@ struct Wallet: Codable, Hashable {
     var cash: Holding? { holdings.first { $0.kind == "cash" } }
     var positions: [Holding] {
         holdings
-            .filter { $0.kind == "stock" || (Feature.ape && $0.kind == "meme") }
+            .filter { $0.kind == "stock" }
             .sorted { ($0.valueUsd ?? 0) > ($1.valueUsd ?? 0) }
     }
     var sol: Holding? { holdings.first { $0.kind == "sol" } }
     var isEmpty: Bool { (cashUsd ?? 0) == 0 && holdings.count <= 1 }
-    /// Sum of cost for positions bought through ApeMe. Outside deposits (costUsd nil) don't count.
+    /// Sum of cost for positions bought through Stonks247. Outside deposits (costUsd nil) don't count.
     var investedUsd: Double { positions.compactMap(\.costUsd).reduce(0, +) }
     var positionsUsd: Double { positions.compactMap(\.valueUsd).reduce(0, +) }
 
     /// A live price tick for one held mint. Cash never moves; cost never moves without a trade.
     mutating func apply(price: Double, to mint: String) {
-        guard let i = holdings.firstIndex(where: { $0.mint == mint && ($0.kind == "stock" || $0.kind == "meme") }) else { return }
+        guard let i = holdings.firstIndex(where: { $0.mint == mint && $0.kind == "stock" }) else { return }
         var h = holdings[i]
         h.priceUsd = price
         h.valueUsd = h.amount * price
         if let c = h.costUsd, c > 0 { h.pnlUsd = h.valueUsd! - c; h.pnlPct = h.pnlUsd! / c * 100 }
         holdings[i] = h
         stocksUsd = holdings.filter { $0.kind == "stock" }.compactMap(\.valueUsd).reduce(0, +)
-        memesUsd = holdings.filter { $0.kind == "meme" }.compactMap(\.valueUsd).reduce(0, +)
-        // Meme value is left out of the headline while the meme side is hidden, so the total
-        // always equals the positions listed under it.
-        totalUsd = (cashUsd ?? 0) + (solUsd ?? 0) + (stocksUsd ?? 0) + (Feature.ape ? (memesUsd ?? 0) : 0)
+        totalUsd = (cashUsd ?? 0) + (solUsd ?? 0) + (stocksUsd ?? 0)
         let withCost = positions.filter { $0.costUsd != nil }
         pnlUsd = withCost.isEmpty ? nil : withCost.compactMap(\.pnlUsd).reduce(0, +)
     }

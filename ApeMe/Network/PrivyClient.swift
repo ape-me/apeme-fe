@@ -26,7 +26,7 @@ final class Auth {
 
     var needsInvite: Bool { me?.needsInvite ?? false }
 
-    /// Sent as `privy-id-token` on every call to ape-be.
+    /// Sent as `privy-id-token` on every call to the backend.
     var identityToken: String? { user?.identityToken }
 
     /// Both tokens for the API layer. Access token is fetched fresh (the SDK refreshes it).

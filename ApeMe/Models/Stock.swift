@@ -12,7 +12,6 @@ struct Stock: Codable, Identifiable, Hashable {
     var priceUsd: Double?
     var decimals: Int?
     var change24h: Double?
-    let memes: Int
     let marketOpen: Bool
     let multiplier: Double?
     let quoteUsd: Double?
@@ -22,11 +21,6 @@ struct Stock: Codable, Identifiable, Hashable {
     let stockVol24hUsd: Double?
     let buys24h: Int?
     let sells24h: Int?
-    let heat: Double?
-    let launched24h: Int?
-    let memeVol24hUsd: Double?
-    let wallets24h: Int?
-    let king: King?
 
     var logoURL: URL? { logo.flatMap { $0.isEmpty ? nil : URL(string: $0) } }
     var isPreIPO: Bool { issuer == "prestocks" }

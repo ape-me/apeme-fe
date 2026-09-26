@@ -5,7 +5,7 @@ import CoreMotion
 /// The companies you can buy, as coins drifting behind everything at three depths, all out of
 /// focus, the far ones more so. Each depth only bumps into its own layer, so the layers
 /// pass over one another like real depth. Tilting the phone leans them all one way; near coins
-/// can be grabbed and flicked. Same idea as the apeme.fun landing page, weightless.
+/// can be grabbed and flicked. Same idea as the landing page, weightless.
 struct CoinField: View {
     /// Coins start falling when this turns true, so they arrive after the logo has docked.
     let pouring: Bool

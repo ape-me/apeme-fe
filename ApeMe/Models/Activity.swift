@@ -7,12 +7,11 @@ struct Activity: Codable, Identifiable, Hashable {
     let ts: Int
     let type: String?          // buy | sell | deposit | withdraw
     let status: String?        // pending | confirmed | failed
-    let source: String?        // apeme | chain
+    let source: String?        // app | chain
     let side: Side?
     let mint: String
     let symbol: String
     let image: String?
-    let stockSymbol: String?
     let amount: Double?
     let quote: Double?
     let usd: Double?

@@ -14,37 +14,23 @@ final class HomeStore {
             watching ? [.watch, .preipo, .movers, .news, .explore] : [.preipo, .movers, .news, .explore, .watch]
         }
     }
-    enum ApeTab: String, CaseIterable, Identifiable {
-        case preipo, new, kings
-        var id: String { rawValue }
-        var label: String { switch self { case .preipo: "Pre-IPO"; case .new: "New launches"; case .kings: "Kings" } }
-    }
 
     var preipo: [Stock] = []
     var collections: [StockCollection] = []
     var movers: MoversResponse?
-    var ticker: [TickerItem] = []
-    var newTokens: [TokenCard] = []
     var watched: [Stock] = []
     var loading = true
     var error: String?
     var investTab: InvestTab = .preipo
     private var pickedFirstTab = false
-    var apeTab: ApeTab = .preipo
     var moversSide = 0          // 0 gainers, 1 losers
     var exploreId: String?
-    var flashes: [String: Flash] = [:]
-    var socketStatus: LiveSocket.Status = .connecting
     var feed: [NewsItem] = []
     /// How many items at the head of `feed` are about stocks the user holds or watches.
     var ownedCount = 0
     var feedLoading = false
     var feedLoaded = false
     var feedError: String?
-
-    private var socket: LiveSocket?
-    private var listener: Task<Void, Never>?
-    private var stamp = 0
 
     /// The user's own stocks come first; signed out it's simply the newest across the market.
     func loadFeed(app: AppState) async {
@@ -100,11 +86,9 @@ final class HomeStore {
             if preipo.isEmpty { self.error = "Markets are taking a moment" }
         }
         loading = false
-        if Feature.ape, let t = try? await API.shared.ticker(memes: 10, stonks: 1) { ticker = t.tokens }
     }
 
-    /// Home is the first screen anyone sees, and the floor is no longer there to supply the
-    /// motion. Only the prices are refetched — news and collections will not have moved in
+    /// Home is the first screen anyone sees, so its prices keep moving. Only the prices are refetched — news and collections will not have moved in
     /// fifteen seconds, and both reads are edge-cached anyway.
     func refreshPrices(app: AppState) async {
         async let p = API.shared.stocks(issuer: "prestocks")
@@ -120,59 +104,5 @@ final class HomeStore {
             watched = r.stocks
             app.index(r.stocks)
         }
-    }
-
-    func loadNew(app: AppState) async {
-        if let r = try? await API.shared.newTokens(limit: 30) { newTokens = r.tokens }
-        connectFloor(app: app)
-    }
-
-    var kings: [Stock] {
-        var seen = Set<String>()
-        let all = preipo + collections.flatMap { $0.stocks ?? [] }
-        return all.filter { $0.king != nil && seen.insert($0.mint).inserted }
-            .sorted { ($0.king?.vol24hUsd ?? 0) > ($1.king?.vol24hUsd ?? 0) }
-            .prefix(25).map { $0 }
-    }
-
-    var preipoByHeat: [Stock] { preipo.sorted { ($0.heat ?? 0) > ($1.heat ?? 0) } }
-
-    private func connectFloor(app: AppState) {
-        guard socket == nil else { return }
-        let s = LiveSocket(room: "floor")
-        socket = s
-        listener = Task { [weak self] in
-            for await ev in s.events {
-                guard let self else { return }
-                switch ev {
-                case .status(let st): socketStatus = st
-                case .frames(let frames):
-                    for f in frames {
-                        switch f {
-                        case .trade(let t):
-                            if newTokens.contains(where: { $0.mint == t.mint }) {
-                                stamp += 1; flashes[t.mint] = Flash(side: t.side, stamp: stamp)
-                            }
-                        case .token(let mint, let event) where event == "created":
-                            Task { await self.insertNew(mint) }
-                        default: break
-                        }
-                    }
-                }
-            }
-        }
-        s.start()
-    }
-
-    private func insertNew(_ mint: String) async {
-        try? await Task.sleep(for: .seconds(1.5))
-        guard let h = try? await API.shared.token(mint, fresh: true), !newTokens.contains(where: { $0.mint == mint }) else { return }
-        newTokens.insert(h.card, at: 0)
-        stamp += 1; flashes[mint] = Flash(side: .buy, stamp: stamp)
-    }
-
-    func disconnect() {
-        listener?.cancel(); listener = nil
-        socket?.stop(); socket = nil
     }
 }

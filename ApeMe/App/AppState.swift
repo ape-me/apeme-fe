@@ -2,18 +2,16 @@ import SwiftUI
 import PrivySDK
 import Observation
 
-/// Mode, wallet, watchlists, navigation. Persisted bits go through UserDefaults directly so
+/// Wallet, watchlist, navigation. Persisted bits go through UserDefaults directly so
 /// observation still fires (`@AppStorage` does not work inside `@Observable`).
 @Observable @MainActor
 final class AppState {
     private let defaults = UserDefaults.standard
 
-    var mode: Mode? { didSet { defaults.set(mode?.rawValue, forKey: "apeme.mode") } }
-    /// Seen the slides and tapped Get started. Separate from `mode` so replaying onboarding never logs you out.
+    /// Seen the welcome and signed in.
     var onboarded: Bool { didSet { defaults.set(onboarded, forKey: "apeme.onboarded") } }
     var demoWallet: Bool { didSet { defaults.set(demoWallet, forKey: "apeme.demo"); if !demoWallet { wallet = nil } } }
     var watch: [String] { didSet { defaults.set(watch, forKey: "apeme.watch") } }
-    var tokenWatch: [String] { didSet { defaults.set(tokenWatch, forKey: "apeme.tokenWatch") } }
 
     /// Replay the intro from You. Not persisted: a fresh install with a restored session should
     /// land in the app, not on a welcome with nothing to do but Continue.
@@ -35,14 +33,13 @@ final class AppState {
     private var toastTask: Task<Void, Never>?
 
     init() {
-        mode = defaults.string(forKey: "apeme.mode").flatMap(Mode.init(rawValue:))
+        // The mode switch and the token watchlist are gone; drop what older builds persisted.
+        defaults.removeObject(forKey: "apeme.mode")
+        defaults.removeObject(forKey: "apeme.tokenWatch")
         onboarded = defaults.bool(forKey: "apeme.onboarded")
         demoWallet = defaults.bool(forKey: "apeme.demo")
         watch = defaults.stringArray(forKey: "apeme.watch") ?? []
-        tokenWatch = defaults.stringArray(forKey: "apeme.tokenWatch") ?? []
     }
-
-    var isApe: Bool { Feature.ape && mode == .ape }
 
     /// Privy wallet when signed in, the demo wallet when that's switched on, otherwise nothing.
     let auth = Auth.shared
@@ -58,7 +55,7 @@ final class AppState {
     func sell(_ mint: String) {
         Task {
             if wallet == nil { await loadWallet(fresh: true) }
-            if let h = wallet?.holdings.first(where: { $0.mint == mint && ($0.kind == "stock" || $0.kind == "meme") }), h.amount > 0 {
+            if let h = wallet?.holdings.first(where: { $0.mint == mint && $0.kind == "stock" }), h.amount > 0 {
                 sheet = .sell(h)
             } else {
                 show("You don't hold any yet")
@@ -80,15 +77,7 @@ final class AppState {
         path.append(r)
     }
 
-    /// Stocks open the Stock page in Invest and the Floor in Ape.
-    func openStock(_ mint: String) { push(isApe ? .floor(mint) : .stock(mint)) }
-
-    func toggleMode() {
-        Haptic.light()
-        mode = isApe ? .invest : .ape
-        wallet = nil
-        root(tab)
-    }
+    func openStock(_ mint: String) { push(.stock(mint)) }
 
     // MARK: Data
 
@@ -103,7 +92,7 @@ final class AppState {
         OrdersStore.shared.connect(channel: channel) { [weak self] order in
             guard let self else { return }
             let symbol = order.symbol ?? "Your order"
-            let img = order.mint.flatMap { self.stocksByMint[$0] }.map { ToastImage(url: $0.logoURL, symbol: $0.symbol, isStock: true) }
+            let img = order.mint.flatMap { self.stocksByMint[$0] }.map { ToastImage(url: $0.logoURL, symbol: $0.symbol) }
             if order.status == "filled" {
                 Haptic.success()
                 let what = order.fillUsd.map { " · \(Fmt.cash($0))" } ?? ""
@@ -144,13 +133,12 @@ final class AppState {
     private var liveSockets: [String: LiveSocket] = [:]
     private var liveListeners: [Task<Void, Never>] = []
 
-    /// One room per held mint: `stock:<mint>` for stocks (price frames), `<mint>` for memes (trade frames).
+    /// One `stock:<mint>` room per held stock, for its price frames.
     func startWalletLive() {
         stopWalletLive()
         guard let w = wallet else { return }
         for h in w.positions {
-            let room = h.kind == "stock" ? "stock:\(h.mint)" : h.mint
-            let s = LiveSocket(room: room)
+            let s = LiveSocket(room: "stock:\(h.mint)")
             liveSockets[h.mint] = s
             let mint = h.mint
             liveListeners.append(Task { [weak self] in
@@ -159,7 +147,6 @@ final class AppState {
                     for f in frames {
                         switch f {
                         case .price(let p) where p.mint == mint: if let px = p.priceUsd { wallet?.apply(price: px, to: mint) }
-                        case .trade(let t) where t.mint == mint: if let px = t.priceUsd { wallet?.apply(price: px, to: mint) }
                         default: break
                         }
                     }
@@ -197,11 +184,6 @@ final class AppState {
         index(r.stocks)
         watch = r.stocks.map(\.mint)
     }
-    func isWatchingToken(_ mint: String) -> Bool { tokenWatch.contains(mint) }
-    func toggleTokenWatch(_ mint: String) {
-        if let i = tokenWatch.firstIndex(of: mint) { tokenWatch.remove(at: i); show("Removed from watchlist") }
-        else { tokenWatch.append(mint); show("Added to watchlist") }
-    }
 
     // MARK: Feedback
 
@@ -229,7 +211,7 @@ final class AppState {
         tradeInFlight = r
         sheet = nil
         let what = r.side == .buy ? r.store.youGet : Fmt.qty(r.sellQty, symbol: r.asset.symbol)
-        let img = ToastImage(url: r.asset.imageURL, symbol: r.asset.symbol, isStock: r.asset.isStock)
+        let img = ToastImage(url: r.asset.imageURL, symbol: r.asset.symbol)
         show("\(r.side == .buy ? "Buying" : "Selling") \(what)…", pending: true, image: img)
         Task {
             await r.store.execute(wallet: wallet) { [weak self] in self?.settleWallet() }
@@ -258,5 +240,4 @@ final class AppState {
 struct ToastImage: Equatable {
     let url: URL?
     let symbol: String
-    let isStock: Bool
 }

@@ -27,7 +27,7 @@ actor ImageCache {
     }
 }
 
-/// A remote logo with a lettered stand-in. Many memes ship an empty `image`.
+/// A remote logo with a lettered stand-in for when the image is missing or slow.
 struct RemoteImage: View {
     let url: URL?
     let fallback: String
@@ -69,18 +69,5 @@ struct Logo: View {
         RemoteImage(url: url, fallback: String(symbol.prefix(1)), fontSize: size * 0.38)
             .frame(width: size, height: size)
             .clipShape(.rect(cornerRadius: size * 0.3))
-    }
-}
-
-/// Meme avatar: circle.
-struct Avatar: View {
-    let url: URL?
-    let symbol: String
-    var size: CGFloat = 40
-
-    var body: some View {
-        RemoteImage(url: url, fallback: String(symbol.prefix(2)), fontSize: max(7, size * 0.3))
-            .frame(width: size, height: size)
-            .clipShape(.circle)
     }
 }

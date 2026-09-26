@@ -1,6 +1,6 @@
 import Foundation
 
-/// One WebSocket room on ape-be (`floor`, `stock:<mint>`, `<mint>`). Frames are JSON arrays.
+/// One WebSocket room on the backend (`stock:<mint>`, or the user's own order channel). Frames are JSON arrays.
 /// We send "ping" every 25s; the server answers "pong". Reconnects with backoff on close.
 @MainActor
 final class LiveSocket {

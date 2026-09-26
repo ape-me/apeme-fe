@@ -8,8 +8,8 @@ struct PreIPOSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(app.isApe ? "Pre-IPO floors" : "Before the IPO").h2Text()
-                Text(app.isApe ? "Ranked by heat: launches, apes and volume" : "Private companies, before the IPO")
+                Text("Before the IPO").h2Text()
+                Text("Private companies, before the IPO")
                     .font(.sub).foregroundStyle(Theme.muted)
             }
             .padding(.horizontal, 20)
@@ -43,7 +43,7 @@ struct PreIPOSection: View {
     }
 }
 
-/// The paged hero card. Invest: price + fair value. Ape: floor volume + king.
+/// The paged hero card: price, today's move, and the last funding round it trades against.
 struct FeatureCard: View {
     let stock: Stock
     @Environment(AppState.self) private var app
@@ -54,28 +54,23 @@ struct FeatureCard: View {
                 HStack(spacing: 12) {
                     Logo(url: stock.logoURL, symbol: stock.symbol, size: 44)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(app.isApe ? "\(stock.symbol) floor" : stock.symbol).h3Text()
-                        Text(app.isApe ? "\(stock.memes) memes · \(stock.launched24h ?? 0) launched today" : "\(stock.name) · Pre-IPO")
+                        Text(stock.symbol).h3Text()
+                        Text("\(stock.name) · Pre-IPO")
                             .font(.sub).foregroundStyle(Theme.muted)
                     }
                     Spacer()
-                    if app.isApe, let k = stock.king { Avatar(url: k.imageURL, symbol: k.symbol, size: 28) }
-                    else if !app.isApe { PremiumBadge(pct: stock.premiumPct) }
+                    PremiumBadge(pct: stock.premiumPct)
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(app.isApe ? Fmt.big(stock.memeVol24hUsd) : Fmt.usd(stock.priceUsd))
+                    Text(Fmt.usd(stock.priceUsd))
                         .contentTransition(.numericText())
                         .animation(.easeOut(duration: 0.35), value: stock.priceUsd)
                         .font(.system(size: 34, weight: .semibold)).tracking(-1.5).monospacedDigit()
-                    if app.isApe {
-                        Text("traded on the floor today · \(Fmt.n(stock.wallets24h)) apes").font(.sub).foregroundStyle(Theme.muted)
-                    } else {
-                        HStack(spacing: 4) {
-                            Text(Fmt.arrow(stock.change24h)).foregroundStyle(Theme.change(stock.change24h))
-                            Text("today").foregroundStyle(Theme.muted).fontWeight(.medium)
-                        }
-                        .font(.system(size: 13, weight: .semibold)).monospacedDigit()
+                    HStack(spacing: 4) {
+                        Text(Fmt.arrow(stock.change24h)).foregroundStyle(Theme.change(stock.change24h))
+                        Text("today").foregroundStyle(Theme.muted).fontWeight(.medium)
                     }
+                    .font(.system(size: 13, weight: .semibold)).monospacedDigit()
                 }
                 footer
             }
@@ -86,20 +81,7 @@ struct FeatureCard: View {
     }
 
     @ViewBuilder private var footer: some View {
-        if app.isApe {
-            HStack {
-                if let k = stock.king {
-                    HStack(spacing: 6) {
-                        Image(systemName: "crown.fill").font(.system(size: 10)).foregroundStyle(Theme.amber)
-                        Text("King: \(Text(k.symbol).foregroundStyle(Theme.ink).fontWeight(.semibold)) · \(Fmt.big(k.vol24hUsd))")
-                    }
-                } else { Text("No king yet") }
-                Spacer()
-                Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
-            }
-            .font(.sub).foregroundStyle(Theme.muted)
-            .padding(.top, 12).overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
-        } else if let mark = stock.markUsd, let p = stock.premiumPct {
+        if let mark = stock.markUsd, let p = stock.premiumPct {
             let hot = abs(p) >= 5
             let pctText = abs(p) < 1 ? String(format: "%.1f", abs(p)) : String(format: "%.0f", abs(p))
             HStack {
@@ -217,73 +199,5 @@ struct WatchSection: View {
         }
         .padding(.horizontal, 20).padding(.top, 26)
         .task(id: app.watch) { await store.loadWatch(app: app) }
-    }
-}
-
-struct NewLaunchesSection: View {
-    @Bindable var store: HomeStore
-    @Environment(AppState.self) private var app
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Just launched").h2Text()
-                    Text("New tokens across every floor").font(.sub).foregroundStyle(Theme.muted)
-                }
-            }
-            if store.newTokens.isEmpty {
-                Skeleton(height: 64); Skeleton(height: 64)
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(store.newTokens) { t in
-                        TokenRow(token: t, stockSymbol: app.stocksByMint[t.quoteMint]?.symbol, flash: store.flashes[t.mint])
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 20).padding(.top, 26)
-        .task { await store.loadNew(app: app) }
-        .onDisappear { store.disconnect() }
-    }
-}
-
-struct KingsSection: View {
-    let stocks: [Stock]
-    @Environment(AppState.self) private var app
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Kings of the floor").h2Text()
-                Text("The most traded token on each stock today").font(.sub).foregroundStyle(Theme.muted)
-            }
-            VStack(spacing: 0) {
-                ForEach(stocks) { s in
-                    if let k = s.king {
-                        Button { app.push(.token(k.mint)) } label: {
-                            HStack(spacing: 12) {
-                                Avatar(url: k.imageURL, symbol: k.symbol)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    HStack(spacing: 7) {
-                                        Text(k.symbol).font(.rowTitle).lineLimit(1)
-                                        Image(systemName: "crown.fill").font(.system(size: 10)).foregroundStyle(Theme.amber)
-                                    }
-                                    Text("on \(s.symbol)").font(.sub).foregroundStyle(Theme.muted)
-                                }
-                                Spacer()
-                                VStack(alignment: .trailing, spacing: 3) {
-                                    Text(Fmt.big(k.vol24hUsd)).font(.rowPrice).monospacedDigit()
-                                    Text("today").font(.rowChange).foregroundStyle(Theme.muted)
-                                }
-                            }
-                            .padding(.vertical, 8).frame(minHeight: 64).contentShape(.rect)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 20).padding(.top, 26)
     }
 }

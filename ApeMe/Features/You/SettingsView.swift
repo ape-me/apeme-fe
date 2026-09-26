@@ -3,6 +3,7 @@ import SwiftUI
 /// Trading settings. Saves on change, optimistic; server copy replaces on success.
 struct SettingsView: View {
     @Environment(AppState.self) private var app
+    @Environment(\.skin) private var skin
     @State private var s: Me.Settings = Auth.shared.settings
     @State private var error: String?
     @State private var customSlippage = ""
@@ -79,7 +80,7 @@ struct SettingsView: View {
 
     private func toggle(_ title: String, _ on: Bool, set: @escaping (Bool) -> Void) -> some View {
         Button { Haptic.light(); set(!on) } label: {
-            HStack { Text(title).font(.system(size: 15, weight: .medium)); Spacer(); SwitchShape(on: on, tint: Skin(mode: app.mode ?? .invest).accent) }
+            HStack { Text(title).font(.system(size: 15, weight: .medium)); Spacer(); SwitchShape(on: on, tint: skin.accent) }
                 .frame(minHeight: 52).contentShape(.rect)
         }
         .buttonStyle(.plain)

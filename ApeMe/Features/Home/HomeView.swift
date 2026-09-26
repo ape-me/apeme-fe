@@ -8,7 +8,6 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                header
                 strip.padding(.top, 8)
                 // The headline strip used to sit here. Two horizontal scrollers stacked above
                 // the tabs meant four things to swipe before a single price was legible, and
@@ -22,7 +21,7 @@ struct HomeView: View {
         }
         .scrollIndicators(.hidden)
         .background(Theme.ground)
-        .task(id: app.mode) {
+        .task {
             await store.load(app: app)
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(15))
@@ -30,46 +29,24 @@ struct HomeView: View {
                 await store.refreshPrices(app: app)
             }
         }
-        .onDisappear { store.disconnect() }
         .refreshable { await store.load(app: app) }
     }
 
     /// No title: the tab bar already says which screen this is, and the market should be the
-    /// first thing on it. Only the mode switch needs a row, and only while it exists.
-    @ViewBuilder private var header: some View {
-        if Feature.ape {
-            HStack(alignment: .center, spacing: 12) {
-                Text(app.isApe ? "Floors" : "Home").h1Text()
-                Spacer()
-                ModeSwitch()
-            }
-            .padding(.horizontal, 20).padding(.top, 16)
-        }
+    /// first thing on it.
+    private var strip: some View {
+        let items = (store.preipo + (store.movers?.mostTraded ?? []).prefix(4))
+            .map { StripItem(id: $0.mint, label: $0.symbol, price: $0.priceUsd, change: $0.change24h) }
+        return Strip(items: items).padding(.top, 10)
     }
 
-    @ViewBuilder private var strip: some View {
-        if app.isApe {
-            Strip(items: store.ticker.filter { $0.kind == "meme" }.map { StripItem(id: $0.id, kind: .meme, label: $0.label, price: $0.price, change: $0.change24h) }).padding(.top, 10)
-        } else {
-            let items = (store.preipo + (store.movers?.mostTraded ?? []).prefix(4))
-                .map { StripItem(id: $0.mint, kind: .stock, label: $0.symbol, price: $0.priceUsd, change: $0.change24h) }
-            Strip(items: items).padding(.top, 10)
+    private var tabs: some View {
+        ScrollView(.horizontal) {
+            UnderlineTabs(items: HomeStore.InvestTab.ordered(watching: !app.watch.isEmpty), selected: store.investTab, label: \.label) { store.investTab = $0 }
+                .padding(.horizontal, 20)
         }
-    }
-
-    @ViewBuilder private var tabs: some View {
-        if app.isApe {
-            UnderlineTabs(items: HomeStore.ApeTab.allCases, selected: store.apeTab, label: \.label) { store.apeTab = $0 }
-                .padding(.horizontal, 20).padding(.top, 6)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        } else {
-ScrollView(.horizontal) {
-                UnderlineTabs(items: HomeStore.InvestTab.ordered(watching: !app.watch.isEmpty), selected: store.investTab, label: \.label) { store.investTab = $0 }
-                    .padding(.horizontal, 20)
-            }
-            .scrollIndicators(.hidden)
-            .padding(.top, 6)
-        }
+        .scrollIndicators(.hidden)
+        .padding(.top, 6)
     }
 
     @ViewBuilder private var body_: some View {
@@ -78,12 +55,6 @@ ScrollView(.horizontal) {
         } else if store.loading && store.preipo.isEmpty {
             VStack(spacing: 12) { Skeleton(height: 220); Skeleton(height: 64); Skeleton(height: 64) }
                 .padding(.horizontal, 20).padding(.top, 26)
-        } else if app.isApe {
-            switch store.apeTab {
-            case .preipo: PreIPOSection(stocks: store.preipoByHeat)
-            case .new: NewLaunchesSection(store: store)
-            case .kings: KingsSection(stocks: store.kings)
-            }
         } else {
             switch store.investTab {
             case .preipo: PreIPOSection(stocks: store.preipo)

@@ -3,11 +3,10 @@ import Foundation
 struct Holding: Codable, Identifiable, Hashable {
     var id: String { mint }
     let mint: String
-    let kind: String          // "cash" | "sol" | "stock" | "meme"
+    let kind: String          // "cash" | "sol" | "stock"
     let symbol: String
     let name: String?
     let image: String?
-    let quoteSymbol: String?
     let amount: Double
     /// Raw on-chain units as a string; what `/v1/swap/quote` takes when selling. Never derive from `amount`.
     let raw: String?
@@ -20,7 +19,7 @@ struct Holding: Codable, Identifiable, Hashable {
     var pnlPct: Double?
     /// Cost per displayed unit, fees excluded. nil for cash / SOL / outside deposits.
     let avgEntryUsd: Double?
-    /// ApeMe fee + rent + issuer fee paid on this token's buys and sells.
+    /// Stonks247 fee + rent + issuer fee paid on this stock's buys and sells.
     let feesUsd: Double?
 
     var imageURL: URL? { image.flatMap { $0.isEmpty ? nil : URL(string: $0) } }

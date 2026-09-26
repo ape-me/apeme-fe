@@ -17,8 +17,8 @@ struct RootView: View {
                 AccountLoadingView(failed: app.auth.meTried)
             } else if app.needsInvite {
                 InviteView()                  // wall: nothing behind it until /v1/me says active
-            } else if (Feature.ape && app.mode == nil) || app.replayingIntro {
-                OnboardingView()              // the ape mode question, or the replay from You
+            } else if app.replayingIntro {
+                WelcomeView(kind: .replay)    // replayed from You
             } else {
                 MainShell().task(id: app.auth.me?.userId) { await app.syncWatchlist() }
             }
@@ -44,7 +44,6 @@ struct RootView: View {
             Group {
             switch sheet {
             case .buyStock(let s): TradeSheetView(side: .buy, asset: .stock(s))
-            case .apeToken(let t, let ref): TradeSheetView(side: .buy, asset: .token(t, ref))
             case .sell(let h): TradeSheetView(side: .sell, asset: .holding(h))
             case .deposit: DepositSheet()
             case .tx(let a): TxSheet(activity: a)
@@ -87,8 +86,6 @@ struct MainShell: View {
                     Group {
                         switch route {
                         case .stock(let mint): StockView(mint: mint)
-                        case .floor(let mint): FloorView(mint: mint)
-                        case .token(let mint): TokenView(mint: mint)
                         case .settings: SettingsView()
                         case .referrals: ReferralsView()
                         }

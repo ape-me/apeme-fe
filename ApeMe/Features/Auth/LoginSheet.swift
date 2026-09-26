@@ -184,7 +184,6 @@ struct LoginForm: View {
     }
 
     private func send() {
-        if !Feature.ape, app.mode == nil { app.mode = .invest }
         run(.email, stay: true) {
             try await app.auth.sendCode(to: email.trimmingCharacters(in: .whitespaces))
             code = ""; codeSent = true; focus = .code

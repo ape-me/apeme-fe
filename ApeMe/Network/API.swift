@@ -1,6 +1,6 @@
 import Foundation
 
-/// The phone talks only to ape-be. Every read goes through `fetch`, which returns the cached
+/// The phone talks only to our backend. Every read goes through `fetch`, which returns the cached
 /// copy when it is younger than `ttl` and refreshes in the background when it is older.
 actor API {
     static let shared = API()
@@ -38,27 +38,7 @@ actor API {
     func history(_ mint: String, range: HistoryRange, fresh: Bool = false) async throws -> HistoryResponse {
         try await fetch("/stocks/\(mint)/history?range=\(range.api)", ttl: fresh ? 0 : 30)
     }
-    func floorTokens(_ mint: String, sort: FloorSort, cursor: String? = nil, limit: Int = 40) async throws -> StockTokensResponse {
-        var p = "/stocks/\(mint)/tokens?sort=\(sort.rawValue)&limit=\(limit)"
-        if let cursor { p += "&cursor=\(cursor)" }
-        return try await fetch(p, ttl: 5)
-    }
-    func newTokens(limit: Int = 30) async throws -> TokensResponse {
-        try await fetch("/tokens?column=new&limit=\(limit)", ttl: 5)
-    }
-    func tokens(mints: [String]) async throws -> TokensResponse {
-        try await fetch("/tokens?mints=\(mints.joined(separator: ","))", ttl: 5)
-    }
-    func token(_ mint: String, fresh: Bool = false) async throws -> TokenHeader {
-        try await fetch("/tokens/\(mint)", ttl: fresh ? 0 : 3)
-    }
-    func candles(_ mint: String, tf: Timeframe, limit: Int = 120) async throws -> CandlesResponse {
-        try await fetch("/tokens/\(mint)/candles?tf=\(tf.rawValue)&limit=\(limit)", ttl: 10)
-    }
-    func trades(_ mint: String, limit: Int = 40) async throws -> TradesResponse {
-        try await fetch("/tokens/\(mint)/trades?limit=\(limit)", ttl: 3)
-    }
-    /// What each order size costs in price impact. Works for memes too.
+    /// What each order size costs in price impact.
     func depth(_ mint: String) async throws -> Depth {
         try await fetch("/stocks/\(mint)/depth", ttl: 60)
     }
@@ -93,9 +73,6 @@ actor API {
     func wallet(_ address: String, activity: Int = 30, fresh: Bool = false, bustCache: Bool = false) async throws -> Wallet {
         // `bustCache` → `fresh=1`: the BE skips its edge cache. Once after a confirmed trade, and on pull-to-refresh.
         try await fetch("/wallet/\(address)?activity=\(activity)\(bustCache ? "&fresh=1" : "")", ttl: fresh ? 0 : 3)
-    }
-    func ticker(memes: Int = 10, stonks: Int = 1) async throws -> TickerResponse {
-        try await fetch("/ticker?memes=\(memes)&stonks=\(stonks)", ttl: 30)
     }
 
     // MARK: Account (signed in; `privy-id-token` goes on every request)

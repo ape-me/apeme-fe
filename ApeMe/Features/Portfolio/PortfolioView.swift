@@ -122,11 +122,10 @@ struct PortfolioView: View {
             Group {
                 switch tab {
                 case .positions:
-                    if positions.isEmpty { EmptyState(title: "No positions yet.", subtitle: Feature.ape ? "Buy a stock or ape a meme to see it here." : "Buy a stock to see it here.") }
+                    if positions.isEmpty { EmptyState(title: "No positions yet.", subtitle: "Buy a stock to see it here.") }
                     else { VStack(spacing: 0) { ForEach(positions) { PositionRow(holding: $0) } } }
                 case .orders: OrdersPanel()
-                // A meme trade is quoted in a stock, so it goes with the rest of that side.
-                case .activity: ActivityList(activity: w.activity.filter { Feature.ape || $0.stockSymbol == nil })
+                case .activity: ActivityList(activity: w.activity)
                 }
             }
             .padding(.top, 6)
@@ -141,17 +140,9 @@ struct PositionRow: View {
     var body: some View {
         Button { app.sheet = .position(holding) } label: {
             HStack(spacing: 12) {
-                ZStack(alignment: .bottomTrailing) {
-                    if holding.kind == "meme" { Avatar(url: holding.imageURL, symbol: holding.symbol) } else { Logo(url: holding.imageURL, symbol: holding.symbol) }
-                    Text(holding.kind == "meme" ? "MEME" : "STOCK").font(.system(size: 8, weight: .bold)).foregroundStyle(Theme.muted)
-                        .padding(.horizontal, 4).padding(.vertical, 2).background(Theme.surface2, in: .rect(cornerRadius: 4))
-                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.ground, lineWidth: 2)).offset(x: 6, y: 4)
-                }
+                Logo(url: holding.imageURL, symbol: holding.symbol)
                 VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 7) {
-                        Text(holding.symbol).font(.rowTitle)
-                        if let q = holding.quoteSymbol { Text("on \(q)").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.faint) }
-                    }
+                    Text(holding.symbol).font(.rowTitle)
                     Text(Fmt.qty(holding.amount, symbol: holding.symbol)).font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
                 }
                 Spacer()
@@ -334,7 +325,6 @@ struct ActivityRow: View {
         if a.status == "pending" { return "Confirming on Solana…" }
         if a.kind == "deposit" { return "From \(Fmt.short(a.from))" }
         var parts: [String] = []
-        if let s = a.stockSymbol { parts.append("on \(s)") }
         parts.append(Fmt.usd(a.usd))
         if let f = a.feeUsd { parts.append("fee \(Fmt.usd(f))") }
         return parts.joined(separator: " · ")
@@ -365,8 +355,7 @@ struct ActivityRow: View {
             HStack(spacing: 12) {
                 ZStack(alignment: .bottomTrailing) {
                     if activity.symbol == "USDC" { Image("usdc").resizable().frame(width: 40, height: 40).clipShape(.circle) }
-                    else if let st = app.stocksByMint[activity.mint] { Logo(url: activity.imageURL ?? st.logoURL, symbol: activity.symbol) }
-                    else { Avatar(url: activity.imageURL, symbol: activity.symbol) }
+                    else { Logo(url: activity.imageURL ?? app.stocksByMint[activity.mint]?.logoURL, symbol: activity.symbol) }
                     let b = badge
                     Image(systemName: b.0).font(.system(size: 9, weight: .bold)).foregroundStyle(b.2)
                         .frame(width: 18, height: 18).background(b.1, in: .circle)
@@ -415,7 +404,7 @@ struct TxSheet: View {
                 .frame(width: 56, height: 56).background(ok ? Theme.green : pending ? Theme.surface2 : Theme.red, in: .circle)
                 Text(title).h1Text().multilineTextAlignment(.center)
                 if activity.kind == "buy" || activity.kind == "sell", let u = activity.usd {
-                    Text("for \(Fmt.usd(u))" + (activity.stockSymbol.map { " · on \($0)" } ?? "")).font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
+                    Text("for \(Fmt.usd(u))").font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
                 }
             }
             .frame(maxWidth: .infinity).padding(.top, 10)
@@ -448,7 +437,7 @@ struct PositionSheet: View {
 
     private var stats: [Stat] {
         [
-            Stat(holding.kind == "meme" ? "Tokens" : "Shares", Text(Fmt.qty(holding.amount, symbol: ""))),
+            Stat("Shares", Text(Fmt.qty(holding.amount, symbol: ""))),
             Stat("Entry", entry.map { Text(Fmt.usd($0)) } ?? Text("—").foregroundStyle(Theme.muted)),
             Stat("Now", Text(Fmt.usd(holding.priceUsd))),
             Stat("Profit", profit),
@@ -465,7 +454,7 @@ struct PositionSheet: View {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     HStack(spacing: 10) {
-                        if holding.kind == "meme" { Avatar(url: holding.imageURL, symbol: holding.symbol, size: 28) } else { Logo(url: holding.imageURL, symbol: holding.symbol, size: 28) }
+                        Logo(url: holding.imageURL, symbol: holding.symbol, size: 28)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(holding.symbol).h3Text()
                             Text(Fmt.usd(holding.valueUsd)).font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
@@ -484,10 +473,9 @@ struct PositionSheet: View {
                 }
                 Button {
                     dismiss()
-                    if holding.kind == "meme" { app.push(.token(holding.mint)) }
-                    else { app.openStock(holding.mint) }
+                    app.openStock(holding.mint)
                 } label: {
-                    Text("Open \(holding.kind == "meme" ? "token" : "stock") page ›").font(.sub.weight(.semibold)).foregroundStyle(Theme.ink).frame(maxWidth: .infinity)
+                    Text("Open stock page ›").font(.sub.weight(.semibold)).foregroundStyle(Theme.ink).frame(maxWidth: .infinity)
                 }
                 .buttonStyle(RowPress())
             }

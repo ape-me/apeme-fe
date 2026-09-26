@@ -50,7 +50,7 @@ struct ToastView: View {
         HStack(spacing: 12) {
             if let image {
                 ZStack(alignment: .bottomTrailing) {
-                    if image.isStock { Logo(url: image.url, symbol: image.symbol, size: 36) } else { Avatar(url: image.url, symbol: image.symbol, size: 36) }
+                    Logo(url: image.url, symbol: image.symbol, size: 36)
                     Group {
                         if pending { ProgressView().tint(Theme.ink).scaleEffect(0.55) }
                         else { Image(systemName: error ? "xmark" : "checkmark").font(.system(size: 9, weight: .bold)).foregroundStyle(error ? .white : Theme.ground) }

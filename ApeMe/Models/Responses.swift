@@ -14,10 +14,6 @@ extension MoversResponse {
     var visible: MoversResponse { .init(gainers: Hidden.filter(gainers), losers: Hidden.filter(losers), mostTraded: Hidden.filter(mostTraded)) }
 }
 extension NewsResponse { var visible: NewsResponse { .init(items: Hidden.filter(items)) } }
-struct StockTokensResponse: Codable { let stock: Stock; let tokens: [TokenCard]; let next: String? }
-struct TokensResponse: Codable { let tokens: [TokenCard]; let next: String? }
-struct CandlesResponse: Codable { let mint: String; let tf: String; let candles: [Candle] }
-struct TradesResponse: Codable { let mint: String; let trades: [Trade] }
 struct HistoryResponse: Codable {
     let mint: String
     let range: String
@@ -31,7 +27,6 @@ struct MoversResponse: Codable {
     let losers: [Stock]?
     let mostTraded: [Stock]?
 }
-struct TickerResponse: Codable { let updatedAt: String?; let tokens: [TickerItem] }
 struct ErrorBody: Codable {
     let error: String
     let requestId: String?

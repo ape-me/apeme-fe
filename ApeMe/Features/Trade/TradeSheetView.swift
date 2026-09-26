@@ -1,19 +1,16 @@
 import SwiftUI
 
-/// Buy / Sell / Ape: what you pay, what you get, one button. Fees live under "Details".
+/// Buy / Sell: what you pay, what you get, one button. Fees live under "Details".
 struct TradeSheetView: View {
     enum Asset {
         case stock(Stock)
-        case token(TokenCard, StockRef?)
         case holding(Holding)
 
-        var mint: String { switch self { case .stock(let s): s.mint; case .token(let t, _): t.mint; case .holding(let h): h.mint } }
-        var symbol: String { switch self { case .stock(let s): s.symbol; case .token(let t, _): t.displaySymbol; case .holding(let h): h.symbol } }
-        var priceUsd: Double? { switch self { case .stock(let s): s.priceUsd; case .token(let t, _): t.priceUsd; case .holding(let h): h.priceUsd } }
-        var imageURL: URL? { switch self { case .stock(let s): s.logoURL; case .token(let t, _): t.imageURL; case .holding(let h): h.imageURL } }
-        var isStock: Bool { switch self { case .stock: true; case .token: false; case .holding(let h): h.kind == "stock" } }
+        var mint: String { switch self { case .stock(let s): s.mint; case .holding(let h): h.mint } }
+        var symbol: String { switch self { case .stock(let s): s.symbol; case .holding(let h): h.symbol } }
+        var priceUsd: Double? { switch self { case .stock(let s): s.priceUsd; case .holding(let h): h.priceUsd } }
+        var imageURL: URL? { switch self { case .stock(let s): s.logoURL; case .holding(let h): h.imageURL } }
         var isPreIPO: Bool { if case .stock(let s) = self { return s.isPreIPO }; return false }
-        var onSymbol: String? { switch self { case .token(_, let r): r?.symbol; case .holding(let h): h.quoteSymbol; default: nil } }
     }
 
     let side: TradeStore.Side
@@ -53,7 +50,7 @@ struct TradeSheetView: View {
         _reviewing = State(initialValue: true)
     }
 
-    private var verb: String { side == .sell ? "Sell" : asset.isStock ? "Buy" : "Ape" }
+    private var verb: String { side == .sell ? "Sell" : "Buy" }
     private var usd: Double { Double(amount) ?? 0 }
     private var settings: Me.Settings { app.auth.settings }
     private var cash: Double { app.cashUsd }
@@ -74,7 +71,6 @@ struct TradeSheetView: View {
     /// Which issuers are off-limits is the BE's to say, so the day Jupiter supports transfer-fee
     /// mints this opens up with no release.
     private var canLimit: Bool {
-        guard asset.isStock else { return false }
         let issuer = app.stocksByMint[asset.mint]?.issuer ?? (preIPO ? "prestocks" : "")
         return OrdersStore.shared.config.allows(issuer: issuer)
     }
@@ -183,8 +179,8 @@ struct TradeSheetView: View {
         .padding(.top, 14)
     }
 
-    @ViewBuilder private func assetImage(_ size: CGFloat) -> some View {
-        if asset.isStock { Logo(url: asset.imageURL, symbol: asset.symbol, size: size) } else { Avatar(url: asset.imageURL, symbol: asset.symbol, size: size) }
+    private func assetImage(_ size: CGFloat) -> some View {
+        Logo(url: asset.imageURL, symbol: asset.symbol, size: size)
     }
 
     @ViewBuilder private var modeTabs: some View {
@@ -348,7 +344,7 @@ struct TradeSheetView: View {
     /// The two things a first-timer must know: a big premium, or a big price impact. Nothing else up front.
     @ViewBuilder private var notes: some View {
         if let q = store.quote {
-            if side == .buy, asset.isStock, let p = q.premiumPct, p > 5 {
+            if side == .buy, let p = q.premiumPct, p > 5 {
                 note("Trading \(String(format: "%.0f", p))% above \(preIPO ? "its last funding round" : "the Nasdaq price").")
             }
             if let i = q.priceImpactPct, i > 2 {
@@ -712,7 +708,7 @@ struct TradeSheetView: View {
             Haptic.success()
             dismiss()
             app.show("Order placed · \(asset.symbol) at \(Fmt.usd(triggerUsd))",
-                     image: ToastImage(url: asset.imageURL, symbol: asset.symbol, isStock: asset.isStock))
+                     image: ToastImage(url: asset.imageURL, symbol: asset.symbol))
         } catch {
             app.show(OrdersStore.message(error), error: true)
         }
@@ -785,12 +781,12 @@ struct TradeSheetView: View {
                         side == .buy ? "≈ \(store.youGet) · \(Fmt.cash(q.swapUsd ?? q.outUsd))" : Fmt.qty(sellQty, symbol: asset.symbol),
                         .outcome)
                     Divider().overlay(Theme.line)
-                    if asset.isStock, let m = q.markUsd { row(markLabel, Fmt.usd(m), .reference); Divider().overlay(Theme.line) }
+                    if let m = q.markUsd { row(markLabel, Fmt.usd(m), .reference); Divider().overlay(Theme.line) }
                     feesRow(q)
                 }
                 .padding(.top, 28)
                 if let i = q.priceImpactPct, i > 2 { note("Thin market: you're paying \(String(format: "%.1f", i))% above the current price.").padding(.top, 14) }
-                if side == .buy, asset.isStock, let p = q.premiumPct, p > 5 { note("Trading \(String(format: "%.0f", p))% above \(preIPO ? "its last funding round" : "the Nasdaq price").").padding(.top, 14) }
+                if side == .buy, let p = q.premiumPct, p > 5 { note("Trading \(String(format: "%.0f", p))% above \(preIPO ? "its last funding round" : "the Nasdaq price").").padding(.top, 14) }
                 if let rent = rentUsd(q) {
                     note("First time holding \(asset.symbol): \(Fmt.cash(rent)) is a one-time network fee to open the token in your wallet, added on top. Next time you'd pay just \(Fmt.cash(feesTotal(q) - rent)) on this order.")
                         .padding(.top, 14)

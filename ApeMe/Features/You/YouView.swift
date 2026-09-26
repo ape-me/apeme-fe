@@ -31,17 +31,12 @@ struct YouView: View {
                     .buttonStyle(.plain).padding(.top, 12).padding(.bottom, 8)
                     }
 
-                    if Feature.ape {
-                        SettingRow(symbol: app.isApe ? "flame" : "chart.line.uptrend.xyaxis", title: "Ape mode",
-                                   sub: app.isApe ? "Floors, kings and the live tape" : "Off · stocks and fair values",
-                                   trailing: AnyView(SwitchShape(on: app.isApe, tint: Skin(mode: app.mode ?? .invest).accent))) { app.toggleMode() }
-                    }
                     KCard {
                         SettingRow(symbol: "slider.horizontal.3", title: "Trading settings", sub: "Slippage, quick amounts, confirmations") { app.push(.settings) }
                         if let address = app.walletAddress {
                             SettingRow(symbol: "wallet.bifold", title: "Wallet address", sub: Fmt.short(address), accessory: .copy) { app.copy(address) }
                         }
-                        SettingRow(symbol: "play.rectangle", title: "Replay the intro", sub: Feature.ape ? "The welcome and the mode question" : "The welcome screen you saw first") { confirmOnboarding = true }
+                        SettingRow(symbol: "play.rectangle", title: "Replay the intro", sub: "The welcome screen you saw first") { confirmOnboarding = true }
                     }
                     .padding(.top, 14)
 
@@ -72,7 +67,7 @@ struct YouView: View {
         }
         .background(Theme.ground)
         .appDialog("Replay the intro?", isPresented: $confirmOnboarding,
-                   message: Feature.ape ? "You'll pick a mode again. Nothing else changes." : "Nothing about your account changes.", confirm: "Show it") {
+                   message: "Nothing about your account changes.", confirm: "Show it") {
             app.replayingIntro = true; app.path.removeAll()
         }
         .appDialog("Sign out?", isPresented: $confirmSignOut,

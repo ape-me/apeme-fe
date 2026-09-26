@@ -4,17 +4,15 @@ import Observation
 @Observable @MainActor
 final class MarketsStore {
     enum Sort: String, CaseIterable, Identifiable {
-        case change, volume, premium, heat
+        case change, volume, premium
         var id: String { rawValue }
-        func label(ape: Bool) -> String {
+        var label: String {
             switch self {
             case .change: "24h change"
-            case .volume: ape ? "Meme volume" : "Trading volume"
+            case .volume: "Trading volume"
             case .premium: "Premium to fair value"
-            case .heat: "Heat"
             }
         }
-        static func options(ape: Bool) -> [Sort] { ape ? [.heat, .volume, .change] : [.change, .volume, .premium] }
     }
 
     var stocks: [Stock] = []
@@ -24,9 +22,10 @@ final class MarketsStore {
     var tag: String?
     var sort: Sort = .change
 
-    /// Chips come from /collections, in the backend's order. "Meme" is not a word Invest mode uses.
-    func chipTitle(_ c: StockCollection, ape: Bool) -> String {
-        c.id == "memestocks" && !ape ? "Retail favorites" : c.title
+    /// Chips come from /collections, in the backend's order. The `memestocks` collection is
+    /// GME/AMC-type equities and stays; only its chip reads "Retail favorites".
+    func chipTitle(_ c: StockCollection) -> String {
+        c.id == "memestocks" ? "Retail favorites" : c.title
     }
 
     func load(app: AppState) async {
@@ -50,7 +49,7 @@ final class MarketsStore {
         }
     }
 
-    func filtered(ape: Bool) -> [Stock] {
+    func filtered() -> [Stock] {
         let q = query.lowercased()
         var l = stocks.filter { s in
             (tag == nil || (s.tags ?? []).contains(tag!))
@@ -59,9 +58,8 @@ final class MarketsStore {
         l.sort { a, b in
             switch sort {
             case .change: (a.change24h ?? 0) > (b.change24h ?? 0)
-            case .volume: ape ? (a.memeVol24hUsd ?? 0) > (b.memeVol24hUsd ?? 0) : (a.stockVol24hUsd ?? 0) > (b.stockVol24hUsd ?? 0)
+            case .volume: (a.stockVol24hUsd ?? 0) > (b.stockVol24hUsd ?? 0)
             case .premium: abs(a.premiumPct ?? 0) > abs(b.premiumPct ?? 0)
-            case .heat: (a.heat ?? 0) > (b.heat ?? 0)
             }
         }
         return l
