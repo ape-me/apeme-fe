@@ -91,6 +91,7 @@ final class CoinScene: SKScene, SKPhysicsContactDelegate {
         poured = true
         tick.prepare()
         let base = min(max(size.width / 5.2, 60), 86)
+        baseDiameter = base
         var order = 0
         for (layer, depth) in Self.depths.enumerated() {
             let d = base * depth.scale
@@ -140,7 +141,9 @@ final class CoinScene: SKScene, SKPhysicsContactDelegate {
         body.contactTestBitMask = layer == Self.depths.count - 1 ? (1 << UInt32(layer)) | Self.wallBit : 0
         body.restitution = 0.9
         body.friction = 0.1
-        body.linearDamping = 0.35
+        // A little damping, so a flick settles back to cruising; the steering in `update` keeps
+        // every coin moving from there.
+        body.linearDamping = 0.15
         body.angularDamping = 0.6
         // Upright: a sideways Kalshi or an upside-down Apple is harder to recognise, and the
         // logos are the point.
@@ -152,11 +155,19 @@ final class CoinScene: SKScene, SKPhysicsContactDelegate {
 
     /// A slow push in a random direction; far coins move slower, which sells the depth.
     private static func drift(_ scale: CGFloat) -> CGVector {
-        let a = CGFloat.random(in: 0...(2 * .pi)), v = CGFloat.random(in: 18...40) * scale
+        let a = CGFloat.random(in: 0...(2 * .pi)), v = cruise(scale)
         return CGVector(dx: cos(a) * v, dy: sin(a) * v)
     }
 
+    /// Cruising speed in points per second. Near coins move faster than far ones: parallax.
+    private static func cruise(_ scale: CGFloat) -> CGFloat { 70 * scale * scale }
+
     private var lastNudge: TimeInterval = 0
+    /// The near layer's diameter; a coin's size over this is its depth scale.
+    private var baseDiameter: CGFloat = 80
+    /// Gravity as first read, taken as "neutral" so the way someone happens to hold the phone
+    /// doesn't pull the coins anywhere; only a lean away from it does.
+    private var restGravity: CMAcceleration?
 
     // MARK: Tilt
 
@@ -165,9 +176,12 @@ final class CoinScene: SKScene, SKPhysicsContactDelegate {
         motion.deviceMotionUpdateInterval = 1 / 30
         motion.startDeviceMotionUpdates(to: .main) { [weak self] m, _ in
             guard let self, let g = m?.gravity else { return }
-            // Portrait: device x is screen x, device y is screen up. Held upright, g.y is about
-            // -1, so that part is taken out; only a lean away from upright moves the coins.
-            self.physicsWorld.gravity = CGVector(dx: g.x * 3, dy: (g.y + 0.8) * 3)
+            let rest = self.restGravity ?? g
+            if self.restGravity == nil { self.restGravity = g }
+            // Portrait: device x is screen x, device y is screen up. A small dead zone keeps
+            // hand tremor from tugging the field around.
+            func lean(_ d: Double) -> Double { abs(d) < 0.05 ? 0 : d }
+            self.physicsWorld.gravity = CGVector(dx: lean(g.x - rest.x) * 6, dy: lean(g.y - rest.y) * 6)
         }
     }
 
@@ -214,12 +228,26 @@ final class CoinScene: SKScene, SKPhysicsContactDelegate {
     }
 
     override func update(_ currentTime: TimeInterval) {
-        // Keep the field alive: every so often, any coin that has nearly stopped gets a new push.
-        if poured, !reduceMotion, currentTime - lastNudge > 1.2 {
-            lastNudge = currentTime
+        // Keep every coin wandering. Each frame its heading turns a touch at random, and a coin
+        // slower than its cruising speed is eased back up to it, so nothing ever comes to rest.
+        // Faster than cruising (a flick, a hard lean) is left to damping to bring back down.
+        let dt = lastNudge == 0 ? 1 / 60 : min(currentTime - lastNudge, 1 / 20)
+        lastNudge = currentTime
+        if poured, !reduceMotion {
             for case let c as SKSpriteNode in children where c !== grabbed {
-                guard let b = c.physicsBody, b.isDynamic, hypot(b.velocity.dx, b.velocity.dy) < 10 else { continue }
-                b.velocity = Self.drift(c.size.width / 90)
+                guard let b = c.physicsBody, b.isDynamic else { continue }
+                let target = Self.cruise(c.size.width / baseDiameter)
+                var v = b.velocity
+                var speed = hypot(v.dx, v.dy)
+                if speed < 1 { v = Self.drift(c.size.width / baseDiameter); speed = hypot(v.dx, v.dy) }
+                let turn = CGFloat.random(in: -1.4...1.4) * dt
+                let (cs, sn) = (cos(turn), sin(turn))
+                v = CGVector(dx: v.dx * cs - v.dy * sn, dy: v.dx * sn + v.dy * cs)
+                if speed < target {
+                    let k = min(1, (target / speed - 1) * 3 * dt + 1)
+                    v = CGVector(dx: v.dx * k, dy: v.dy * k)
+                }
+                b.velocity = v
             }
         }
         guard let coin = grabbed, let body = coin.physicsBody else { return }
