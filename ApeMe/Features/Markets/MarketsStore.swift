@@ -39,6 +39,20 @@ final class MarketsStore {
         c.id == "memestocks" ? "Retail favorites" : c.title
     }
 
+    /// Sector tags arrive as slugs, and capitalising a slug gives "Defi" and "L1". These are
+    /// names, so they are spelled the way the people who use them spell them.
+    func groupTitle(_ tag: String) -> String {
+        switch tag {
+        case "defi": "DeFi"
+        case "l1": "L1s"
+        case "majors": "Majors"
+        case "memes": "Memes"
+        case "solana": "Solana"
+        case "earn": "Earn"
+        default: tag.capitalizedFirst
+        }
+    }
+
     func load(app: AppState) async {
         let cat = category
         if stocks.isEmpty, let cached: StocksResponse = await API.shared.cached(cat.param.map { "/stocks?category=\($0)" } ?? "/stocks") {

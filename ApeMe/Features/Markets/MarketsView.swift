@@ -62,7 +62,7 @@ struct MarketsView: View {
                     }
                 } else {
                     ForEach(store.groups, id: \.self) { g in
-                        Pill(label: g.capitalized, on: store.tag == g, size: .small) { store.tag = g }
+                        Pill(label: store.groupTitle(g), on: store.tag == g, size: .small) { store.tag = g }
                     }
                 }
             }
