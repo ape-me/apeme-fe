@@ -6,9 +6,12 @@ struct PositionCard: View {
     let holding: Holding
     let symbol: String
 
+    /// SOL arrives as refunded order rent, never as something the user bought.
+    private var isRefund: Bool { holding.kind == "sol" }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionTitle("Your position")
+            SectionTitle(isRefund ? "Your SOL" : "Your position")
             VStack(spacing: 14) {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 4) {
@@ -18,7 +21,7 @@ struct PositionCard: View {
                             .font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
                     }
                     Spacer()
-                    if let pct = holding.pnlPct, let usd = holding.pnlUsd {
+                    if !isRefund, let pct = holding.pnlPct, let usd = holding.pnlUsd {
                         VStack(alignment: .trailing, spacing: 4) {
                             Text("\(usd >= 0 ? "+" : "−")\(Fmt.cash(abs(usd)))")
                                 .font(.system(size: 17, weight: .semibold)).monospacedDigit()
@@ -27,16 +30,24 @@ struct PositionCard: View {
                         }
                     }
                 }
-                Divider().overlay(Theme.line)
-                HStack {
-                    stat("Avg entry", holding.avgEntryUsd.map(Fmt.usd) ?? "—")
-                    Spacer()
-                    stat("Cost", holding.costUsd.map(Fmt.cash) ?? "—", trailing: true)
-                }
-                if holding.costUsd == nil {
-                    Text("Bought outside Stonks247, so there's no cost to compare against.")
-                        .font(.sub).foregroundStyle(Theme.faint)
+                if isRefund {
+                    Divider().overlay(Theme.line)
+                    Text("Rent returned by Solana when your limit orders closed. It isn't a position, so there's nothing to profit or lose on it.")
+                        .font(.sub).foregroundStyle(Theme.faint).lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    Divider().overlay(Theme.line)
+                    HStack {
+                        stat("Avg entry", holding.avgEntryUsd.map(Fmt.usd) ?? "—")
+                        Spacer()
+                        stat("Cost", holding.costUsd.map(Fmt.cash) ?? "—", trailing: true)
+                    }
+                    if holding.costUsd == nil {
+                        Text("Bought outside Stonks247, so there's no cost to compare against.")
+                            .font(.sub).foregroundStyle(Theme.faint)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
             }
             .padding(16)

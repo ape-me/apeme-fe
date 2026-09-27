@@ -114,6 +114,20 @@ struct PortfolioView: View {
             }
             .padding(16).background(Theme.surface, in: .rect(cornerRadius: 16)).padding(.top, 18)
 
+            if let sol = w.sol, (sol.valueUsd ?? 0) > 0 {
+                HStack(spacing: 12) {
+                    Logo(url: sol.imageURL, symbol: "SOL", size: 40)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("SOL refunds").font(.sub).foregroundStyle(Theme.muted)
+                        Text(Fmt.usd(sol.valueUsd)).font(.system(size: 22, weight: .semibold)).tracking(-0.6).monospacedDigit()
+                    }
+                    Spacer()
+                    Text("\(Fmt.qty(sol.amount, symbol: "")) SOL")
+                        .font(.sub).monospacedDigit().foregroundStyle(Theme.faint)
+                }
+                .padding(16).background(Theme.surface, in: .rect(cornerRadius: 16)).padding(.top, 10)
+            }
+
             // Withdraw was a half-opaque button that only ever produced a toast, and the
             // Deposit beside it was the second Deposit on the screen.
             UnderlineTabs(items: Tab.allCases, selected: tab, label: \.label) { tab = $0 }
