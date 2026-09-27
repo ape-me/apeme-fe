@@ -38,8 +38,9 @@ struct StockView: View {
         .task {
             store.connect(app: app)
             await store.load(app: app)
+            // Crypto and earn have no listing behind them, so there is nothing to ask about.
+            if store.stock?.followsMarketHours ?? true { await store.loadInsights() }
         }
-        .task { await store.loadInsights() }
         .task { if !OrdersStore.shared.loaded { await OrdersStore.shared.load() } }
         .task { await store.resync() }
         .onDisappear { store.disconnect() }
@@ -152,7 +153,7 @@ struct StockView: View {
             if let h = app.wallet?.holdings.first(where: { $0.mint == s.mint && $0.amount > 0 }) {
                 PositionCard(holding: h, symbol: s.symbol)
             }
-            if let mark = fairMark(s), let p = fairPremium(s) {
+            if s.followsMarketHours, let mark = fairMark(s), let p = fairPremium(s) {
                 FairValueBlock(stock: s, mark: mark, premium: p, insights: store.insights)
             }
             TradingHereCard(stock: s, depth: store.depth)
