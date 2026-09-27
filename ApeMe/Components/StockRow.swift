@@ -5,6 +5,15 @@ struct StockRow: View {
     let stock: Stock
     @Environment(AppState.self) private var app
 
+    private var subtitle: String {
+        if stock.isPreIPO { return "\(stock.name) · Pre-IPO" }
+        // The real ticker is what people know a company by, and it is how they searched for it.
+        if let u = stock.underlying, u.lowercased() != stock.symbol.lowercased() {
+            return "\(stock.name) · \(u)"
+        }
+        return stock.name
+    }
+
     var body: some View {
         Button { app.openStock(stock.mint) } label: {
             HStack(spacing: 12) {
@@ -12,16 +21,30 @@ struct StockRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 7) {
                         Text(stock.symbol).font(.rowTitle).tracking(-0.2).lineLimit(1)
-                        PremiumBadge(pct: stock.premiumPct)
+                        if stock.isHalted {
+                            Text("HALTED")
+                                .font(.system(size: 9, weight: .bold)).tracking(0.4)
+                                .foregroundStyle(Theme.amber)
+                                .padding(.horizontal, 6).frame(height: 17)
+                                .background(Theme.amberT, in: .rect(cornerRadius: 5))
+                        } else {
+                            PremiumBadge(pct: stock.premiumPct)
+                        }
                     }
-                    Text(stock.isPreIPO ? "\(stock.name) · Pre-IPO" : stock.name)
+                    Text(subtitle)
                         .font(.sub).foregroundStyle(Theme.muted).lineLimit(1)
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 3) {
                     Text(Fmt.usd(stock.priceUsd)).font(.rowPrice).monospacedDigit()
-                    Text(Fmt.arrow(stock.change24h)).font(.rowChange).monospacedDigit()
-                        .foregroundStyle(Theme.change(stock.change24h))
+                    // An earn token's 24h change is near zero by design; printing it as a market
+                    // move makes a working product look like a dead one.
+                    if stock.isEarn {
+                        Text("earning").font(.rowChange).foregroundStyle(Theme.green)
+                    } else {
+                        Text(Fmt.arrow(stock.change24h)).font(.rowChange).monospacedDigit()
+                            .foregroundStyle(Theme.change(stock.change24h))
+                    }
                 }
             }
             .padding(.vertical, 8)

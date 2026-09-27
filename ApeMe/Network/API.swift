@@ -26,6 +26,12 @@ actor API {
 
     // MARK: Endpoints
 
+    /// The default list is deduped server-side — one row per company, the deeper pool wins — so
+    /// it is taken as given rather than merged from per-issuer calls.
+    func stocks(category: String? = nil) async throws -> StocksResponse {
+        let r: StocksResponse = try await fetch(category.map { "/stocks?category=\($0)" } ?? "/stocks", ttl: 5)
+        return r.visible
+    }
     func stocks(issuer: String) async throws -> StocksResponse {
         let r: StocksResponse = try await fetch("/stocks?issuer=\(issuer)", ttl: 5); return r.visible
     }

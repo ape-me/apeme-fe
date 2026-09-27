@@ -82,11 +82,25 @@ struct StockView: View {
             hero(s)
             chart(s).padding(.top, 20)
             ranges.padding(.top, 14)
-            HStack(spacing: 10) {
-                BigButton(label: "Buy", style: .buy) { app.trade(.buyStock(s)) }
-                BigButton(label: "Sell", style: .sell) { app.sell(store.mint) }
+            if s.isHalted {
+                // The issuer suspended the underlying, so there is nothing to route — the
+                // endpoints 409 and offering the buttons would only produce an error.
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Trading halted").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.amber)
+                    Text("\(issuerLabel(s.issuer)) has suspended trading in \(s.underlying ?? s.symbol). You can't buy or sell until they resume.")
+                        .font(.sub).foregroundStyle(Theme.muted).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16).padding(.vertical, 14)
+                .background(Theme.amberT, in: .rect(cornerRadius: 14))
+                .padding(.horizontal, 20).padding(.top, 18)
+            } else {
+                HStack(spacing: 10) {
+                    BigButton(label: "Buy", style: .buy) { app.trade(.buyStock(s)) }
+                    BigButton(label: "Sell", style: .sell) { app.sell(store.mint) }
+                }
+                .padding(.horizontal, 20).padding(.top, 18)
             }
-            .padding(.horizontal, 20).padding(.top, 18)
             if let ins = store.insights {
                 EarningsNote(insights: ins).padding(.horizontal, 20).padding(.top, 22)
             }
@@ -211,15 +225,29 @@ struct StockView: View {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(Fmt.usd(price)).font(.system(size: 24, weight: .bold)).monospacedDigit().contentTransition(.numericText())
                     .animation(.easeOut(duration: 0.3), value: price)
-                Text(changeText(change, abs)).font(.system(size: 17, weight: .semibold)).monospacedDigit()
-                    .foregroundStyle(Theme.change(change))
+                // An earn token holds a dollar and drifts up. A near-zero 24h change reads as a
+                // dead market, which is the opposite of what is happening.
+                if s.isEarn {
+                    Text("earning").font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.green)
+                } else {
+                    Text(changeText(change, abs)).font(.system(size: 17, weight: .semibold)).monospacedDigit()
+                        .foregroundStyle(Theme.change(change))
+                }
             }
             .padding(.top, 14)
-            Text(scrubbing ? Fmt.dateTime(store.scrub!.t) : store.range.caption.capitalized)
+            Text(scrubbing ? Fmt.dateTime(store.scrub!.t)
+                           : s.isEarn ? "Current value · yield accrues into the price"
+                                      : store.range.caption.capitalized)
                 .font(.system(size: 17)).foregroundStyle(Theme.muted)
                 .padding(.top, 4)
-            NasdaqCard(insights: store.insights, loading: store.insightsLoading, dimmed: scrubbing)
-                .padding(.top, 14)
+            if s.isEarn, s.symbol.uppercased() == "USDY" {
+                Text("USDY is not available to US persons.")
+                    .font(.sub).foregroundStyle(Theme.amber).padding(.top, 8)
+            }
+            if s.followsMarketHours {
+                NasdaqCard(insights: store.insights, loading: store.insightsLoading, dimmed: scrubbing)
+                    .padding(.top, 14)
+            }
         }
         .padding(.horizontal, 20).padding(.top, 8)
     }

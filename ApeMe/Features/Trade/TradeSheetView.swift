@@ -326,7 +326,7 @@ struct TradeSheetView: View {
         }
     }
 
-    /// "Buy $25 · [logo] NVDAX" — the asset's mark in the button instead of a long name.
+    /// "Buy $25 · [logo] NVDAx" — the asset's mark in the button instead of a long name.
     private func tradeButton(_ prefix: String, style: BigButton.Style, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 8) {

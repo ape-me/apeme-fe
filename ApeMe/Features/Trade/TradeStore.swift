@@ -233,6 +233,11 @@ final class TradeStore {
         }
         if case APIError.http(let code, let msg) = error {
             let m = msg.lowercased()
+            // 409 is the issuer suspending the underlying — their wording is already plain.
+            if code == 409 || m.contains("halted") {
+                let reason = msg.split(separator: "·").first.map { String($0).trimmingCharacters(in: .whitespaces) } ?? msg
+                return reason.capitalizedFirst + (reason.hasSuffix(".") ? "" : ".")
+            }
             if m.contains("slippage") { return "Price moved. Try again." }
             if m.contains("insufficient") { return "Not enough cash. Deposit first." }
             if m.contains("amount_too_small") { return "Amount too small." }

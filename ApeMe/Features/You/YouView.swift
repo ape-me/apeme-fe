@@ -49,7 +49,7 @@ struct YouView: View {
                     #if DEBUG
                     if Feature.debugTools {
                     SettingRow(symbol: "bell", title: "Preview toasts", sub: "Success, then error") {
-                        app.show("You own 0.109 NVDAX")
+                        app.show("You own 0.109 NVDAx")
                         Task { try? await Task.sleep(for: .seconds(2.6)); app.show("Price moved. Nothing was charged.", error: true) }
                     }
                     SettingRow(symbol: "ladybug", title: "Copy /v1/me response", sub: app.auth.me.map { "status: \($0.status)" } ?? app.auth.meRaw.map { String($0.prefix(60)) } ?? "not loaded yet") {

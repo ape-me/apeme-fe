@@ -19,6 +19,17 @@ final class MarketsStore {
     var collections: [StockCollection] = []
     var error: String?
     var query = ""
+    /// Everything on every tab trades through the same swap and order calls — the tab only
+    /// decides which list is fetched.
+    enum Category: String, CaseIterable, Identifiable {
+        case stocks, crypto, earn
+        var id: String { rawValue }
+        var label: String { rawValue.capitalized }
+        /// nil is the default deduped list.
+        var param: String? { self == .stocks ? nil : rawValue }
+    }
+    var category: Category = .stocks
+    private var lists: [Category: [Stock]] = [:]
     var tag: String?
     var sort: Sort = .change
 
@@ -29,31 +40,45 @@ final class MarketsStore {
     }
 
     func load(app: AppState) async {
-        if stocks.isEmpty {
-            let a: StocksResponse? = await API.shared.cached("/stocks?issuer=prestocks")
-            let b: StocksResponse? = await API.shared.cached("/stocks?issuer=xstocks,backpack")
-            if let a, let b { stocks = a.stocks + b.stocks }
+        let cat = category
+        if stocks.isEmpty, let cached: StocksResponse = await API.shared.cached(cat.param.map { "/stocks?category=\($0)" } ?? "/stocks") {
+            stocks = cached.stocks
         }
         if collections.isEmpty, let c: CollectionsResponse = await API.shared.cached("/collections") { collections = c.collections }
         do {
-            async let a = API.shared.stocks(issuer: "prestocks")
-            async let b = API.shared.stocks(issuer: "xstocks,backpack")
+            async let a = API.shared.stocks(category: cat.param)
             async let c = API.shared.collections()
-            let (ra, rb, rc) = try await (a, b, c)
-            stocks = ra.stocks + rb.stocks
+            let (ra, rc) = try await (a, c)
+            guard cat == category else { return }
+            lists[cat] = ra.stocks
+            stocks = ra.stocks
             collections = rc.collections
-            app.index(stocks)
+            app.index(ra.stocks)
             error = nil
         } catch {
             if stocks.isEmpty { self.error = "Couldn't load markets." }
         }
     }
 
+    /// Crypto rows carry their sector in `tags`; when the BE sends none, there is nothing to
+    /// group by and the list stays flat.
+    var groups: [String] {
+        Array(Set(stocks.flatMap { $0.tags ?? [] })).sorted()
+    }
+
+    /// Switching tabs paints whatever was already fetched, then refreshes.
+    func select(_ c: Category, app: AppState) {
+        guard c != category else { return }
+        category = c
+        tag = nil
+        stocks = lists[c] ?? []
+        Task { await load(app: app) }
+    }
+
     func filtered() -> [Stock] {
         let q = query.lowercased()
         var l = stocks.filter { s in
-            (tag == nil || (s.tags ?? []).contains(tag!))
-            && (q.isEmpty || s.symbol.lowercased().contains(q) || s.name.lowercased().contains(q) || s.mint.lowercased() == q)
+            (tag == nil || (s.tags ?? []).contains(tag!)) && s.matches(q)
         }
         l.sort { a, b in
             switch sort {

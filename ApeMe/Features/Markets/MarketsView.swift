@@ -9,6 +9,7 @@ struct MarketsView: View {
         VStack(spacing: 0) {
             // Search leads: the tab bar names the screen, so the title was a row of nothing.
             search.padding(.horizontal, 20).padding(.top, 12)
+            categories.padding(.top, 14)
             chips.padding(.top, 12).padding(.bottom, 4)
             ScrollView {
                 list.padding(.horizontal, 20).padding(.bottom, 24)
@@ -20,10 +21,29 @@ struct MarketsView: View {
         .sheet(isPresented: $showSort) { sortSheet }
     }
 
+    /// Stocks, crypto and earn are three lists from one endpoint. Everything on all three buys
+    /// and sells through the same calls, so the tab is a filter, not a mode.
+    private var categories: some View {
+        HStack(spacing: 0) {
+            ForEach(MarketsStore.Category.allCases) { c in
+                Button { Haptic.selection(); store.select(c, app: app) } label: {
+                    VStack(spacing: 8) {
+                        Text(c.label)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(store.category == c ? Theme.ink : Theme.faint)
+                        Rectangle().fill(store.category == c ? Theme.ink : .clear).frame(height: 2)
+                    }
+                }
+                .buttonStyle(.plain).frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+
     private var search: some View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass").foregroundStyle(Theme.muted)
-            TextField("Search stocks", text: $store.query)
+            TextField("Search by name or ticker", text: $store.query)
                 .font(.body15).foregroundStyle(Theme.ink)
                 .autocorrectionDisabled().textInputAutocapitalization(.never)
         }
@@ -36,8 +56,14 @@ struct MarketsView: View {
             HStack(spacing: 8) {
                 Pill(label: store.sort.label, size: .small, icon: "line.3.horizontal.decrease") { showSort = true }
                 Pill(label: "All", on: store.tag == nil, size: .small) { store.tag = nil }
-                ForEach(store.collections) { c in
-                    Pill(label: store.chipTitle(c), on: store.tag == c.id, size: .small) { store.tag = c.id }
+                if store.category == .stocks {
+                    ForEach(store.collections) { c in
+                        Pill(label: store.chipTitle(c), on: store.tag == c.id, size: .small) { store.tag = c.id }
+                    }
+                } else {
+                    ForEach(store.groups, id: \.self) { g in
+                        Pill(label: g.capitalized, on: store.tag == g, size: .small) { store.tag = g }
+                    }
                 }
             }
             .padding(.horizontal, 20)

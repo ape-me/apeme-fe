@@ -36,7 +36,7 @@ struct NewsBadge: View {
     }
 }
 
-/// `[logo] NVDAX ▲1.14% · Yahoo Finance · 2h ago  [MATERIAL][BULLISH]` over a two-line headline.
+/// `[logo] NVDAx ▲1.14% · Yahoo Finance · 2h ago  [MATERIAL][BULLISH]` over a two-line headline.
 /// The symbol chip goes to the stock; everything else opens the article.
 struct NewsRow: View {
     let item: NewsItem

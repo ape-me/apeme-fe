@@ -1,5 +1,9 @@
 import Foundation
 
+extension String {
+    var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
+}
+
 /// Number formatting. Mirrors the prototype's `fmt` helpers exactly; they are the spec.
 enum Fmt {
     private static let subs: [Character] = ["₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"]
