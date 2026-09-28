@@ -32,16 +32,12 @@ invite screen after sign-in enter code APPLEREVIEW. Everything is reachable from
 code the app stops at that screen. Trading uses the tester's own funds on Solana mainnet; a buy can be tested with $1 USDC. The app talks only to https://apme-be.iamjoey.workers.dev. Contact: darushyam143@gmail.com.
 
 ## Before the first external submission
-- **Deploy the legal pages.** `docs/legal/privacy.html` and `docs/legal/terms.html` go live at
-  `stonks247.fun/privacy` and `/terms`. Both paths currently fall through to the landing page, and
-  App Store Connect will not let you add external testers without a working Privacy Policy URL. The
-  app links to both from the welcome screen and from You → Privacy Policy.
-- **Make `support@stonks247.fun` receive mail** (Cloudflare Email Routing). Both pages route data and
-  deletion requests there.
+- Privacy Policy URL: `https://stonks247.fun/privacy` — live. Terms: `https://stonks247.fun/terms`.
+  Source is `docs/legal/`; the app links to both from the welcome screen and from You.
 - App Privacy answers: email address (account), wallet address and purchase history (app functionality), no tracking.
 - 1024px icon is in the asset catalog already.
+- Account deletion is in You → Delete account (`DELETE /v1/me`), which covers 5.1.1(v).
 
-## Known gaps
-- **No in-app account deletion.** Guideline 5.1.1(v) requires it for any app that creates an account.
-  Beta App Review rarely stops on it; App Store submission will. Needs a BE endpoint plus a Privy
-  delete call, so it is not a front-end-only fix.
+## Outstanding
+- `support@stonks247.fun` has to receive mail before submission — both legal pages route data and
+  deletion requests there.

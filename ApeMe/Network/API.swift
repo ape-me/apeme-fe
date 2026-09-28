@@ -161,6 +161,24 @@ actor API {
         try decoder.decode(TxStatus.self, from: try await send("GET", "/tx/\(signature)"))
     }
 
+    /// Guideline 5.1.1(v). The BE removes the wallets, settings and watchlist, anonymises the account
+    /// and then asks Privy to delete the identity. Privy's side is not instant, so a 502 means their
+    /// half has not caught up — the call is idempotent, so it is retried rather than shown as a
+    /// failure. A token whose account is already gone answers 410, which is the same outcome as
+    /// success and is treated as one.
+    func deleteAccount() async throws {
+        var attempt = 0
+        while true {
+            do { _ = try await send("DELETE", "/me"); return }
+            catch APIError.http(let code, let msg) {
+                if code == 410 { return }
+                guard code == 502, attempt < 2 else { throw APIError.http(code, msg) }
+                attempt += 1
+                try? await Task.sleep(for: .seconds(1.5))
+            }
+        }
+    }
+
     /// Uncached request with an optional JSON body. Used for everything under /me and for trades.
     private func send(_ method: String, _ path: String, body: [String: Any]? = nil) async throws -> Data {
         var req = URLRequest(url: URL(string: API.base.absoluteString + path)!)

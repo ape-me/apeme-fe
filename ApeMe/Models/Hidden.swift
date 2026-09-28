@@ -4,19 +4,17 @@ import Foundation
 /// hard-coded stock list: everything else renders exactly as the BE returns it, and this is the one
 /// deny-list, applied at the API boundary so no screen has to remember it.
 ///
-/// It has already failed once. The BE excluded `SPCXX` at source, then the catalog update renamed
-/// the same asset `SPACEX` and it came straight back through a guard that only knew the old
-/// spelling. So this matches on every spelling we have seen and on the company name too — a rename
-/// is exactly how a symbol deny-list goes quiet without anyone noticing.
+/// What it excludes is *other issuers'* pre-IPO tokens — xStocks `SPCXx` and Backpack `SPCX` — which
+/// the PreStocks bounty rule bans. PreStocks' own `SPACEX` (mint `PreANxu…`) is the intended one and
+/// renders like OPENAI and ANTHROPIC, which come from the same issuer. The BE excludes the other two
+/// by mint at source; this stays as belt and braces.
 enum Hidden {
-    static let symbols: Set<String> = ["SPCXX", "SPACEX", "SPCX"]
-    static let names: Set<String> = ["spacex", "space exploration technologies"]
+    static let symbols: Set<String> = ["SPCXX", "SPCX"]
 
     static func allows(_ symbol: String) -> Bool { !symbols.contains(symbol.uppercased()) }
 
     static func allows(_ stock: Stock) -> Bool {
         guard allows(stock.symbol) else { return false }
-        guard !names.contains(stock.name.lowercased()) else { return false }
         if let u = stock.underlying, !allows(u) { return false }
         return true
     }

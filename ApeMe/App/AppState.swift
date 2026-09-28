@@ -169,6 +169,24 @@ final class AppState {
         tab = .home
     }
 
+    /// Guideline 5.1.1(v): an account made in the app has to be deletable in the app. The backend
+    /// anonymises its records and hands the identity to Privy; the phone then signs out and drops
+    /// what it kept locally, so the next account on this device does not inherit a deleted one's
+    /// watchlist. The wallet itself is on-chain and is not ours to delete — the confirmation says so.
+    func deleteAccount() async {
+        show("Deleting your account", pending: true)
+        do { try await API.shared.deleteAccount() }
+        catch {
+            show(TradeStore.message(error), error: true)
+            return
+        }
+        watch = []
+        demoWallet = false
+        defaults.removeObject(forKey: "apeme.activeAddress")
+        await signOut()
+        show("Your account is deleted")
+    }
+
     // MARK: Watchlists
 
     func isWatching(_ mint: String) -> Bool { watch.contains(mint) }

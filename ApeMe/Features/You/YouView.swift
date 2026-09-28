@@ -6,6 +6,7 @@ struct YouView: View {
     @Environment(\.openURL) private var openURL
     @State private var confirmOnboarding = false
     @State private var confirmSignOut = false
+    @State private var confirmDelete = false
     @State private var editingHandle = false
     @State private var handle = ""
     @State private var handleError: String?
@@ -54,9 +55,13 @@ struct YouView: View {
                     .padding(.top, 12)
 
                     // Signing out is not navigation and does not belong in a stack of chevrons.
+                    // Deleting the account sits with it: both are ways of leaving, and 5.1.1(v) is
+                    // about the delete being easy to find, not about it being filed tidily.
                     KCard {
                         SettingRow(symbol: "rectangle.portrait.and.arrow.right", tint: Theme.red,
                                    title: "Sign out", sub: app.auth.accountLabel ?? "Signed in", accessory: .none, destructive: true) { confirmSignOut = true }
+                        SettingRow(symbol: "trash", tint: Theme.red,
+                                   title: "Delete account", sub: "Permanent. Your wallet stays on-chain.", accessory: .none, destructive: true) { confirmDelete = true }
                     }
                     .padding(.top, 12)
                     #if DEBUG
@@ -86,6 +91,11 @@ struct YouView: View {
         .appDialog("Sign out?", isPresented: $confirmSignOut,
                    message: "Your wallet stays with your account. Sign back in any time.", confirm: "Sign out", destructive: true) {
             Task { await app.signOut() }
+        }
+        .appDialog("Delete account?", isPresented: $confirmDelete,
+                   message: "This deletes your account and signs you out. Your funds stay in your wallet on-chain — export your key first if you want to keep it.",
+                   confirm: "Delete", destructive: true) {
+            Task { await app.deleteAccount() }
         }
         .alert("Your handle", isPresented: $editingHandle) {
             TextField("a–z, 0–9, _", text: $handle).textInputAutocapitalization(.never).autocorrectionDisabled()
