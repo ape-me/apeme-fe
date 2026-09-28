@@ -7,11 +7,11 @@ Team `PYU86V9YNF`, bundle `fun.apeme.app`, display name Stonks247, iOS 17+, iPho
 2. Product → Archive on the Release scheme, Distribute → App Store Connect → Upload. Automatic signing handles the profile.
 3. Export compliance is answered by `ITSAppUsesNonExemptEncryption = NO` in Info.plist (HTTPS only, no custom crypto).
 
-## Internal (team, no review)
-App Store Connect → TestFlight → Internal Testing → group "Team". Add App Store Connect users, tick "automatic distribution". Build is installable within minutes of processing.
+## Internal
+None. Everyone, us included, installs through the external public link.
 
-## External (public link, judges)
-1. TestFlight → External Testing → group "Judges", enable public link, cap 1,000.
+## External (public link, everyone)
+1. TestFlight → External Testing → group "Public", enable public link, cap 10,000. Add the team's emails to the same group so we get builds the moment review clears.
 2. Fill Test Information (below) and submit the first build for Beta App Review. Expect 1–2 days the first time, hours after.
 3. Every later build on the same version goes out without a new review unless it changes materially.
 
