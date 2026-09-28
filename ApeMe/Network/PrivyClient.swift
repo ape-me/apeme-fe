@@ -104,6 +104,12 @@ final class Auth {
             raw = String(decoding: data, as: UTF8.self)
             meRaw = raw
             me = try JSONDecoder().decode(Me.self, from: data)
+        } catch APIError.http(let code, _) where code == 410 {
+            // The account is gone. Usually that is a delete that finished server-side while its
+            // Privy half was still failing, so the phone never signed itself out — and an app that
+            // stays "signed in" to a deleted account sits on the loading screen forever.
+            await logout()
+            return nil
         } catch {
             let t = await tokens()
             meRaw = raw.isEmpty ? "ERROR \(error) · idToken=\(t.identity == nil ? "nil" : "present") accessToken=\(t.access == nil ? "nil" : "present")" : "DECODE \(error)\n\(raw)"
