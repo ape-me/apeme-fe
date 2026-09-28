@@ -3,6 +3,7 @@ import SwiftUI
 struct YouView: View {
     @Environment(AppState.self) private var app
     @Environment(\.skin) private var skin
+    @Environment(\.openURL) private var openURL
     @State private var confirmOnboarding = false
     @State private var confirmSignOut = false
     @State private var editingHandle = false
@@ -39,6 +40,18 @@ struct YouView: View {
                         SettingRow(symbol: "play.rectangle", title: "Replay the intro", sub: "The welcome screen you saw first") { confirmOnboarding = true }
                     }
                     .padding(.top, 14)
+
+                    // The policy has to be reachable from inside the app. The welcome screen carries it
+                    // too, but a signed-in account never sees that screen again.
+                    KCard {
+                        SettingRow(symbol: "hand.raised", title: "Privacy Policy", sub: "stonks247.fun/privacy") {
+                            open("https://stonks247.fun/privacy")
+                        }
+                        SettingRow(symbol: "doc.plaintext", title: "Terms of Service", sub: "stonks247.fun/terms") {
+                            open("https://stonks247.fun/terms")
+                        }
+                    }
+                    .padding(.top, 12)
 
                     // Signing out is not navigation and does not belong in a stack of chevrons.
                     KCard {
@@ -108,6 +121,10 @@ struct YouView: View {
             .padding(.vertical, 6).contentShape(.rect)
         }
         .buttonStyle(RowPress())
+    }
+
+    private func open(_ url: String) {
+        if let u = URL(string: url) { openURL(u) }
     }
 
     private static var version: String {

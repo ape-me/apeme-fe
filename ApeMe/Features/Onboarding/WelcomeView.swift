@@ -153,14 +153,28 @@ struct WelcomeView: View {
         }
     }
 
+    /// Apple wants the privacy policy reachable from inside the app, not only from App Store Connect,
+    /// and naming Terms and Privacy Policy without linking them reads as a link that's broken.
+    private var legal: AttributedString {
+        var s = AttributedString("By continuing you agree to the Terms and Privacy Policy.")
+        s.font = Brand.body(14)
+        s.foregroundColor = Color(hex: 0x6E6E75)
+        for (word, url) in [("Terms", "https://stonks247.fun/terms"),
+                            ("Privacy Policy", "https://stonks247.fun/privacy")] {
+            guard let r = s.range(of: word), let link = URL(string: url) else { continue }
+            s[r].link = link
+            s[r].font = Brand.body(14, semibold: true)
+            s[r].foregroundColor = Brand.white.opacity(0.75)
+        }
+        return s
+    }
+
     @ViewBuilder private var footnote: some View {
         if let error {
             Text(error).font(Brand.body(14)).foregroundStyle(Theme.red).multilineTextAlignment(.center)
         } else if kind != .replay {
-            let terms = Text("Terms").font(Brand.body(14, semibold: true)).foregroundStyle(Brand.white.opacity(0.75))
-            let privacy = Text("Privacy Policy").font(Brand.body(14, semibold: true)).foregroundStyle(Brand.white.opacity(0.75))
-            Text("By continuing you agree to the \(terms) and \(privacy).")
-                .font(Brand.body(14)).foregroundStyle(Color(hex: 0x6E6E75))
+            Text(legal)
+                .tint(Brand.white.opacity(0.75))
                 .multilineTextAlignment(.center)
         }
     }

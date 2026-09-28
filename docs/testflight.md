@@ -17,7 +17,7 @@ App Store Connect → TestFlight → Internal Testing → group "Team". Add App 
 
 ## Test Information
 **Beta App Description**
-Stonks247 lets you buy tokenized US stocks, ETFs and pre-IPO names on Solana, 24/7, from your phone. Sign in with email or Apple, fund the built-in wallet with USDC, and buy Apple, Nvidia, SpaceX or OpenAI in one tap. Live prices, order book depth, limit orders and a portfolio that shows real P&L.
+Stonks247 lets you buy tokenized US stocks, ETFs and pre-IPO names on Solana, 24/7, from your phone. Sign in with email or Apple, fund the built-in wallet with USDC, and buy Apple, Nvidia, OpenAI or Anthropic in one tap. Live prices, order book depth, limit orders and a portfolio that shows real P&L.
 
 **What to Test**
 - Sign in (email code or Apple), wallet creation.
@@ -32,6 +32,16 @@ invite screen after sign-in enter code APPLEREVIEW. Everything is reachable from
 code the app stops at that screen. Trading uses the tester's own funds on Solana mainnet; a buy can be tested with $1 USDC. The app talks only to https://apme-be.iamjoey.workers.dev. Contact: darushyam143@gmail.com.
 
 ## Before the first external submission
-- Privacy policy URL on the App Store Connect app record (a page on stonks247.fun).
+- **Deploy the legal pages.** `docs/legal/privacy.html` and `docs/legal/terms.html` go live at
+  `stonks247.fun/privacy` and `/terms`. Both paths currently fall through to the landing page, and
+  App Store Connect will not let you add external testers without a working Privacy Policy URL. The
+  app links to both from the welcome screen and from You → Privacy Policy.
+- **Make `support@stonks247.fun` receive mail** (Cloudflare Email Routing). Both pages route data and
+  deletion requests there.
 - App Privacy answers: email address (account), wallet address and purchase history (app functionality), no tracking.
 - 1024px icon is in the asset catalog already.
+
+## Known gaps
+- **No in-app account deletion.** Guideline 5.1.1(v) requires it for any app that creates an account.
+  Beta App Review rarely stops on it; App Store submission will. Needs a BE endpoint plus a Privy
+  delete call, so it is not a front-end-only fix.
