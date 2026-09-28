@@ -175,16 +175,39 @@ final class AppState {
     /// watchlist. The wallet itself is on-chain and is not ours to delete — the confirmation says so.
     func deleteAccount() async {
         show("Deleting your account", pending: true)
-        do { try await API.shared.deleteAccount() }
-        catch {
-            show(TradeStore.message(error), error: true)
-            return
+        do {
+            try await API.shared.deleteAccount()
+        } catch {
+            // A thrown error does not mean the account survived: the backend can finish while
+            // Privy's half is still failing. /v1/me answers 410 once it is gone, and that signs the
+            // phone out — so ask before claiming anything.
+            await auth.refreshMe()
+            guard !signedIn else {
+                show(Self.deleteMessage(error), error: true)
+                return
+            }
         }
         watch = []
         demoWallet = false
         defaults.removeObject(forKey: "apeme.activeAddress")
         await signOut()
         show("Your account is deleted")
+    }
+
+    /// Deleting an account is not a trade, and borrowing the trade copy told people their money was
+    /// safe when what actually failed was the delete. The backend says why in its own words.
+    private static func deleteMessage(_ error: Error) -> String {
+        if case APIError.http(let code, let raw) = error {
+            let reason = raw.split(separator: "·").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? raw
+            if code == 401 || code == 403 { return "Sign in again, then delete your account." }
+            if code == 429 { return "Too many attempts. Try again in a minute." }
+            if code == 502 { return "Our sign-in provider is taking a moment. Try again shortly." }
+            if reason == "request failed" { return "Couldn't delete your account, and we weren't told why." }
+            let words = reason.replacingOccurrences(of: "_", with: " ")
+            return words.prefix(1).uppercased() + words.dropFirst() + "."
+        }
+        if case APIError.transport = error { return "No connection. Try again." }
+        return "Couldn't delete your account. Try again."
     }
 
     // MARK: Watchlists

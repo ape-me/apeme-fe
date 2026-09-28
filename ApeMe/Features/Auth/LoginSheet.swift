@@ -131,7 +131,9 @@ struct LoginForm: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 14)
                 #if DEBUG
-                if let detail { Text(detail).font(.system(size: 11)).foregroundStyle(Brand.muted).textSelection(.enabled).padding(.top, 6) }
+                if Feature.debugTools, let detail {
+                    Text(detail).font(.system(size: 11)).foregroundStyle(Brand.muted).textSelection(.enabled).padding(.top, 6)
+                }
                 #endif
             }
 
@@ -233,8 +235,17 @@ struct LoginForm: View {
         if ns.domain == NSURLErrorDomain { return "No connection. Check your network and try again." }
         let raw = "\(error)"
         if raw.contains("PrivyError") {
-            if raw.contains("JWKS") { return "Apple sign-in didn't go through on Privy's side. Try again." }
-            if raw.contains("authenticationFailure") { return "Sign-in didn't go through. Try again." }
+            // Privy wraps the real reason several layers deep and every one of them is an
+            // `authenticationFailure`, so the specific causes have to be read before that catch-all
+            // — otherwise a mistyped code and a dead network give the same useless sentence.
+            let r = raw.lowercased()
+            if r.contains("invalid_credentials") || r.contains("invalid email and code") {
+                return "That code didn't match. Check it, or tap Resend code."
+            }
+            if r.contains("expired") { return "That code has expired. Tap Resend code for a new one." }
+            if r.contains("too_many") || r.contains("rate_limit") { return "Too many tries. Wait a minute, then resend." }
+            if r.contains("jwks") { return "Apple sign-in didn't go through on Privy's side. Try again." }
+            if r.contains("authenticationfailure") { return "Sign-in didn't go through. Try again." }
         }
         let text = (error as? LocalizedError)?.errorDescription ?? ns.localizedDescription
         if emailCode, text.lowercased().contains("invalid") || text.lowercased().contains("code") { return "That code didn't match. Check it and try again." }
