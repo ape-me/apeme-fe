@@ -29,7 +29,7 @@ Stonks247 lets you buy tokenized US stocks, ETFs and pre-IPO names on Solana, 24
 **Beta App Review notes**
 Sign in with any email — the 6-digit code arrives immediately. The app is invite-only, so at the
 invite screen after sign-in enter code APPLEREVIEW. Everything is reachable from there; without the
-code the app stops at that screen. Trading uses the tester's own funds on Solana mainnet; a buy can be tested with $1 USDC. The app talks only to https://apme-be.iamjoey.workers.dev. Contact: darushyam143@gmail.com.
+code the app stops at that screen. Trading uses the tester's own funds on Solana mainnet; a buy can be tested with $1 USDC. Account deletion is in You → Delete account, and You → Export private key opens Privy's recovery page so funds can be moved out first. The app talks only to https://apme-be.iamjoey.workers.dev. Contact: darushyam143@gmail.com.
 
 ## Before the first external submission
 - Privacy Policy URL: `https://stonks247.fun/privacy` — live. Terms: `https://stonks247.fun/terms`.
