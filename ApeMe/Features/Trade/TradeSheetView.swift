@@ -884,9 +884,11 @@ struct TradeSheetView: View {
     static func impactIsBad(_ pct: Double?) -> Bool { (pct ?? 0) <= -2 }
 
     /// Only a `user` payer is money out of this wallet; Jupiter and Stonks247 both cover it.
+    /// Five decimals rounded a real charge down to "0.00000 SOL", which reads as a bug rather than
+    /// as a small number, so the figure is trimmed to whatever digits it actually needs.
     static func networkFee(_ q: Quote) -> String {
         guard q.gas?.paidBy == "user", let lamports = q.gas?.lamports, lamports > 0 else { return "Free" }
-        return String(format: "%.5f SOL", Double(lamports) / 1_000_000_000)
+        return "\(Fmt.plain(Double(lamports) / 1_000_000_000)) SOL"
     }
 
     private func rentUsd(_ q: Quote) -> Double? {
