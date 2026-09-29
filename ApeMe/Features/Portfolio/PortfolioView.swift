@@ -103,16 +103,20 @@ struct PortfolioView: View {
             }
             .font(.system(size: 13, weight: .semibold)).monospacedDigit().padding(.top, 6)
 
-            HStack(spacing: 12) {
-                Image("usdc").resizable().frame(width: 40, height: 40).clipShape(.circle)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Cash · USDC").font(.sub).foregroundStyle(Theme.muted)
-                    Text(Fmt.usd(w.cashUsd)).font(.system(size: 22, weight: .semibold)).tracking(-0.6).monospacedDigit()
+            // Two actions and a balance do not fit on one line once the balance has four digits,
+            // so the actions get their own row and split the width evenly.
+            VStack(spacing: 14) {
+                HStack(spacing: 12) {
+                    Image("usdc").resizable().frame(width: 40, height: 40).clipShape(.circle)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Cash · USDC").font(.sub).foregroundStyle(Theme.muted)
+                        Text(Fmt.usd(w.cashUsd)).font(.system(size: 22, weight: .semibold)).tracking(-0.6).monospacedDigit()
+                    }
+                    Spacer(minLength: 8)
                 }
-                Spacer()
                 HStack(spacing: 8) {
-                    Pill(label: "Withdraw") { app.sheet = .withdraw }
-                    Pill(label: "Deposit") { app.sheet = .deposit }
+                    Pill(label: "Withdraw", wide: true) { app.sheet = .withdraw }
+                    Pill(label: "Deposit", wide: true) { app.sheet = .deposit }
                 }
             }
             .padding(16).background(Theme.surface, in: .rect(cornerRadius: 16)).padding(.top, 18)
