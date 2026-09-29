@@ -50,6 +50,11 @@ final class OrdersStore {
             if code == 429 { return "Too many orders this hour. Take a breath." }
             if reason.lowercased().contains("invite_required") { return "Enter your invite code first." }
             if reason == "request failed" { return "The order was refused and we weren't told why." }
+            // The BE's refusals are snake_cased or a phrase; a bare word like "internal" is its own
+            // log line, and capitalising it just shows the user "Internal."
+            if code >= 500 || (!reason.contains("_") && !reason.contains(" ")) {
+                return "The server hit an error. Nothing was placed — try again."
+            }
             // snake_case from the BE reads as a sentence: minimum_order_size -> Minimum order size.
             let words = reason.replacingOccurrences(of: "_", with: " ")
             return words.prefix(1).uppercased() + words.dropFirst() + "."

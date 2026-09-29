@@ -198,11 +198,18 @@ final class AppState {
     /// safe when what actually failed was the delete. The backend says why in its own words.
     private static func deleteMessage(_ error: Error) -> String {
         if case APIError.http(let code, let raw) = error {
-            let reason = raw.split(separator: "·").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? raw
+            let parts = raw.split(separator: "·").map { $0.trimmingCharacters(in: .whitespaces) }
+            let reason = parts.first ?? raw
+            let trace = parts.count > 1 ? " (\(parts[1]))" : ""
             if code == 401 || code == 403 { return "Sign in again, then delete your account." }
             if code == 429 { return "Too many attempts. Try again in a minute." }
             if code == 502 { return "Our sign-in provider is taking a moment. Try again shortly." }
             if reason == "request failed" { return "Couldn't delete your account, and we weren't told why." }
+            // A bare one-word reason like "internal" is the server's log line, not a sentence for
+            // the person holding the phone. Real refusals come back snake_cased or as a phrase.
+            if code >= 500 || (!reason.contains("_") && !reason.contains(" ")) {
+                return "Couldn't delete your account — the server hit an error\(trace). Try again."
+            }
             let words = reason.replacingOccurrences(of: "_", with: " ")
             return words.prefix(1).uppercased() + words.dropFirst() + "."
         }
