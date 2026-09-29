@@ -204,6 +204,9 @@ final class AppState {
             if code == 401 || code == 403 { return "Sign in again, then delete your account." }
             if code == 429 { return "Too many attempts. Try again in a minute." }
             if code == 502 { return "Our sign-in provider is taking a moment. Try again shortly." }
+            // The backend refuses to erase an account whose wallet still holds something. Our own
+            // warning catches this first, but the server is the one that actually enforces it.
+            if code == 409 { return "This wallet still holds funds. Export your private key and move them out first." }
             if reason == "request failed" { return "Couldn't delete your account, and we weren't told why." }
             // A bare one-word reason like "internal" is the server's log line, not a sentence for
             // the person holding the phone. Real refusals come back snake_cased or as a phrase.
