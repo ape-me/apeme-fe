@@ -22,7 +22,6 @@ final class TradeStore {
     var error: String?
     var requestId: String?
     var signature: String?
-    var priority: String
     /// Consecutive 422 slippage failures — after two, the sheet suggests a wider tolerance.
     var slippageFails = 0
     /// Per-trade tolerance. nil = the user's setting; raised to the BE's suggestion or to 3% on retry.
@@ -34,8 +33,8 @@ final class TradeStore {
     private var lastRaw: String?
     private var taker: String?
 
-    init(side: Side, mint: String, symbol: String, priceUsd: Double?, holding: Holding?, priority: String) {
-        self.side = side; self.mint = mint; self.symbol = symbol; self.priceUsd = priceUsd; self.holding = holding; self.priority = priority
+    init(side: Side, mint: String, symbol: String, priceUsd: Double?, holding: Holding?) {
+        self.side = side; self.mint = mint; self.symbol = symbol; self.priceUsd = priceUsd; self.holding = holding
     }
 
     // MARK: Quote
@@ -64,7 +63,7 @@ final class TradeStore {
             raw = rawAmount
         }
         phase = .quoting
-        let key = raw + priority
+        let key = raw
         lastRequest = key; lastRaw = raw
         debounce = Task { await fetchQuote(raw: raw, key: key) }
     }
@@ -73,13 +72,13 @@ final class TradeStore {
         guard let taker else { return }
         do {
             var q = try await API.shared.quote(inputMint: side == .buy ? "usdc" : mint, outputMint: side == .buy ? mint : "usdc",
-                                               amountRaw: raw, taker: taker, priority: priority, slippageBps: slippageBps)
+                                               amountRaw: raw, taker: taker, slippageBps: slippageBps)
             guard lastRequest == key else { return }
             // Thin pool: the BE suggests a wider band than the user's setting — take it for this trade.
             if let sug = q.suggestedSlippageBps, sug > (q.slippageBps ?? 0), slippageBps == nil || sug > slippageBps! {
                 slippageBps = sug
                 q = try await API.shared.quote(inputMint: side == .buy ? "usdc" : mint, outputMint: side == .buy ? mint : "usdc",
-                                               amountRaw: raw, taker: taker, priority: priority, slippageBps: sug)
+                                               amountRaw: raw, taker: taker, slippageBps: sug)
                 guard lastRequest == key else { return }
             }
             quote = q; requestId = q.requestId; phase = .ready
@@ -146,16 +145,12 @@ final class TradeStore {
                 phase = .signing
                 let signed = try await SolanaTx.sign(q.transaction, with: wallet)
                 phase = .submitting
+                // Submit holds the connection until Jupiter has confirmed, 2-8s, so the spinner
+                // belongs on this call and there is nothing left to poll for afterwards.
+                phase = .confirming
                 let r = try await API.shared.submit(requestId: q.requestId, signedTransaction: signed)
                 signature = r.signature; requestId = q.requestId
-                phase = .confirming
-                let status = try await poll(r.signature)
-                if status.status == "confirmed" { phase = .confirmed; onConfirmed(); return }
-                if status.error == "expired", !retried, let nq = try? await requoteNow() {
-                    if !Self.within1pct(q, nq) { replacement = nq; phase = .requoted; return }
-                    q = nq; quote = nq; retried = true; continue
-                }
-                phase = .failed; error = Self.chainMessage(status.error); quote = nil
+                phase = .confirmed; onConfirmed()
                 return
             } catch APIError.http(410, _) where !retried {
                 guard let nq = try? await requoteNow() else { phase = .failed; error = "Quote expired. Try again."; return }
@@ -205,20 +200,11 @@ final class TradeStore {
     private func requoteNow() async throws -> Quote {
         guard let old = quote, let taker else { throw APIError.http(410, "quote_expired") }
         return try await API.shared.quote(inputMint: old.side == "buy" ? "usdc" : mint, outputMint: old.side == "buy" ? mint : "usdc",
-                                          amountRaw: old.inAmount, taker: taker, priority: priority, slippageBps: slippageBps)
+                                          amountRaw: old.inAmount, taker: taker, slippageBps: slippageBps)
     }
 
-    /// Every 2 s: the BE rebroadcasts the signed tx on each poll while it's still pending.
-    private func poll(_ sig: String) async throws -> TxStatus {
-        for _ in 0..<45 {
-            let s = try await API.shared.tx(sig)
-            if s.status == "confirmed" || s.status == "failed" { return s }
-            try await Task.sleep(for: .seconds(2))
-        }
-        return TxStatus(signature: sig, status: "failed", slot: nil, confirmations: nil, error: "timeout")
-    }
-
-    /// On-chain failure reasons → one sentence. Never show program JSON.
+    /// On-chain failure reasons → one sentence. Never show program JSON. Swaps no longer poll for
+    /// this, but the portfolio still renders failed activity rows the backend recorded.
     static func chainMessage(_ raw: String?) -> String {
         let r = (raw ?? "").lowercased()
         if r.contains("slippage") || r.contains("6001") || r.contains("custom\":6") { return "Price moved. Nothing was charged." }

@@ -20,7 +20,12 @@ struct Quote: Codable, Hashable {
     let outUsd: Double?
     /// What is actually swapped after fee + rent come out of `inUsd`.
     let swapUsd: Double?
+    /// Signed the way Jupiter reports it: negative means you pay more than the mark.
     let priceImpactPct: Double?
+    /// Which of Jupiter's routers filled this. `jupiterz` is RFQ and expires in ~30s.
+    let router: String?
+    /// Jupiter's own fee. Ours is `fee.bps`; the two are not the same money.
+    let routerFeeBps: Int?
     let slippageBps: Int?
     let suggestedSlippageBps: Int?
     let issuerFee: IssuerFee?
@@ -41,7 +46,9 @@ struct Quote: Codable, Hashable {
     let expiresAt: Int?
 }
 
-struct SubmitResponse: Codable { let signature: String; let status: String?; let requestId: String? }
+/// Submit now confirms before it answers, so `status` arrives as "confirmed" and there is
+/// nothing left to poll for.
+struct SubmitResponse: Codable { let signature: String; let status: String?; let requestId: String?; let slot: Int? }
 
 /// `GET /v1/tx/:signature`
 struct TxStatus: Codable { let signature: String?; let status: String; let slot: Int?; let confirmations: String?; let error: String? }

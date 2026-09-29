@@ -37,8 +37,7 @@ struct TradeSheetView: View {
     init(side: TradeStore.Side, asset: Asset) {
         self.side = side; self.asset = asset
         let holding: Holding? = { if case .holding(let h) = asset { return h }; return nil }()
-        _store = State(initialValue: TradeStore(side: side, mint: asset.mint, symbol: asset.symbol, priceUsd: asset.priceUsd, holding: holding,
-                                                 priority: Auth.shared.settings.priority ?? "normal"))
+        _store = State(initialValue: TradeStore(side: side, mint: asset.mint, symbol: asset.symbol, priceUsd: asset.priceUsd, holding: holding))
     }
 
     /// Back on the review step after a failed attempt, same store, same numbers.
@@ -347,7 +346,7 @@ struct TradeSheetView: View {
             if side == .buy, let p = q.premiumPct, p > 5 {
                 note("Trading \(String(format: "%.0f", p))% above \(preIPO ? "its last funding round" : "the Nasdaq price").")
             }
-            if let i = q.priceImpactPct, i > 2 {
+            if Self.impactIsBad(q.priceImpactPct), let i = q.priceImpactPct.map({ abs($0) }) {
                 note("Thin market: you're paying \(String(format: "%.1f", i))% above the current price.")
             }
         }
@@ -738,9 +737,11 @@ struct TradeSheetView: View {
                         Text("Charged by Solana to open \(asset.symbol) in your wallet, not by Stonks247. Never again for this token.")
                             .font(.system(size: 12)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 10)
                     }
-                    KV("Gas", "Free")
+                    // Jupiter or Stonks247 covers the network fee on every route but one.
+                    KV("Network fee", Self.networkFee(q))
                     KV("Price impact") {
-                        Text(String(format: "%.2f%%", q.priceImpactPct ?? 0)).foregroundStyle((q.priceImpactPct ?? 0) > 2 ? Theme.amber : Theme.ink)
+                        Text(String(format: "%.2f%%", abs(q.priceImpactPct ?? 0)))
+                            .foregroundStyle(Self.impactIsBad(q.priceImpactPct) ? Theme.amber : Theme.ink)
                     }
                     KV("Max price move", "\(Double(q.slippageBps ?? 100) / 100)%")
                 }
@@ -785,7 +786,9 @@ struct TradeSheetView: View {
                     feesRow(q)
                 }
                 .padding(.top, 28)
-                if let i = q.priceImpactPct, i > 2 { note("Thin market: you're paying \(String(format: "%.1f", i))% above the current price.").padding(.top, 14) }
+                if Self.impactIsBad(q.priceImpactPct) {
+                    note("Thin market: you're paying \(String(format: "%.1f", abs(q.priceImpactPct ?? 0)))% above the current price.").padding(.top, 14)
+                }
                 if side == .buy, let p = q.premiumPct, p > 5 { note("Trading \(String(format: "%.0f", p))% above \(preIPO ? "its last funding round" : "the Nasdaq price").").padding(.top, 14) }
                 if let rent = rentUsd(q) {
                     note("First time holding \(asset.symbol): \(Fmt.cash(rent)) is a one-time network fee to open the token in your wallet, added on top. Next time you'd pay just \(Fmt.cash(feesTotal(q) - rent)) on this order.")
@@ -876,6 +879,16 @@ struct TradeSheetView: View {
     }
 
     /// Solana's token-account rent, only when this trade opens the account.
+    /// Jupiter reports impact signed, and negative is the direction that costs you. A magnitude
+    /// test would have called a good fill a bad one.
+    static func impactIsBad(_ pct: Double?) -> Bool { (pct ?? 0) <= -2 }
+
+    /// Only a `user` payer is money out of this wallet; Jupiter and Stonks247 both cover it.
+    static func networkFee(_ q: Quote) -> String {
+        guard q.gas?.paidBy == "user", let lamports = q.gas?.lamports, lamports > 0 else { return "Free" }
+        return String(format: "%.5f SOL", Double(lamports) / 1_000_000_000)
+    }
+
     private func rentUsd(_ q: Quote) -> Double? {
         guard (q.rent?.accounts ?? 0) > 0, let r = q.rent?.usd, r > 0 else { return nil }
         return r
