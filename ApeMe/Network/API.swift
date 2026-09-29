@@ -124,23 +124,26 @@ actor API {
     func quote(inputMint: String, outputMint: String, amountRaw: String, taker: String, slippageBps: Int? = nil) async throws -> Quote {
         var b: [String: Any] = ["inputMint": inputMint, "outputMint": outputMint, "amount": amountRaw, "taker": taker]
         if let slippageBps { b["slippageBps"] = slippageBps }
-        return try decoder.decode(Quote.self, from: try await send("POST", "/swap/quote", body: b))
+        return try decoder.decode(Quote.self, from: try await send("POST", "/swap/quote", body: b, timeout: 45))
     }
     func submit(requestId: String, signedTransaction: String) async throws -> SubmitResponse {
-        try decoder.decode(SubmitResponse.self, from: try await send("POST", "/swap/submit", body: ["requestId": requestId, "signedTransaction": signedTransaction]))
+        // Submit waits for Jupiter's confirmation before it answers. Timing out here would report
+        // a failure on a trade that is landing on chain, and the natural response to that is to
+        // send it again.
+        try decoder.decode(SubmitResponse.self, from: try await send("POST", "/swap/submit", body: ["requestId": requestId, "signedTransaction": signedTransaction], timeout: 60))
     }
     // MARK: Withdrawals (quote, sign, submit — the same shape as a swap)
 
     func withdrawQuote(from: String, mint: String, amountRaw: String, to: String) async throws -> WithdrawQuote {
         try decoder.decode(WithdrawQuote.self, from: try await send("POST", "/withdraw/quote", body: [
             "from": from, "mint": mint, "amount": amountRaw, "to": to,
-        ]))
+        ], timeout: 45))
     }
 
     func withdrawSubmit(requestId: String, signedTransaction: String) async throws -> WithdrawSubmitResponse {
         try decoder.decode(WithdrawSubmitResponse.self, from: try await send("POST", "/withdraw/submit", body: [
             "requestId": requestId, "signedTransaction": signedTransaction,
-        ]))
+        ], timeout: 60))
     }
 
     /// Only needed when submit answers "pending"; a confirmed submit is the end of it.
@@ -159,10 +162,10 @@ actor API {
     /// a sell. `triggerUsd` is the price as the user sees it; the BE handles the multiplier.
     func orderQuote(wallet: String, mint: String, side: String, amountRaw: String, triggerUsd: Double) async throws -> OrderQuote {
         try decoder.decode(OrderQuote.self, from: try await send("POST", "/orders/quote", body: [
-            "wallet": wallet, "mint": mint, "side": side, "amount": amountRaw, "triggerUsd": triggerUsd]))
+            "wallet": wallet, "mint": mint, "side": side, "amount": amountRaw, "triggerUsd": triggerUsd], timeout: 45))
     }
     func submitOrder(id: String, signedTransaction: String) async throws -> OrderSubmitResponse {
-        try decoder.decode(OrderSubmitResponse.self, from: try await send("POST", "/orders/\(id)/submit", body: ["signedTransaction": signedTransaction]))
+        try decoder.decode(OrderSubmitResponse.self, from: try await send("POST", "/orders/\(id)/submit", body: ["signedTransaction": signedTransaction], timeout: 60))
     }
     /// Reconciled against Jupiter on every read, so a refetch on appear is enough — no polling.
     func orders(limit: Int = 50) async throws -> OrdersResponse {
@@ -199,9 +202,13 @@ actor API {
     }
 
     /// Uncached request with an optional JSON body. Used for everything under /me and for trades.
-    private func send(_ method: String, _ path: String, body: [String: Any]? = nil) async throws -> Data {
+    /// `timeout` overrides the session's 12s for the calls that build and confirm a transaction
+    /// on the other side. 12s is right for reads — a dead network should say so quickly — but it
+    /// was cancelling legitimate work and reporting it as a failure.
+    private func send(_ method: String, _ path: String, body: [String: Any]? = nil, timeout: TimeInterval? = nil) async throws -> Data {
         var req = URLRequest(url: URL(string: API.base.absoluteString + path)!)
         req.httpMethod = method
+        if let timeout { req.timeoutInterval = timeout }
         await authorize(&req)
         if let body {
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
