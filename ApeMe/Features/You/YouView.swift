@@ -61,7 +61,14 @@ struct YouView: View {
                         SettingRow(symbol: "rectangle.portrait.and.arrow.right", tint: Theme.red,
                                    title: "Sign out", sub: app.auth.accountLabel ?? "Signed in", accessory: .none, destructive: true) { confirmSignOut = true }
                         SettingRow(symbol: "trash", tint: Theme.red,
-                                   title: "Delete account", sub: "Permanent. Your wallet stays on-chain.", accessory: .none, destructive: true) { confirmDelete = true }
+                                   title: "Delete account", sub: "Permanent. Your wallet stays on-chain.", accessory: .none, destructive: true) {
+                            // What is in the wallet decides what the confirmation has to say, so it
+                            // is worth a fresh read before asking.
+                            Task {
+                                if app.wallet == nil { await app.loadWallet(fresh: true) }
+                                confirmDelete = true
+                            }
+                        }
                     }
                     .padding(.top, 12)
                     #if DEBUG
@@ -93,8 +100,7 @@ struct YouView: View {
             Task { await app.signOut() }
         }
         .appDialog("Delete account?", isPresented: $confirmDelete,
-                   message: "This deletes your account and signs you out. Your funds stay in your wallet on-chain — export your key first if you want to keep it.",
-                   confirm: "Delete", destructive: true) {
+                   message: deleteWarning, confirm: heldUsd >= 0.01 ? "Delete anyway" : "Delete", destructive: true) {
             Task { await app.deleteAccount() }
         }
         .alert("Your handle", isPresented: $editingHandle) {
@@ -135,6 +141,17 @@ struct YouView: View {
 
     private func open(_ url: String) {
         if let u = URL(string: url) { openURL(u) }
+    }
+
+    private var heldUsd: Double { app.wallet?.totalUsd ?? 0 }
+
+    /// Deleting the account deletes the Privy login, and that login is the only way into the wallet.
+    /// The app has no withdraw and no key export, so for a funded wallet this is not "your funds stay
+    /// on-chain" — it is losing them. Say the number out loud rather than a reassuring generality.
+    private var deleteWarning: String {
+        heldUsd >= 0.01
+            ? "This wallet holds \(Fmt.usd(heldUsd)). Deleting your account deletes the login that opens it, and we cannot move those funds out for you — sell and withdraw first, or they are gone."
+            : "This deletes your account and signs you out. It cannot be undone."
     }
 
     private static var version: String {
