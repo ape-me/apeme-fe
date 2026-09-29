@@ -728,17 +728,10 @@ struct TradeSheetView: View {
             }
             .buttonStyle(.plain)
             if showDetails {
+                // Every fee is named on the ticket itself now, so Details is for the two numbers
+                // that explain the gap between what you pay and what you get. Gas and account rent
+                // are zero to the user and a row saying "Free" is just a row.
                 KCard {
-                    if side == .buy { KV("Buys of \(asset.symbol)", Fmt.cash(q.swapUsd ?? q.outUsd)) }
-                    KV("Stonks247 fee", Fmt.cash(q.fee?.usd ?? 0))
-                    if let f = q.issuerFee, let bps = f.bps, bps > 0 { KV("Issuer fee \(String(format: "%g", Double(bps) / 100))%", Fmt.cash(f.usd ?? 0)) }
-                    if let rent = rentUsd(q) {
-                        KV("One-time network fee", Fmt.cash(rent))
-                        Text("Charged by Solana to open \(asset.symbol) in your wallet, not by Stonks247. Never again for this token.")
-                            .font(.system(size: 12)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 10)
-                    }
-                    // Jupiter or Stonks247 covers the network fee on every route but one.
-                    KV("Network fee", Self.networkFee(q))
                     KV("Price impact") {
                         Text(String(format: "%.2f%%", abs(q.priceImpactPct ?? 0)))
                             .foregroundStyle(Self.impactIsBad(q.priceImpactPct) ? Theme.amber : Theme.ink)
@@ -778,29 +771,27 @@ struct TradeSheetView: View {
             }
             if let q = store.quote {
                 VStack(spacing: 0) {
-                    row(side == .buy ? "You buy" : "Selling",
-                        side == .buy ? "≈ \(store.youGet) · \(Fmt.cash(q.swapUsd ?? q.outUsd))" : Fmt.qty(sellQty, symbol: asset.symbol),
-                        .outcome)
+                    row(side == .buy ? "You pay" : "You sell",
+                        side == .buy ? Fmt.cash(charged(q)) : Fmt.qty(sellQty, symbol: asset.symbol))
                     Divider().overlay(Theme.line)
                     if let m = q.markUsd { row(markLabel, Fmt.usd(m), .reference); Divider().overlay(Theme.line) }
-                    feesRow(q)
+                    feeLines(q)
+                    row("You get",
+                        side == .buy ? "≈ \(store.youGet) · \(Fmt.cash(q.outUsd))" : Fmt.cash(q.outUsd),
+                        .outcome)
                 }
                 .padding(.top, 28)
                 if Self.impactIsBad(q.priceImpactPct) {
                     note("Thin market: you're paying \(String(format: "%.1f", abs(q.priceImpactPct ?? 0)))% above the current price.").padding(.top, 14)
                 }
                 if side == .buy, let p = q.premiumPct, p > 5 { note("Trading \(String(format: "%.0f", p))% above \(preIPO ? "its last funding round" : "the Nasdaq price").").padding(.top, 14) }
-                if let rent = rentUsd(q) {
-                    note("First time holding \(asset.symbol): \(Fmt.cash(rent)) is a one-time network fee to open the token in your wallet, added on top. Next time you'd pay just \(Fmt.cash(feesTotal(q) - rent)) on this order.")
-                        .padding(.top, 14)
-                }
                 errorBox.padding(.top, 14)
                 Color.clear.frame(height: 24)
                 // Footer: total on the left, details underneath, one button.
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(side == .buy ? "\(Fmt.cash(charged(q))) total" : "\(Fmt.cash(q.outUsd)) you get").font(.system(size: 20, weight: .semibold)).tracking(-0.4).monospacedDigit()
-                        Text(side == .buy ? "\(Fmt.cash(q.swapUsd ?? q.outUsd)) of \(asset.symbol) + \(Fmt.cash(feesTotal(q))) fees" : "after \(Fmt.cash(feesTotal(q))) fees").font(.sub).foregroundStyle(Theme.muted)
+                        Text(side == .buy ? "for ≈ \(Fmt.cash(q.outUsd)) of \(asset.symbol), fees \(Fmt.cash(feesTotal(q)))" : "after \(Fmt.cash(feesTotal(q))) fees").font(.sub).foregroundStyle(Theme.muted)
                     }
                     Spacer()
                     HStack(spacing: 6) {
@@ -837,21 +828,25 @@ struct TradeSheetView: View {
         }
     }
 
-    /// Every fee, named: ours, the issuer's (PreStocks only), and Solana's one-time rent.
-    private func feesRow(_ q: Quote) -> some View {
-        var parts: [String] = ["Stonks247 \(String(format: "%g", Double(q.fee?.bps ?? 100) / 100))% \(Fmt.cash(q.fee?.usd ?? 0))"]
-        if let f = q.issuerFee, let bps = f.bps, bps > 0 { parts.append("Issuer \(String(format: "%g", Double(bps) / 100))% \(Fmt.cash(f.usd ?? 0))") }
-        if let rent = rentUsd(q) { parts.append("\(Fmt.cash(rent)) account setup, one time") }
-        return VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text("Fees").font(.system(size: 15)).foregroundStyle(Theme.muted)
-                Spacer()
-                Text(Fmt.cash(feesTotal(q))).font(.system(size: 15, weight: .semibold)).monospacedDigit()
-                    .foregroundStyle(feesAreNotable(q) ? Theme.amber : Theme.ink)
-            }
-            Text(parts.joined(separator: " · ")).font(.sub).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+    /// Every fee gets its own line. Squashing them into one "Fees" row hid the fact that Jupiter
+    /// takes a cut too — the ticket would have said 1% while the order actually cost 1.1%.
+    @ViewBuilder private func feeLines(_ q: Quote) -> some View {
+        let pct = String(format: "%g", Double(q.fee?.bps ?? 0) / 100)
+        row("Stonks247 fee \(pct)%", Fmt.cash(q.fee?.usd ?? 0))
+        Divider().overlay(Theme.line)
+        if let bps = q.routerFeeBps, bps > 0 {
+            row("Route fee", Fmt.cash(routeFeeUsd(q)))
+            Divider().overlay(Theme.line)
         }
-        .padding(.vertical, 12)
+        if let f = q.issuerFee, let bps = f.bps, bps > 0 {
+            row("Issuer fee \(String(format: "%g", Double(bps) / 100))%", Fmt.cash(f.usd ?? 0))
+            Divider().overlay(Theme.line)
+        }
+    }
+
+    /// Jupiter's own cut, charged against what you pay. It is not our revenue and not the issuer's.
+    private func routeFeeUsd(_ q: Quote) -> Double {
+        charged(q) * Double(q.routerFeeBps ?? 0) / 10_000
     }
 
     private enum RowRank { case normal, outcome, reference }
@@ -872,7 +867,6 @@ struct TradeSheetView: View {
     /// of the order. A routine 1% on a $50 buy stays ink — flag everything and amber stops meaning
     /// anything. Applies to a sell the same way.
     private func feesAreNotable(_ q: Quote) -> Bool {
-        if rentUsd(q) != nil { return true }
         let total = charged(q)
         guard total > 0 else { return false }
         return feesTotal(q) / total > 0.05
@@ -883,21 +877,9 @@ struct TradeSheetView: View {
     /// test would have called a good fill a bad one.
     static func impactIsBad(_ pct: Double?) -> Bool { (pct ?? 0) <= -2 }
 
-    /// Only a `user` payer is money out of this wallet; Jupiter and Stonks247 both cover it.
-    /// Five decimals rounded a real charge down to "0.00000 SOL", which reads as a bug rather than
-    /// as a small number, so the figure is trimmed to whatever digits it actually needs.
-    static func networkFee(_ q: Quote) -> String {
-        guard q.gas?.paidBy == "user", let lamports = q.gas?.lamports, lamports > 0 else { return "Free" }
-        return "\(Fmt.plain(Double(lamports) / 1_000_000_000)) SOL"
-    }
-
-    private func rentUsd(_ q: Quote) -> Double? {
-        guard (q.rent?.accounts ?? 0) > 0, let r = q.rent?.usd, r > 0 else { return nil }
-        return r
-    }
 
     private func feesTotal(_ q: Quote) -> Double {
-        (q.fee?.usd ?? 0) + (q.issuerFee?.usd ?? 0) + ((q.rent?.accounts ?? 0) > 0 ? (q.rent?.usd ?? 0) : 0)
+        (q.fee?.usd ?? 0) + (q.issuerFee?.usd ?? 0) + routeFeeUsd(q)
     }
 
     /// The quote expired and the new price moved more than 1%: show the new numbers, ask once more.
