@@ -82,6 +82,9 @@ struct AppDialog: ViewModifier {
     let message: String
     let confirm: String
     var destructive = false
+    /// The safe thing to do instead, offered above the confirmation. A dialog that only says
+    /// "Cancel" or "Delete" leaves someone with funds on the line no way out of the moment.
+    var alternative: (label: String, action: () -> Void)?
     let action: () -> Void
 
     func body(content: Content) -> some View {
@@ -93,11 +96,17 @@ struct AppDialog: ViewModifier {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(title).font(.system(size: 20, weight: .semibold)).tracking(-0.4)
                         Text(message).font(.system(size: 15)).foregroundStyle(Theme.muted).lineSpacing(2)
+                        if let alternative {
+                            BigButton(label: alternative.label, style: .white, small: true) {
+                                isPresented = false; alternative.action()
+                            }
+                            .padding(.top, 14)
+                        }
                         HStack(spacing: 10) {
                             BigButton(label: "Cancel", style: .ghost, small: true) { isPresented = false }
                             BigButton(label: confirm, style: destructive ? .danger : .white, small: true) { isPresented = false; action() }
                         }
-                        .padding(.top, 14)
+                        .padding(.top, alternative == nil ? 14 : 10)
                     }
                     .padding(20)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -113,8 +122,9 @@ struct AppDialog: ViewModifier {
 }
 
 extension View {
-    func appDialog(_ title: String, isPresented: Binding<Bool>, message: String, confirm: String, destructive: Bool = false, action: @escaping () -> Void) -> some View {
-        modifier(AppDialog(isPresented: isPresented, title: title, message: message, confirm: confirm, destructive: destructive, action: action))
+    func appDialog(_ title: String, isPresented: Binding<Bool>, message: String, confirm: String, destructive: Bool = false,
+                   alternative: (label: String, action: () -> Void)? = nil, action: @escaping () -> Void) -> some View {
+        modifier(AppDialog(isPresented: isPresented, title: title, message: message, confirm: confirm, destructive: destructive, alternative: alternative, action: action))
     }
 }
 

@@ -7,6 +7,7 @@ struct YouView: View {
     @State private var confirmOnboarding = false
     @State private var confirmSignOut = false
     @State private var confirmDelete = false
+    @State private var exporting = false
     @State private var editingHandle = false
     @State private var handle = ""
     @State private var handleError: String?
@@ -37,6 +38,7 @@ struct YouView: View {
                         SettingRow(symbol: "slider.horizontal.3", title: "Trading settings", sub: "Slippage, quick amounts, confirmations") { app.push(.settings) }
                         if let address = app.walletAddress {
                             SettingRow(symbol: "wallet.bifold", title: "Wallet address", sub: Fmt.short(address), accessory: .copy) { app.copy(address) }
+                            SettingRow(symbol: "key", title: "Export private key", sub: "Move your funds to another wallet") { exporting = true }
                         }
                         SettingRow(symbol: "play.rectangle", title: "Replay the intro", sub: "The welcome screen you saw first") { confirmOnboarding = true }
                     }
@@ -100,8 +102,12 @@ struct YouView: View {
             Task { await app.signOut() }
         }
         .appDialog("Delete account?", isPresented: $confirmDelete,
-                   message: deleteWarning, confirm: heldUsd >= 0.01 ? "Delete anyway" : "Delete", destructive: true) {
+                   message: deleteWarning, confirm: heldUsd >= 0.01 ? "Delete anyway" : "Delete", destructive: true,
+                   alternative: heldUsd >= 0.01 ? ("Export private key", { exporting = true }) : nil) {
             Task { await app.deleteAccount() }
+        }
+        .sheet(isPresented: $exporting) {
+            if let url = Self.recoveryURL { SafariPage(url: url).ignoresSafeArea() }
         }
         .alert("Your handle", isPresented: $editingHandle) {
             TextField("a–z, 0–9, _", text: $handle).textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -145,12 +151,16 @@ struct YouView: View {
 
     private var heldUsd: Double { app.wallet?.totalUsd ?? 0 }
 
+    /// Privy's recovery page for this app: the user signs in with the same email and gets the key
+    /// out. Built from `Auth.appId` rather than pasted, so it cannot drift from the app it recovers.
+    private static let recoveryURL = URL(string: "https://\(Auth.appId).recovery.privy.io/")
+
     /// Deleting the account deletes the Privy login, and that login is the only way into the wallet.
     /// The app has no withdraw and no key export, so for a funded wallet this is not "your funds stay
     /// on-chain" — it is losing them. Say the number out loud rather than a reassuring generality.
     private var deleteWarning: String {
         heldUsd >= 0.01
-            ? "This wallet holds \(Fmt.usd(heldUsd)). Deleting your account deletes the login that opens it, and we cannot move those funds out for you — sell and withdraw first, or they are gone."
+            ? "This wallet holds \(Fmt.usd(heldUsd)). Deleting your account deletes the login that opens it. Export your private key first and move the funds yourself, or they are gone."
             : "This deletes your account and signs you out. It cannot be undone."
     }
 
