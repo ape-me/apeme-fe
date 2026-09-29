@@ -46,6 +46,7 @@ struct RootView: View {
             case .buyStock(let s): TradeSheetView(side: .buy, asset: .stock(s))
             case .sell(let h): TradeSheetView(side: .sell, asset: .holding(h))
             case .deposit: DepositSheet()
+            case .withdraw: WithdrawSheet()
             case .tx(let a): TxSheet(activity: a)
             case .resume(let r): TradeSheetView(resume: r)
             case .position(let h): PositionSheet(holding: h)

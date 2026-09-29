@@ -5,6 +5,7 @@ enum TradeSheet: Identifiable {
     case buyStock(Stock)
     case sell(Holding)
     case deposit
+    case withdraw
     case login
     case tx(Activity)
     case resume(TradeResume)
@@ -15,6 +16,7 @@ enum TradeSheet: Identifiable {
         case .buyStock(let s): "buy-\(s.mint)"
         case .sell(let h): "sell-\(h.mint)"
         case .deposit: "deposit"
+        case .withdraw: "withdraw"
         case .tx(let a): "tx-\(a.id)"
         case .resume(let r): "resume-\(r.id)"
         case .position(let h): "pos-\(h.mint)"

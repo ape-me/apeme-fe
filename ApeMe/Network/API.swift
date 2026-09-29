@@ -129,6 +129,25 @@ actor API {
     func submit(requestId: String, signedTransaction: String) async throws -> SubmitResponse {
         try decoder.decode(SubmitResponse.self, from: try await send("POST", "/swap/submit", body: ["requestId": requestId, "signedTransaction": signedTransaction]))
     }
+    // MARK: Withdrawals (quote, sign, submit — the same shape as a swap)
+
+    func withdrawQuote(from: String, mint: String, amountRaw: String, to: String) async throws -> WithdrawQuote {
+        try decoder.decode(WithdrawQuote.self, from: try await send("POST", "/withdraw/quote", body: [
+            "from": from, "mint": mint, "amount": amountRaw, "to": to,
+        ]))
+    }
+
+    func withdrawSubmit(requestId: String, signedTransaction: String) async throws -> WithdrawSubmitResponse {
+        try decoder.decode(WithdrawSubmitResponse.self, from: try await send("POST", "/withdraw/submit", body: [
+            "requestId": requestId, "signedTransaction": signedTransaction,
+        ]))
+    }
+
+    /// Only needed when submit answers "pending"; a confirmed submit is the end of it.
+    func withdrawStatus(_ requestId: String) async throws -> WithdrawStatus {
+        try decoder.decode(WithdrawStatus.self, from: try await send("GET", "/withdraw/\(requestId)"))
+    }
+
     // MARK: Limit orders (Jupiter Trigger holds the escrow; signing is the same as a swap)
 
     /// Public, cached 60s on the BE. Read at launch; nothing about order limits is assumed.

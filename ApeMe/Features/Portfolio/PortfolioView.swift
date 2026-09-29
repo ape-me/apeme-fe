@@ -110,7 +110,10 @@ struct PortfolioView: View {
                     Text(Fmt.usd(w.cashUsd)).font(.system(size: 22, weight: .semibold)).tracking(-0.6).monospacedDigit()
                 }
                 Spacer()
-                Pill(label: "Deposit") { app.sheet = .deposit }
+                HStack(spacing: 8) {
+                    Pill(label: "Withdraw") { app.sheet = .withdraw }
+                    Pill(label: "Deposit") { app.sheet = .deposit }
+                }
             }
             .padding(16).background(Theme.surface, in: .rect(cornerRadius: 16)).padding(.top, 18)
 
