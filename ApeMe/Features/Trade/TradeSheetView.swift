@@ -53,14 +53,18 @@ struct TradeSheetView: View {
     private var usd: Double { Double(amount) ?? 0 }
     private var settings: Me.Settings { app.auth.settings }
     private var cash: Double { app.cashUsd }
-    /// Solved backwards: with balance B, the most they can *receive* is (B − rent) / 1.01, since
-    /// our 1% and the one-time account fee are charged on top of whatever they type.
-    private var rentIfFirst: Double { holdsAlready ? 0 : 0.25 }
-    private var holdsAlready: Bool { (app.wallet?.positions ?? []).contains { $0.mint == asset.mint } }
-    private var maxCash: Double { max(0, floor(((cash - rentIfFirst) / 1.01) * 100) / 100) }
+    /// Solved backwards: with balance B the most they can *receive* is B / (1 + fee), because our
+    /// fee is charged on top of whatever they type. It used to subtract a 25c account fee as well,
+    /// which the backend now pays itself — that was holding a quarter back from every first buy.
+    ///
+    /// The fee rate is not knowable until a quote comes back, so the last one for this asset is
+    /// used and 1% assumed before then. Guessing high only ever under-spends, which is the safe
+    /// direction, and the moment a quote lands Max is exact.
+    private var buyFeeRate: Double { Double(store.quote?.fee?.bps ?? 100) / 10_000 }
+    private var maxCash: Double { max(0, floor((cash / (1 + buyFeeRate)) * 100) / 100) }
 
     /// What the order will actually cost, before the quote confirms it to the cent.
-    private func estimatedTotal(_ receive: Double) -> Double { receive * 1.01 + rentIfFirst }
+    private func estimatedTotal(_ receive: Double) -> Double { receive * (1 + buyFeeRate) }
     /// The charge the quote reports: `totalUsd` on a buy, the gross on a sell.
     private func charged(_ q: Quote) -> Double { q.totalUsd ?? q.inUsd ?? 0 }
     private var busy: Bool { [.signing, .submitting, .confirming].contains(store.phase) }
