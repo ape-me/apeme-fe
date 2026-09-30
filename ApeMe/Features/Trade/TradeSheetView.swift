@@ -814,9 +814,16 @@ struct TradeSheetView: View {
                             BigButton(label: "Try again", style: side == .sell ? .sell : .buy) {
                                 Haptic.medium(); store.error = nil; requote()
                             }
-                            if store.slippageFails >= 1, (store.slippageBps ?? 0) < 300 {
-                                BigButton(label: "Retry with 3% price move", style: .ghost) {
-                                    Haptic.medium(); store.error = nil; store.slippageBps = max(300, store.slippageBps ?? 0); requote()
+                            // Offer the number this route actually needs, not a fixed 3% that
+                            // an orderbook route will refuse just as flatly.
+                            if store.slippageFails >= 1 {
+                                let needed = store.neededSlippageBps ?? 300
+                                if (store.slippageBps ?? 0) < needed {
+                                    BigButton(label: "Allow \(String(format: "%g", Double(needed) / 100))% price move", style: .ghost) {
+                                        Haptic.medium(); store.error = nil
+                                        store.slippageBps = max(needed, store.slippageBps ?? 0)
+                                        requote()
+                                    }
                                 }
                             }
                         }

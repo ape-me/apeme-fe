@@ -163,9 +163,10 @@ final class TradeStore {
                 // where the amount should be — and hid the wider-slippage button, which is the one
                 // thing that actually gets a thin market filled.
                 slippageFails += 1
+                let used = q.slippageBps
                 if let nq = try? await requoteNow() { quote = nq; requestId = nq.requestId }
                 phase = .failed
-                error = "Price moved. Nothing was charged."
+                error = Self.slippageMessage(used: used, needed: neededSlippageBps)
                 return
             } catch {
                 // Keep the quote. It is dead for submitting — Try again re-quotes before it pays —
@@ -190,9 +191,28 @@ final class TradeStore {
         await execute(wallet: wallet, onConfirmed: onConfirmed)
     }
 
-    /// "Retry with 3%": widen the band for this trade only, re-quote, pay.
+    /// What this route actually needs. ANTHROPIC fills on an orderbook and asks for about 5%;
+    /// offering a fixed 3% was offering a retry that could not succeed.
+    var neededSlippageBps: Int? {
+        guard let s = quote?.suggestedSlippageBps, s > 0 else { return nil }
+        return s
+    }
+
+    /// A price limit is not a fee and nobody collects it — it is the point at which the trade
+    /// cancels itself. Saying "price moved" hid both the limit that stopped it and the number
+    /// that would let it through.
+    static func slippageMessage(used: Int?, needed: Int?) -> String {
+        let pct: (Int) -> String = { String(format: "%g", Double($0) / 100) + "%" }
+        if let u = used, let n = needed, n > u {
+            return "Your price limit is \(pct(u)). This route needs about \(pct(n))."
+        }
+        if let u = used { return "The price moved past your \(pct(u)) limit. Nothing was charged." }
+        return "The price moved past your limit. Nothing was charged."
+    }
+
+    /// Widen the band for this trade only, re-quote, pay.
     func retryWider(wallet: any EmbeddedSolanaWallet, onConfirmed: @escaping () -> Void) async {
-        slippageBps = max(300, slippageBps ?? 0)
+        slippageBps = max(neededSlippageBps ?? 300, slippageBps ?? 0)
         quote = nil
         await retry(wallet: wallet, onConfirmed: onConfirmed)
     }
