@@ -224,7 +224,8 @@ final class TradeStore {
             return opensAt.map { "Closed right now. Opens \($0)." } ?? "This market is closed right now."
         }
         if case APIError.regionBlocked = error { return "Trading isn't available in your region yet." }
-        if case APIError.insufficientFunds(let short) = error {
+        if case APIError.insufficientFunds(let short, let needed, let held) = error {
+            if let n = needed, let h = held { return "Needs \(Fmt.cash(n)), you have \(Fmt.cash(h))." }
             return short > 0 ? "Add \(Fmt.cash(short)) USDC to place this order" : "Not enough USDC for this order."
         }
         if case APIError.http(let code, let msg) = error {

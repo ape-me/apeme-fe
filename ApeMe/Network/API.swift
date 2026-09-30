@@ -221,7 +221,10 @@ actor API {
         let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(code) else {
             let body = try? decoder.decode(ErrorBody.self, from: data)
-            if body?.error == "insufficient_usdc" { throw APIError.insufficientFunds(shortUsd: body?.shortUsd ?? 0) }
+            // The backend has used more than one spelling for this; match the family.
+            if let e = body?.error, e.contains("insufficient") {
+                throw APIError.insufficientFunds(shortUsd: body?.shortUsd ?? 0, neededUsd: body?.neededUsd, heldUsd: body?.heldUsd)
+            }
             if body?.error == "market_closed" { throw APIError.marketClosed(opensAt: body?.opensAt) }
             if body?.error == "region_blocked" { throw APIError.regionBlocked(country: body?.country) }
             if let b = body, b.minUsd != nil || b.excludedIssuers != nil {
@@ -282,7 +285,9 @@ actor API {
             let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
             guard (200..<300).contains(code) else {
                 let body = try? decoder.decode(ErrorBody.self, from: data)
-                if body?.error == "insufficient_usdc" { throw APIError.insufficientFunds(shortUsd: body?.shortUsd ?? 0) }
+                if let e = body?.error, e.contains("insufficient") {
+                    throw APIError.insufficientFunds(shortUsd: body?.shortUsd ?? 0, neededUsd: body?.neededUsd, heldUsd: body?.heldUsd)
+                }
                 let msg = body?.error ?? "request failed"
                 throw APIError.http(code, msg)
             }
