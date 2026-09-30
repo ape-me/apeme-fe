@@ -40,4 +40,7 @@ struct ErrorBody: Codable {
     let opensAt: String?
     /// 451 region_blocked.
     let country: String?
+    /// 422 slippage — the band Jupiter would pick for this same trade, sized at the moment it
+    /// refused. The retry offers this rather than a number the client invented.
+    let suggestedSlippageBps: Int?
 }

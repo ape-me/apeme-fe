@@ -33,6 +33,10 @@ enum Failure {
             if ns.code == NSURLErrorTimedOut { return "That took too long. Try again." }
             return "No connection. Check your network."
         }
+        if case APIError.slippageExceeded(let suggested) = error {
+            guard let s = suggested else { return "The price moved past your limit. Nothing was charged." }
+            return "The price moved past your limit. This route needs about \(String(format: "%g", Double(s) / 100))%."
+        }
         if case APIError.decoding = error { return "We couldn't read that response." }
         if case APIError.http(let code, let raw) = error {
             let reason = raw.split(separator: "·").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? raw

@@ -226,6 +226,9 @@ actor API {
                 throw APIError.insufficientFunds(shortUsd: body?.shortUsd ?? 0, neededUsd: body?.neededUsd, heldUsd: body?.heldUsd)
             }
             if body?.error == "market_closed" { throw APIError.marketClosed(opensAt: body?.opensAt) }
+            if let e = body?.error, e.lowercased().contains("slippage") {
+                throw APIError.slippageExceeded(suggestedBps: body?.suggestedSlippageBps)
+            }
             if body?.error == "region_blocked" { throw APIError.regionBlocked(country: body?.country) }
             if let b = body, b.minUsd != nil || b.excludedIssuers != nil {
                 throw APIError.orderRefused(reason: b.error, minUsd: b.minUsd, excludedIssuers: b.excludedIssuers)

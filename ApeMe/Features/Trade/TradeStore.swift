@@ -157,13 +157,16 @@ final class TradeStore {
                 guard let nq = try? await requoteNow() else { phase = .failed; error = "Quote expired. Try again."; return }
                 if !Self.within1pct(q, nq) { replacement = nq; phase = .requoted; return }
                 q = nq; quote = nq; retried = true; continue
-            } catch APIError.http(422, let msg) where msg.lowercased().contains("slippage") {
+            } catch APIError.slippageExceeded(let suggested) {
                 // Re-quote in place so Review shows the new numbers and Try again pays with them.
                 // Clearing the quote instead left the sheet on its loading skeletons — grey bars
                 // where the amount should be — and hid the wider-slippage button, which is the one
                 // thing that actually gets a thin market filled.
                 slippageFails += 1
                 let used = q.slippageBps
+                // Sized by the backend for this exact trade at the moment it refused — better than
+                // anything re-derived here, and better than the 3% this used to invent.
+                failureSuggestion = suggested
                 if let nq = try? await requoteNow() { quote = nq; requestId = nq.requestId }
                 phase = .failed
                 error = Self.slippageMessage(used: used, needed: neededSlippageBps)
@@ -191,11 +194,15 @@ final class TradeStore {
         await execute(wallet: wallet, onConfirmed: onConfirmed)
     }
 
-    /// What this route actually needs. ANTHROPIC fills on an orderbook and asks for about 5%;
-    /// offering a fixed 3% was offering a retry that could not succeed.
+    /// What this route actually needs, newest first: the number the refusal carried, else the
+    /// one on the current quote. Never a guess — if neither is there, the retry is not offered,
+    /// because a made-up band is a retry that refuses just as flatly.
+    private var failureSuggestion: Int?
     var neededSlippageBps: Int? {
-        guard let s = quote?.suggestedSlippageBps, s > 0 else { return nil }
-        return s
+        for candidate in [failureSuggestion, quote?.suggestedSlippageBps] {
+            if let c = candidate, c > 0 { return c }
+        }
+        return nil
     }
 
     /// A price limit is not a fee and nobody collects it — it is the point at which the trade
@@ -212,7 +219,8 @@ final class TradeStore {
 
     /// Widen the band for this trade only, re-quote, pay.
     func retryWider(wallet: any EmbeddedSolanaWallet, onConfirmed: @escaping () -> Void) async {
-        slippageBps = max(neededSlippageBps ?? 300, slippageBps ?? 0)
+        guard let needed = neededSlippageBps else { return }
+        slippageBps = max(needed, slippageBps ?? 0)
         quote = nil
         await retry(wallet: wallet, onConfirmed: onConfirmed)
     }
@@ -245,6 +253,9 @@ final class TradeStore {
     }
 
     static func message(_ error: Error) -> String {
+        if case APIError.slippageExceeded(let suggested) = error {
+            return Self.slippageMessage(used: nil, needed: suggested)
+        }
         if case APIError.marketClosed(let opensAt) = error {
             return opensAt.map { "Closed right now. Opens \($0)." } ?? "This market is closed right now."
         }

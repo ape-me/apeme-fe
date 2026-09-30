@@ -11,6 +11,8 @@ enum APIError: LocalizedError {
     case marketClosed(opensAt: String?)
     /// Geo gate. Off during review, on at launch.
     case regionBlocked(country: String?)
+    /// The price moved past the limit this quote was built with.
+    case slippageExceeded(suggestedBps: Int?)
     case transport(Error)
     case decoding(Error)
 
@@ -22,6 +24,7 @@ enum APIError: LocalizedError {
         case .orderRefused(let reason, _, _): reason
         case .marketClosed(let opensAt): "market_closed · opens \(opensAt ?? "later")"
         case .regionBlocked(let country): "region_blocked · \(country ?? "")"
+        case .slippageExceeded(let bps): "slippage · suggests \(bps.map(String.init) ?? "?") bps"
         case .transport(let e): e.localizedDescription
         case .decoding: "Unexpected response"
         }
