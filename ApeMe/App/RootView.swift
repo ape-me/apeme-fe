@@ -119,14 +119,33 @@ struct MainShell: View {
             // Every tab is one scroll view with no navigation bar, so whatever scrolls past the
             // top ends up behind the clock and the battery, half-legible. A solid cover over the
             // status bar cuts it cleanly instead, without pinning a header no screen wants.
-            .overlay(alignment: .top) {
-                Theme.ground
-                    .frame(height: 0)
-                    .ignoresSafeArea(edges: .top)
-                    .allowsHitTesting(false)
-            }
+            .overlay(alignment: .top) { StatusBarCover() }
             TabBar()
         }
         .background(Theme.ground)
+    }
+}
+
+/// Fills the status-bar inset with the page colour, so scrolling content is cut at that line
+/// instead of reading through the clock.
+///
+/// The height has to be measured. A zero-height view that merely ignores the safe area does not
+/// grow to fill it — it draws nothing, which is exactly what the first version of this did — and
+/// a GeometryReader placed here reports a zero inset, because the overlay sits inside the safe
+/// area already. The window knows, so ask the window. Portrait-only, so it cannot go stale.
+private struct StatusBarCover: View {
+    private var topInset: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { $0.isKeyWindow }?
+            .safeAreaInsets.top ?? 0
+    }
+
+    var body: some View {
+        Theme.ground
+            .frame(height: topInset)
+            .ignoresSafeArea(edges: .top)
+            .allowsHitTesting(false)
     }
 }
