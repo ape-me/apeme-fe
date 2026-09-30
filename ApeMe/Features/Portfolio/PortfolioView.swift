@@ -33,7 +33,7 @@ struct PortfolioView: View {
         .background(Theme.ground)
         .task(id: app.walletAddress) {
             await app.loadWallet(fresh: true)
-            if app.wallet == nil { error = "Couldn't load the wallet." }
+            if app.wallet == nil, let e = app.walletError { error = Failure.loading("your wallet", e) }
         }
         .onChange(of: app.wallet?.pendingSwaps ?? 0, initial: true) { _, pending in
             poller?.cancel()

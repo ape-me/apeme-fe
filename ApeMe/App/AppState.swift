@@ -113,9 +113,18 @@ final class AppState {
         }
     }
 
+    /// The last read's failure, kept so the Wallet tab can say why rather than guess. `try?` threw
+    /// the reason away, which is how a region block and a dead network became the same sentence.
+    var walletError: Error?
+
     func loadWallet(fresh: Bool = true, bustCache: Bool = false) async {
         guard let address = walletAddress else { wallet = nil; return }
-        if let w = try? await API.shared.wallet(address, activity: 30, fresh: fresh, bustCache: bustCache) { wallet = w }
+        do {
+            wallet = try await API.shared.wallet(address, activity: 30, fresh: fresh, bustCache: bustCache)
+            walletError = nil
+        } catch {
+            walletError = error
+        }
     }
 
     var cashUsd: Double { wallet?.cashUsd ?? 0 }

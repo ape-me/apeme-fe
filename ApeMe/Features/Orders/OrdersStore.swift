@@ -118,7 +118,7 @@ final class OrdersStore {
             orders = try await API.shared.orders(limit: 50).orders
             error = nil
         } catch {
-            if orders.isEmpty { self.error = "Couldn't load your orders." }
+            if orders.isEmpty { self.error = Failure.loading("your orders", error) }
         }
     }
 

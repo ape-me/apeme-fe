@@ -58,7 +58,7 @@ final class HomeStore {
             feedError = nil
             feedLoaded = true
         } catch {
-            if feed.isEmpty { feedError = "Couldn't load the news." }
+            if feed.isEmpty { feedError = Failure.loading("the news", error) }
         }
     }
 
@@ -88,7 +88,7 @@ final class HomeStore {
             app.online = true
         } catch {
             app.online = false
-            if preipo.isEmpty { self.error = "Markets are taking a moment" }
+            if preipo.isEmpty { self.error = Failure.loading("the market", error) }
         }
         loading = false
     }

@@ -13,8 +13,11 @@ struct SettingsView: View {
             HStack(spacing: 10) { BackButton(); Text("Settings").h2Text(); Spacer() }.padding(.horizontal, 12).padding(.top, 6).frame(height: 56)
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    section("Slippage") {
-                        chips([(10, "0.1%"), (50, "0.5%"), (100, "1%"), (300, "3%")], selected: s.slippageBps ?? 100) { s.slippageBps = $0; save(["slippageBps": $0]) }
+                    // 0 is auto: Jupiter sizes the limit per token. A fixed 1% is fine on a pool
+                    // and hopeless on an orderbook route, which is where a name like ANTHROPIC
+                    // fills, so auto leads and is the default.
+                    section("Max price move", note: "How far the price may move before a trade cancels itself. It is a limit, not a fee — nobody collects it.") {
+                        chips([(0, "Auto"), (10, "0.1%"), (50, "0.5%"), (100, "1%"), (300, "3%")], selected: s.slippageBps ?? 0) { s.slippageBps = $0; save(["slippageBps": $0]) }
                     }
                     section("Quick buy amounts") {
                         editableChips(values: s.quickBuyUsd ?? [], prefix: "$", max: 4) { s.quickBuyUsd = $0; save(["quickBuyUsd": $0]) }

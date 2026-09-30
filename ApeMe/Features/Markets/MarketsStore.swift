@@ -70,7 +70,7 @@ final class MarketsStore {
             app.index(ra.stocks)
             error = nil
         } catch {
-            if stocks.isEmpty { self.error = "Couldn't load markets." }
+            if stocks.isEmpty { self.error = Failure.loading("markets", error) }
         }
     }
 

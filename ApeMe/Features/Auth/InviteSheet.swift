@@ -76,7 +76,7 @@ struct InviteView: View {
                 }
                 if status == 409 { await app.auth.refreshMe() }
             } catch {
-                self.error = "No connection. Try again."
+                self.error = Failure.action(error)
             }
         }
     }

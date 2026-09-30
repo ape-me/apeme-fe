@@ -46,7 +46,7 @@ struct AccountsSheet: View {
                 Task {
                     defer { busy = false }
                     do { let a = try await app.auth.createAdditionalWallet(); await load(); app.show("Account \(Fmt.short(a)) created") }
-                    catch { self.error = "\(error)" }
+                    catch { self.error = Failure.action(error) }
                 }
             }
             Text("Hold a row to rename or make it the default.").font(.sub).foregroundStyle(Theme.faint)

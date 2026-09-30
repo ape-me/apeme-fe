@@ -45,7 +45,7 @@ final class StockStore {
             stock = s
             app.stocksByMint[mint] = s
         } catch {
-            if stock == nil { self.error = "Couldn't load this stock." }
+            if stock == nil { self.error = Failure.loading("this stock", error) }
         }
         await loadRange()
     }
@@ -69,7 +69,7 @@ final class StockStore {
             newsExhausted = news.count < 5
             newsLoaded = true
         } catch {
-            if news.isEmpty { newsError = "Couldn't load the news." }
+            if news.isEmpty { newsError = Failure.loading("the news", error) }
         }
     }
 
