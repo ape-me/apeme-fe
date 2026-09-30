@@ -222,7 +222,7 @@ actor API {
         guard (200..<300).contains(code) else {
             let body = try? decoder.decode(ErrorBody.self, from: data)
             // The backend has used more than one spelling for this; match the family.
-            if let e = body?.error, e.contains("insufficient") {
+            if let e = body?.error, e.lowercased().contains("insufficient") {
                 throw APIError.insufficientFunds(shortUsd: body?.shortUsd ?? 0, neededUsd: body?.neededUsd, heldUsd: body?.heldUsd)
             }
             if body?.error == "market_closed" { throw APIError.marketClosed(opensAt: body?.opensAt) }
@@ -285,7 +285,7 @@ actor API {
             let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
             guard (200..<300).contains(code) else {
                 let body = try? decoder.decode(ErrorBody.self, from: data)
-                if let e = body?.error, e.contains("insufficient") {
+                if let e = body?.error, e.lowercased().contains("insufficient") {
                     throw APIError.insufficientFunds(shortUsd: body?.shortUsd ?? 0, neededUsd: body?.neededUsd, heldUsd: body?.heldUsd)
                 }
                 let msg = body?.error ?? "request failed"
