@@ -3,8 +3,10 @@ import Foundation
 /// One headline. The same shape comes back from the stock feed, the home feed and the ticker.
 struct NewsItem: Codable, Hashable, Identifiable {
     let id: String
-    let mint: String
-    let symbol: String
+    /// Null on market-wide stories — the Fed, rates, tariffs, the indexes. Those belong to no
+    /// company, so there is nothing to tap through to.
+    let mint: String?
+    let symbol: String?
     let name: String?
     let image: String?          // the stock's logo — always present
     let priceUsd: Double?
@@ -19,6 +21,10 @@ struct NewsItem: Codable, Hashable, Identifiable {
     let direction: String?      // bullish | bearish | neutral, nullable
     let confidence: Double?     // withheld below 0.5 server-side — never shown
     let tier1: Bool?
+    /// "stock" or "market".
+    let scope: String?
+
+    var isMarket: Bool { scope == "market" || symbol == nil }
 
     /// Feeds hand us entity-encoded titles — "Ownership &amp; Voting" — so decode before display.
     var displayTitle: String { title.decodingHTMLEntities() }

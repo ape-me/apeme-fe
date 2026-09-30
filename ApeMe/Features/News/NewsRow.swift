@@ -52,12 +52,10 @@ struct NewsRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             if let thumb {
-                Button { openStock(item.mint) } label: {
-                    RemoteImage(url: thumb, fallback: String(item.symbol.prefix(1)))
-                        .frame(width: 40, height: 40)
-                        .clipShape(.rect(cornerRadius: 12))
-                }
-                .buttonStyle(.plain)
+                RemoteImage(url: thumb, fallback: String((item.symbol ?? "M").prefix(1)))
+                    .frame(width: 40, height: 40)
+                    .clipShape(.rect(cornerRadius: 12))
+                    .onTapGesture { if let mint = item.mint { openStock(mint) } else { open(item) } }
             }
             VStack(alignment: .leading, spacing: 5) {
                 meta
@@ -77,16 +75,21 @@ struct NewsRow: View {
     /// One line that never wraps: the symbol and the time hold their width, the source gives way.
     private var meta: some View {
         HStack(spacing: 5) {
-            if showSymbol {
-                Button { openStock(item.mint) } label: {
+            if showSymbol, let symbol = item.symbol, let mint = item.mint {
+                Button { openStock(mint) } label: {
                     HStack(spacing: 4) {
-                        Text(item.symbol).foregroundStyle(Theme.ink)
+                        Text(symbol).foregroundStyle(Theme.ink)
                         if let c = item.change24h { Text(Fmt.arrow(c, 2)).foregroundStyle(Theme.change(c)) }
                     }
                     .font(.system(size: 12, weight: .bold)).monospacedDigit()
                     .lineLimit(1).layoutPriority(2)
                 }
                 .buttonStyle(.plain)
+                dot
+            } else if showSymbol, item.isMarket {
+                // No ticker to tap: the story is about the market itself.
+                Text("MARKETS").font(.system(size: 11, weight: .bold)).tracking(0.4)
+                    .foregroundStyle(Theme.ink).lineLimit(1).layoutPriority(2)
                 dot
             }
             Text(item.source).lineLimit(1).truncationMode(.tail).layoutPriority(-1)
@@ -130,7 +133,7 @@ struct NewsLead: View {
         } else {
             ZStack {
                 RadialGradient(colors: [Theme.surface2, Theme.surface], center: .init(x: 0.5, y: 0.45), startRadius: 0, endRadius: 220)
-                Logo(url: item.logoURL, symbol: item.symbol, size: 76)
+                Logo(url: item.logoURL, symbol: item.symbol ?? "Markets", size: 76)
             }
         }
     }
@@ -146,15 +149,19 @@ struct NewsLead: View {
                 .clipped()
                 .clipShape(.rect(cornerRadius: 14))
             HStack(spacing: 5) {
-                if showSymbol {
-                    Button { openStock(item.mint) } label: {
+                if showSymbol, let symbol = item.symbol, let mint = item.mint {
+                    Button { openStock(mint) } label: {
                         HStack(spacing: 4) {
-                            Text(item.symbol).foregroundStyle(Theme.ink)
+                            Text(symbol).foregroundStyle(Theme.ink)
                             if let c = item.change24h { Text(Fmt.arrow(c, 2)).foregroundStyle(Theme.change(c)) }
                         }
                         .font(.system(size: 12, weight: .bold)).monospacedDigit().lineLimit(1).fixedSize()
                     }
                     .buttonStyle(.plain)
+                    Text("·").foregroundStyle(Theme.faint)
+                } else if showSymbol, item.isMarket {
+                    Text("MARKETS").font(.system(size: 11, weight: .bold)).tracking(0.4)
+                        .foregroundStyle(Theme.ink).lineLimit(1).fixedSize()
                     Text("·").foregroundStyle(Theme.faint)
                 }
                 Text(item.source).lineLimit(1).layoutPriority(-1)

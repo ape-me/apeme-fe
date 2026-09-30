@@ -21,5 +21,5 @@ enum Hidden {
 
     static func filter(_ stocks: [Stock]) -> [Stock] { stocks.filter { allows($0) } }
     static func filter(_ stocks: [Stock]?) -> [Stock]? { stocks.map(filter) }
-    static func filter(_ items: [NewsItem]) -> [NewsItem] { items.filter { allows($0.symbol) } }
+    static func filter(_ items: [NewsItem]) -> [NewsItem] { items.filter { allows($0.symbol ?? "") } }
 }

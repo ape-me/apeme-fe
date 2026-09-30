@@ -62,8 +62,9 @@ actor API {
     /// many headlines one company may take (BE default 3), and `minImpact` filters by score —
     /// `material` with `perStock: 1` is what the headline strip runs on.
     func news(mints: [String] = [], limit: Int = 30, before: Int? = nil,
-              minImpact: String? = nil, perStock: Int? = nil) async throws -> NewsResponse {
+              minImpact: String? = nil, perStock: Int? = nil, scope: String? = nil) async throws -> NewsResponse {
         var p = "/news?limit=\(limit)"
+        if let scope { p += "&scope=\(scope)" }
         if !mints.isEmpty { p += "&mints=\(mints.joined(separator: ","))" }
         if let before { p += "&before=\(before)" }
         if let minImpact { p += "&minImpact=\(minImpact)" }

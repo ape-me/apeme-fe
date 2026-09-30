@@ -21,6 +21,7 @@ struct NewsSection: View {
             } else if store.feed.isEmpty {
                 EmptyState(title: "No news yet.", subtitle: "Headlines land here within 20 minutes of publication.")
             } else {
+                markets
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Latest").h2Text()
                     Text(hasOwn ? "Your stocks first, then the rest of the market" : "Newest across every stock")
@@ -39,6 +40,20 @@ struct NewsSection: View {
         }
         .padding(.horizontal, 20)
         .task(id: ownedKey) { await store.loadFeed(app: app) }
+    }
+
+    /// Macro sits above the company news because it is the frame for it: rates and tariffs move
+    /// every name below. Kept to three so it stays context rather than becoming the page.
+    @ViewBuilder private var markets: some View {
+        if !store.marketFeed.isEmpty {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Markets").h2Text()
+                Text("What's moving everything").font(.sub).foregroundStyle(Theme.muted)
+            }
+            .padding(.top, 20).padding(.bottom, 2)
+            NewsList(items: Array(store.marketFeed.prefix(3)),
+                     open: { openArticle($0, openURL) }, openStock: { app.openStock($0) })
+        }
     }
 
     private var hasOwn: Bool {

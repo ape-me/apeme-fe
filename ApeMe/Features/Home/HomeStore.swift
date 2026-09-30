@@ -26,6 +26,9 @@ final class HomeStore {
     var moversSide = 0          // 0 gainers, 1 losers
     var exploreId: String?
     var feed: [NewsItem] = []
+    /// Market-wide stories — the Fed, rates, tariffs, the indexes. No ticker, so they are kept
+    /// apart from the stock feed rather than mixed into a list where every other row has one.
+    var marketFeed: [NewsItem] = []
     /// How many items at the head of `feed` are about stocks the user holds or watches.
     var ownedCount = 0
     var feedLoading = false
@@ -44,6 +47,8 @@ final class HomeStore {
             // wallet holding three stocks read as a single-company newspaper.
             let mine = mints.isEmpty ? [] : try await API.shared.news(mints: mints, limit: 12, perStock: 2).items
             let market = try await API.shared.news(limit: 30, perStock: 1).items
+            // Its own call: a failure here must not cost the user their stock news.
+            marketFeed = (try? await API.shared.news(limit: 4, minImpact: "material", scope: "market").items) ?? []
             var seen = Set(mine.map(\.id))
             // The user's own stocks lead, and within those a story with a picture leads, so the
             // banner is never a market name sitting above the stocks they actually hold.
