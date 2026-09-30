@@ -157,9 +157,15 @@ final class TradeStore {
                 if !Self.within1pct(q, nq) { replacement = nq; phase = .requoted; return }
                 q = nq; quote = nq; retried = true; continue
             } catch APIError.http(422, let msg) where msg.lowercased().contains("slippage") {
-                // Re-quote in place so Review already shows the new numbers; Try again pays with them.
+                // Re-quote in place so Review shows the new numbers and Try again pays with them.
+                // Clearing the quote instead left the sheet on its loading skeletons — grey bars
+                // where the amount should be — and hid the wider-slippage button, which is the one
+                // thing that actually gets a thin market filled.
                 slippageFails += 1
-                phase = .failed; error = "Price moved. Nothing was charged."; quote = nil; return
+                if let nq = try? await requoteNow() { quote = nq; requestId = nq.requestId }
+                phase = .failed
+                error = "Price moved. Nothing was charged."
+                return
             } catch {
                 phase = .failed; self.error = Self.message(error); quote = nil; return
             }
