@@ -214,6 +214,10 @@ final class TradeStore {
     }
 
     static func message(_ error: Error) -> String {
+        if case APIError.marketClosed(let opensAt) = error {
+            return opensAt.map { "Closed right now. Opens \($0)." } ?? "This market is closed right now."
+        }
+        if case APIError.regionBlocked = error { return "Trading isn't available in your region yet." }
         if case APIError.insufficientFunds(let short) = error {
             return short > 0 ? "Add \(Fmt.cash(short)) USDC to place this order" : "Not enough USDC for this order."
         }

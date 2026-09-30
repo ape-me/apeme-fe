@@ -29,6 +29,10 @@ struct Stock: Codable, Identifiable, Hashable {
 
     var logoURL: URL? { logo.flatMap { $0.isEmpty ? nil : URL(string: $0) } }
     var isPreIPO: Bool { issuer == "prestocks" }
+    var isOndo: Bool { issuer == "ondo" }
+    /// Ondo fills off-pool, so its `liquidityUsd` is a few hundred dollars that has nothing to do
+    /// with what you can trade, and `buys24h`/`sells24h` are always zero. Depth still works.
+    var showsPoolStats: Bool { !isOndo }
     var isHalted: Bool { halted == true }
     /// Crypto and earn ignore the US equity session entirely; it says nothing about them.
     var followsMarketHours: Bool { category != "crypto" && category != "earn" }

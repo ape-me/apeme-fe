@@ -222,6 +222,8 @@ actor API {
         guard (200..<300).contains(code) else {
             let body = try? decoder.decode(ErrorBody.self, from: data)
             if body?.error == "insufficient_usdc" { throw APIError.insufficientFunds(shortUsd: body?.shortUsd ?? 0) }
+            if body?.error == "market_closed" { throw APIError.marketClosed(opensAt: body?.opensAt) }
+            if body?.error == "region_blocked" { throw APIError.regionBlocked(country: body?.country) }
             if let b = body, b.minUsd != nil || b.excludedIssuers != nil {
                 throw APIError.orderRefused(reason: b.error, minUsd: b.minUsd, excludedIssuers: b.excludedIssuers)
             }

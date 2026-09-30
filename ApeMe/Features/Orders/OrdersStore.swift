@@ -38,6 +38,10 @@ final class OrdersStore {
     /// Order failures are rare and specific, so the BE's own words beat a guess. A swap's generic
     /// "trade didn't go through" hides exactly the reason the user needs.
     static func message(_ error: Error) -> String {
+        if case APIError.marketClosed(let opensAt) = error {
+            return opensAt.map { "Closed right now. Opens \($0)." } ?? "This market is closed right now."
+        }
+        if case APIError.regionBlocked = error { return "Trading isn't available in your region yet." }
         if case APIError.insufficientFunds(let short) = error {
             return short > 0 ? "Add \(Fmt.cash(short)) USDC to place this order" : "Not enough USDC for this order."
         }

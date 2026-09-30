@@ -106,21 +106,23 @@ struct MainShell: View {
     }
 
     @ViewBuilder private var tabRoot: some View {
-        VStack(spacing: 0) {
-            Group {
-                switch app.tab {
-                case .home: HomeView()
-                case .markets: MarketsView()
-                case .portfolio: PortfolioView()
-                case .you: YouView()
+        // The cover is a sibling in a ZStack, not an overlay on the content. An overlay is bounded
+        // by the view it sits on, and that view starts below the clock — which is why two earlier
+        // versions of this painted the bar underneath the status bar instead of over it.
+        ZStack(alignment: .top) {
+            VStack(spacing: 0) {
+                Group {
+                    switch app.tab {
+                    case .home: HomeView()
+                    case .markets: MarketsView()
+                    case .portfolio: PortfolioView()
+                    case .you: YouView()
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                TabBar()
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // Every tab is one scroll view with no navigation bar, so whatever scrolls past the
-            // top ends up behind the clock and the battery, half-legible. A solid cover over the
-            // status bar cuts it cleanly instead, without pinning a header no screen wants.
-            .overlay(alignment: .top) { StatusBarCover() }
-            TabBar()
+            StatusBarCover()
         }
         .background(Theme.ground)
     }
@@ -144,7 +146,12 @@ private struct StatusBarCover: View {
 
     var body: some View {
         Theme.ground
+            .frame(maxWidth: .infinity)
             .frame(height: topInset)
+            // Pulled up by its own height so it lands on the status bar rather than on the first
+            // line of content. An offset is purely visual and nothing here clips, so this does not
+            // depend on ignoresSafeArea behaving a particular way.
+            .offset(y: -topInset)
             .ignoresSafeArea(edges: .top)
             .allowsHitTesting(false)
     }

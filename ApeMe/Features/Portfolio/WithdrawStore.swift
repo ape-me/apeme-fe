@@ -71,6 +71,10 @@ final class WithdrawStore {
     /// The backend names the reason. These are the ones worth rewording for someone holding a
     /// phone; anything else is surfaced as sent rather than replaced with a shrug.
     static func message(_ error: Error) -> String {
+        if case APIError.marketClosed(let opensAt) = error {
+            return opensAt.map { "Closed right now. Opens \($0)." } ?? "This market is closed right now."
+        }
+        if case APIError.regionBlocked = error { return "Trading isn't available in your region yet." }
         if case APIError.http(let code, let raw) = error {
             let reason = raw.split(separator: "·").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? raw
             let r = reason.lowercased()

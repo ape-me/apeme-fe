@@ -76,8 +76,10 @@ struct TradingHereCard: View {
             KCard(padded: true) {
                 VStack(alignment: .leading, spacing: 14) {
                     line("Traded", Fmt.big(stock.stockVol24hUsd))
-                    line("In the pool", Fmt.big(stock.liquidityUsd))
-                    SplitBar(a: stock.buys24h, b: stock.sells24h)
+                    if stock.showsPoolStats {
+                        line("In the pool", Fmt.big(stock.liquidityUsd))
+                        SplitBar(a: stock.buys24h, b: stock.sells24h)
+                    }
                     if let levels = depth?.levels, !levels.isEmpty {
                         Divider().overlay(Theme.line)
                         ladder(levels)
@@ -124,6 +126,7 @@ struct TradingHereCard: View {
         if let thin = depth?.notable, let p = thin.impactPct {
             return "This pool is thin — a \(Fmt.big(thin.usd)) order moves the price \(String(format: "%.2f", p))%."
         }
+        if stock.isOndo { return "Ondo quotes this directly, so size costs about the same at any amount." }
         return "Small orders fill at the price above. Very large ones move it."
     }
 
