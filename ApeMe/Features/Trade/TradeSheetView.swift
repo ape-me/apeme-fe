@@ -148,7 +148,9 @@ struct TradeSheetView: View {
 
     private func requote() {
         switch side {
-        case .buy: store.requote(usd: usd, estimatedTotal: estimatedTotal(usd), taker: app.walletAddress, cashUsd: cash)
+        case .buy:
+            store.requote(usd: usd, estimatedTotal: estimatedTotal(usd), taker: app.walletAddress, cashUsd: cash,
+                          maxRaw: usd >= maxCash - 0.0001 ? app.wallet?.cash?.raw : nil)
         case .sell:
             guard let h = store.holding, let raw = h.raw, let r = Decimal(string: raw), let value = h.valueUsd, value > 0, usd > 0 else { store.requote(rawAmount: nil, taker: app.walletAddress, cashUsd: 0); return }
             // More than they hold → stop, like Buy does. All of it → the whole position, so no dust is left.

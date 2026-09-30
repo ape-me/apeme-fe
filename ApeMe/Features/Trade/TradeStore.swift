@@ -46,7 +46,11 @@ final class TradeStore {
     }
 
     /// Buy: `usd` in dollars (the total debit). Sell: `rawAmount` in the holding's raw units.
-    func requote(usd: Double? = nil, rawAmount: String? = nil, estimatedTotal: Double? = nil, taker: String?, cashUsd: Double) {
+    /// `maxRaw` is the cash holding's on-chain balance, passed only when the user asked to spend
+    /// everything. Spending "all" has to mean the balance as the chain states it: `cashUsd` is a
+    /// USD *value*, so converting it back into units rounds, and one unit over is a refusal.
+    func requote(usd: Double? = nil, rawAmount: String? = nil, estimatedTotal: Double? = nil,
+                 taker: String?, cashUsd: Double, maxRaw: String? = nil) {
         debounce?.cancel(); expiry?.cancel()
         quote = nil; replacement = nil; error = nil
         guard let taker else { phase = .idle; return }
@@ -56,7 +60,8 @@ final class TradeStore {
         case .buy:
             guard let usd, usd > 0 else { phase = .idle; return }
             if (estimatedTotal ?? usd) > cashUsd + 0.000001 { phase = .insufficient; return }
-            raw = String(Int64((usd * 1_000_000).rounded()))
+            // Floored, never rounded: rounding up asks for money the wallet does not have.
+            raw = maxRaw ?? String(Int64((usd * 1_000_000).rounded(.down)))
         case .sell:
             guard let rawAmount, rawAmount != "0" else { phase = .idle; return }
             if rawAmount == "over" { phase = .insufficient; return }
