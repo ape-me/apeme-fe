@@ -736,7 +736,8 @@ struct TradeSheetView: View {
                         Text(String(format: "%.2f%%", abs(q.priceImpactPct ?? 0)))
                             .foregroundStyle(Self.impactIsBad(q.priceImpactPct) ? Theme.amber : Theme.ink)
                     }
-                    KV("Max price move", "\(Double(q.slippageBps ?? 100) / 100)%")
+                    // What the quote actually used, not what we asked for.
+                    KV("Max price move", q.slippageBps.map { "\(Double($0) / 100)%" } ?? "Auto")
                 }
             }
         }

@@ -17,7 +17,13 @@ struct Stock: Codable, Identifiable, Hashable {
     var priceUsd: Double?
     var decimals: Int?
     var change24h: Double?
+    /// The US session for the underlying. It explains the premium; it does not say whether a
+    /// trade will fill, which is what `tradable` is for. Reading this one as "can I buy" was how
+    /// a sell got opened against a market that was never going to take it.
     let marketOpen: Bool
+    /// Whether an order fills right now. Always true for pool-traded names (xStocks, PreStocks);
+    /// Ondo's hours for Ondo.
+    let tradable: Bool?
     let multiplier: Double?
     let quoteUsd: Double?
     var markUsd: Double?
@@ -34,6 +40,8 @@ struct Stock: Codable, Identifiable, Hashable {
     /// with what you can trade, and `buys24h`/`sells24h` are always zero. Depth still works.
     var showsPoolStats: Bool { !isOndo }
     var isHalted: Bool { halted == true }
+    /// Absent on an older cached payload, and a missing flag should not lock someone out.
+    var canTrade: Bool { (tradable ?? true) && !isHalted }
     /// Crypto and earn ignore the US equity session entirely; it says nothing about them.
     var followsMarketHours: Bool { category != "crypto" && category != "earn" }
     var isEarn: Bool { category == "earn" }

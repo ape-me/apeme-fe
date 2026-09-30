@@ -19,7 +19,9 @@ struct Me: Codable, Hashable {
         var confirmBeforeTrade: Bool?
         var hideDust: Bool?
 
-        static let defaults = Settings(slippageBps: 100, quickBuyUsd: [10, 25, 50, 100], quickSellPct: [25, 50, 100], priority: "normal", confirmBeforeTrade: true, hideDust: false)
+        /// 0 is auto: Jupiter sizes the band per token, which is the only thing that gets an
+        /// orderbook route like ANTHROPIC filled. A fixed 1% was refusing those outright.
+        static let defaults = Settings(slippageBps: 0, quickBuyUsd: [10, 25, 50, 100], quickSellPct: [25, 50, 100], priority: "normal", confirmBeforeTrade: true, hideDust: false)
     }
     struct Referral: Codable, Hashable {
         let code: String?

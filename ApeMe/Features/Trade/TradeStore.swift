@@ -71,16 +71,12 @@ final class TradeStore {
     private func fetchQuote(raw: String, key: String) async {
         guard let taker else { return }
         do {
-            var q = try await API.shared.quote(inputMint: side == .buy ? "usdc" : mint, outputMint: side == .buy ? mint : "usdc",
+            let q = try await API.shared.quote(inputMint: side == .buy ? "usdc" : mint, outputMint: side == .buy ? mint : "usdc",
                                                amountRaw: raw, taker: taker, slippageBps: slippageBps)
             guard lastRequest == key else { return }
-            // Thin pool: the BE suggests a wider band than the user's setting — take it for this trade.
-            if let sug = q.suggestedSlippageBps, sug > (q.slippageBps ?? 0), slippageBps == nil || sug > slippageBps! {
-                slippageBps = sug
-                q = try await API.shared.quote(inputMint: side == .buy ? "usdc" : mint, outputMint: side == .buy ? mint : "usdc",
-                                               amountRaw: raw, taker: taker, slippageBps: sug)
-                guard lastRequest == key else { return }
-            }
+            // The backend sizes the band per token now and reports what it chose, so the second
+            // round trip that used to chase suggestedSlippageBps is gone. Sending nothing means
+            // auto; a value here only ever comes from the user asking to widen it.
             quote = q; requestId = q.requestId; phase = .ready
             armExpiry()
         } catch {
