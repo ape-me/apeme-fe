@@ -116,6 +116,15 @@ struct MainShell: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Every tab is one scroll view with no navigation bar, so whatever scrolls past the
+            // top ends up behind the clock and the battery, half-legible. A solid cover over the
+            // status bar cuts it cleanly instead, without pinning a header no screen wants.
+            .overlay(alignment: .top) {
+                Theme.ground
+                    .frame(height: 0)
+                    .ignoresSafeArea(edges: .top)
+                    .allowsHitTesting(false)
+            }
             TabBar()
         }
         .background(Theme.ground)
