@@ -163,7 +163,11 @@ final class TradeStore {
                 error = "Price moved. Nothing was charged."
                 return
             } catch {
-                phase = .failed; self.error = Self.message(error); quote = nil; return
+                // Keep the quote. It is dead for submitting — Try again re-quotes before it pays —
+                // but Review still has to show what was attempted. Clearing it dropped the sheet
+                // to loading skeletons under a headline that still named the trade, and this is
+                // the second time: the slippage branch above got fixed and this one did not.
+                phase = .failed; self.error = Self.message(error); return
             }
         }
     }
