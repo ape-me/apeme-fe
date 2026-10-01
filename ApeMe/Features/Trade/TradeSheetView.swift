@@ -615,12 +615,6 @@ struct TradeSheetView: View {
                         Divider().overlay(Theme.line)
                         feeLine(f)
                     }
-                    if side == .buy, let cost = q.costUsd, cost > 0 {
-                        Divider().overlay(Theme.line)
-                        costLine(cost, deposit: q.depositUsd, account: q.accountUsd)
-                        Divider().overlay(Theme.line)
-                        row("Total", Fmt.cash(q.totalUsd), .outcome)
-                    }
                 }
                 .padding(.top, 28)
                 Color.clear.frame(height: 24)
@@ -660,22 +654,6 @@ struct TradeSheetView: View {
         }
     }
 
-    /// Solana's charges, on one line. Two rows with a paragraph each said the same thing at four
-    /// times the length, next to a "No fee" row that read as a contradiction.
-    private func costLine(_ cost: Double, deposit: Double?, account: Double?) -> some View {
-        _ = account
-        return VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text("Solana costs").font(.system(size: 15)).foregroundStyle(Theme.muted)
-                Spacer()
-                Text(Fmt.cash(cost)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
-            }
-            if let d = deposit, d > 0 {
-                Text("\(Fmt.cash(d)) comes back").font(.sub).foregroundStyle(Theme.faint)
-            }
-        }
-        .padding(.vertical, 12)
-    }
 
     /// A free buy is worth saying out loud, not hiding.
     private func feeLine(_ f: OrderQuote.Fee?) -> some View {

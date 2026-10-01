@@ -96,13 +96,8 @@ struct OrderQuote: Codable, Hashable {
     let takingRaw: String?
     let orderUsd: Double?
     let escrowUsd: Double?
-    /// Jupiter's order deposit — returned in SOL when the order closes, filled or cancelled.
-    let depositUsd: Double?
-    /// The token account, a one-time cost the first time this stonk is held. 0 after that.
-    let accountUsd: Double?
-    /// depositUsd + accountUsd, each rounded on its own so the rows always add to the total.
-    let costUsd: Double?
-    /// escrowUsd + costUsd — what actually leaves the wallet to place the order.
+    /// Placing an order costs the user nothing on top of the escrow now — the deposit and the
+    /// token account are the backend's — so this equals `escrowUsd` on a buy.
     let totalUsd: Double?
     let triggerUsd: Double?
     let fee: Fee?
