@@ -279,8 +279,20 @@ final class TradeStore {
             if code == 429 { return "Too many trades this hour. Take a breath." }
             if m.contains("not one of your wallets") { return "This wallet isn't linked to your account yet." }
             if m.contains("already") || m.contains("expired") { return "That quote is stale. Getting a new one…" }
-            if m.contains("no_route") { return "No route for this trade right now." }
-            return "Trade didn't go through. Nothing was charged."
+            // Nothing above recognised it, so say what the server said. The old line here —
+            // "Trade didn't go through" — was the same sentence for an expired session, a server
+            // fault and a refusal nobody had mapped yet, and it dropped the request id that is the
+            // only way to trace one.
+            let parts = msg.split(separator: "·").map { $0.trimmingCharacters(in: .whitespaces) }
+            let reason = parts.first ?? msg
+            let trace = parts.count > 1 ? " (\(parts[1]))" : ""
+            if code == 401 || code == 403 { return "Your session expired. Sign out and back in." }
+            if code >= 500 { return "The server hit an error\(trace). Nothing was charged." }
+            if reason != "request failed", reason.contains("_") || reason.contains(" ") {
+                let words = reason.replacingOccurrences(of: "_", with: " ")
+                return words.prefix(1).uppercased() + words.dropFirst() + ". Nothing was charged."
+            }
+            return "The trade was refused (\(code))\(trace). Nothing was charged."
         }
         if error is DecodingError || { if case APIError.decoding = error { return true }; return false }() { return "Couldn't read the price. Try again." }
         return "No connection. Try again."
