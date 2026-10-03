@@ -90,11 +90,15 @@ final class TradeStore {
         }
     }
 
-    /// Quotes live 60 s. Refresh silently 10 s before, so the tx blockhash is still good when the user taps Pay.
+    /// Refresh silently before the quote dies, so the transaction is still good when the user
+    /// taps Pay. The lead scales with the quote's life: pool quotes live 60s and get 10s, RFQ
+    /// quotes live 15s and would otherwise re-quote every 5 seconds for as long as Review is open.
     private func armExpiry() {
         expiry?.cancel()
         guard let q = quote, let exp = q.expiresAt else { return }
-        let wait = max(1, Double(exp) - Date.now.timeIntervalSince1970 - 10)
+        let life = Double(exp) - Date.now.timeIntervalSince1970
+        let lead = min(10, max(3, life * 0.3))
+        let wait = max(1, life - lead)
         expiry = Task {
             try? await Task.sleep(for: .seconds(wait))
             guard !Task.isCancelled, phase == .ready else { return }
