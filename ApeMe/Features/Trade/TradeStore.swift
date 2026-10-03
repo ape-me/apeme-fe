@@ -278,7 +278,10 @@ final class TradeStore {
             if m.contains("invite_required") { return "Enter your invite code first." }
             if code == 429 { return "Too many trades this hour. Take a breath." }
             if m.contains("not one of your wallets") { return "This wallet isn't linked to your account yet." }
-            if m.contains("already") || m.contains("expired") { return "That quote is stale. Getting a new one…" }
+            // A 410 that reaches here already had its one automatic re-quote. Promising "getting a
+            // new one…" and then waiting for a tap was a sentence that lied about what came next.
+            if code == 410 || m.contains("expired") { return "That quote expired. Tap Try again for a fresh price." }
+            if m.contains("already") { return "That order was already sent. Check Activity before trying again." }
             // Nothing above recognised it, so say what the server said. The old line here —
             // "Trade didn't go through" — was the same sentence for an expired session, a server
             // fault and a refusal nobody had mapped yet, and it dropped the request id that is the
