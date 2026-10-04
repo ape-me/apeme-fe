@@ -193,3 +193,53 @@ struct EarningsNote: View {
         }
     }
 }
+
+/// Pre-IPO pages have no exchange to quote, so this takes the NASDAQ card's slot. The on-chain
+/// price implies a company valuation; PreStocks publish their own mark; the gap is the number
+/// worth knowing, and a big gap is the interesting case — SpaceX has sat near −26%.
+struct ValuationCard: View {
+    let preipo: Insights.PreIPO?
+    var loading = false
+    var dimmed = false
+
+    var body: some View {
+        Group {
+            if let p = preipo, p.impliedValuationUsd != nil || p.referenceValuationUsd != nil {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("VALUATION").font(.system(size: 11, weight: .bold)).tracking(0.7).foregroundStyle(Theme.muted)
+                    HStack(alignment: .top, spacing: 16) {
+                        if let v = p.impliedValuationUsd { figure("Implied", Fmt.big(v)) }
+                        if let v = p.referenceValuationUsd { figure("Reference", Fmt.big(v)) }
+                        Spacer(minLength: 0)
+                    }
+                    if let pct = p.premiumPct { pill(pct) }
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.surface, in: .rect(cornerRadius: 14))
+            } else if loading {
+                Skeleton(height: 96)
+            }
+        }
+        .opacity(dimmed ? 0.35 : 1)
+    }
+
+    private func figure(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label).font(.sub).foregroundStyle(Theme.muted)
+            Text(value).font(.system(size: 20, weight: .semibold)).tracking(-0.5).monospacedDigit()
+        }
+    }
+
+    /// Muted inside 5%, amber to 15%, red beyond. Colour is for the gaps a buyer should pause on.
+    private func pill(_ pct: Double) -> some View {
+        let a = abs(pct)
+        let tint: Color = a < 5 ? Theme.muted : a < 15 ? Theme.amber : Theme.red
+        let fill: Color = a < 5 ? Theme.surface2 : a < 15 ? Theme.amberT : Theme.redT
+        return Text("\(pct >= 0 ? "+" : "−")\(String(format: "%.1f", a))% vs reference")
+            .font(.system(size: 12, weight: .semibold)).monospacedDigit()
+            .foregroundStyle(tint)
+            .padding(.horizontal, 10).frame(height: 26)
+            .background(fill, in: .capsule)
+    }
+}
