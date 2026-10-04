@@ -14,7 +14,19 @@ struct Insights: Codable, Hashable {
     var company: Company?
     var earnings: Earnings?
     var dividends: Dividends?
+    /// PreStocks only; null for everything else. The on-chain price implies a company valuation,
+    /// and PreStocks publish their own mark — the gap between the two is the number.
+    var preipo: PreIPO?
     let asOf: Int?
+
+    struct PreIPO: Codable, Hashable {
+        let impliedValuationUsd: Double?
+        let referenceValuationUsd: Double?
+        let referencePriceUsd: Double?
+        /// Positive: the token trades above PreStocks' reference. SpaceX sits near −26%.
+        let premiumPct: Double?
+        let supply: Double?
+    }
 
     struct Market: Codable, Hashable {
         let isOpen: Bool?

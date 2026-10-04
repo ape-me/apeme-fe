@@ -58,6 +58,8 @@ enum Fmt {
     static func big(_ n: Double?, _ p: String = "$") -> String {
         guard let n, n.isFinite else { return "—" }
         let a = abs(n), s = n < 0 ? "−" : ""
+        // Pre-IPO valuations run to trillions; "$1780.9B" is a number nobody says out loud.
+        if a >= 1e12 { return s + p + String(format: "%.2fT", a / 1e12) }
         if a >= 1e9 { return s + p + String(format: "%.1fB", a / 1e9) }
         if a >= 1e6 { return s + p + String(format: "%.1fM", a / 1e6) }
         if a >= 1e3 { return s + p + String(format: "%.1fK", a / 1e3) }
