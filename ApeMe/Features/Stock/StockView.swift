@@ -245,10 +245,7 @@ struct StockView: View {
                 Text("USDY is not available to US persons.")
                     .font(.sub).foregroundStyle(Theme.amber).padding(.top, 8)
             }
-            if s.isPreIPO {
-                ValuationCard(preipo: store.insights?.preipo, loading: store.insightsLoading, dimmed: scrubbing)
-                    .padding(.top, 14)
-            } else if s.followsMarketHours {
+            if s.followsMarketHours {
                 NasdaqCard(insights: store.insights, loading: store.insightsLoading, dimmed: scrubbing)
                     .padding(.top, 14)
             }
