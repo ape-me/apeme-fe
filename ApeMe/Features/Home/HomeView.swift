@@ -41,12 +41,11 @@ struct HomeView: View {
     }
 
     private var tabs: some View {
-        ScrollView(.horizontal) {
-            UnderlineTabs(items: HomeStore.InvestTab.ordered(watching: !app.watch.isEmpty), selected: store.investTab, label: \.label) { store.investTab = $0 }
-                .padding(.horizontal, 20)
-        }
-        .scrollIndicators(.hidden)
-        .padding(.top, 6)
+        // Four or five chips sharing the full width, so the row reads as the page's structure
+        // rather than a few words huddled on the left.
+        UnderlineTabs(items: HomeStore.InvestTab.ordered(watching: !app.watch.isEmpty), selected: store.investTab, fill: true, label: \.label) { store.investTab = $0 }
+            .padding(.horizontal, 20)
+            .padding(.top, 6)
     }
 
     @ViewBuilder private var body_: some View {
@@ -67,8 +66,8 @@ struct HomeView: View {
                 // One page to scroll, in the order a first-time visitor should meet things.
                 VStack(alignment: .leading, spacing: 8) {
                     BasketsSection()
-                    MoversSection(store: store)
                 }
+            case .movers: MoversSection(store: store)
             case .preipo: PreIPOSection(stocks: store.preipo)
             case .watch: WatchSection(store: store)
             case .news: NewsSection(store: store)

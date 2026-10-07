@@ -11,9 +11,10 @@ enum Theme {
     static let surface2 = Color(hex: 0xEEF2F7)
     static let line     = Color(hex: 0xE2E8F0)
     static let ink      = Color(hex: 0x1E293B)
-    /// The ink at 70% and 50%, the way Zoneless does muted text — never a separate grey.
-    static let muted    = Color(hex: 0x1E293B).opacity(0.7)
-    static let faint    = Color(hex: 0x1E293B).opacity(0.5)
+    /// Solid slate steps rather than the ink at reduced opacity: on 13pt mobile type the
+    /// opacity version read as dull, and these keep the same hue family with more weight.
+    static let muted    = Color(hex: 0x475569)
+    static let faint    = Color(hex: 0x64748B)
     static let green    = Color(hex: 0x059669)
     static let red      = Color(hex: 0xDC2626)
     static let amber    = Color(hex: 0xB45309)

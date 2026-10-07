@@ -66,14 +66,14 @@ struct UnderlineTabs<T: Hashable & Identifiable>: View {
                 let on = it == selected
                 Button { onSelect(it) } label: {
                     Text(label(it))
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(on ? Theme.ink : Theme.faint)
+                        .font(.instrument(15, 600))
+                        .foregroundStyle(on ? Theme.ink : Theme.muted)
                         .lineLimit(1)
                         .padding(.horizontal, 4)
                         .frame(maxWidth: fill ? .infinity : nil)
                         .frame(height: 40)
                         .overlay(alignment: .bottom) {
-                            Rectangle().fill(on ? Theme.ink : .clear).frame(height: 2)
+                            Rectangle().fill(on ? Theme.accent : .clear).frame(height: 2)
                         }
                 }
                 .buttonStyle(.plain)
