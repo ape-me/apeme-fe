@@ -62,7 +62,6 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     BasketsSection()
                     MoversSection(store: store)
-                    ExploreSection(store: store)
                 }
             case .preipo: PreIPOSection(stocks: store.preipo)
             case .watch: WatchSection(store: store)
