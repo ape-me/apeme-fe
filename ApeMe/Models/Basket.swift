@@ -26,13 +26,45 @@ struct BasketDetail: Codable, Hashable {
     struct ChartPoint: Codable, Hashable { let t: Int; let value: Double }
     struct Chart: Codable, Hashable { let range: String?; let points: [ChartPoint] }
     struct Extreme: Codable, Hashable { let symbol: String; let return1y: Double? }
+    struct Links: Codable, Hashable {
+        let issuer: String?
+        let solscan: String?
+        /// Null for pre-IPO names — there is no listing to point at.
+        let yahoo: String?
+    }
     struct Leg: Codable, Hashable, Identifiable {
         let weight: Double?
         let return1y: Double?
+        /// One line on why this stock is in the basket.
+        let why: String?
+        let links: Links?
         /// The same Stock the catalog serves, so the stock row renders it unchanged.
         let stock: Stock
         var id: String { stock.mint }
     }
+    struct Performance: Codable, Hashable {
+        struct Benchmark: Codable, Hashable {
+            let name: String?
+            let ticker: String?
+            let ranges: [String: Double?]?
+            let points: [ChartPoint]?
+        }
+        /// 1M / 3M / 6M / 1Y. A null range means there is not enough history for it.
+        let ranges: [String: Double?]?
+        let benchmark: Benchmark?
+    }
+    struct Risk: Codable, Hashable {
+        struct Drawdown: Codable, Hashable { let pct: Double?; let from: Int?; let to: Int? }
+        struct Day: Codable, Hashable { let pct: Double?; let t: Int? }
+        /// Low / Medium / High.
+        let level: String?
+        let volatilityPct: Double?
+        let maxDrawdown: Drawdown?
+        let worstDay: Day?
+        let bestDay: Day?
+        let notes: [String]?
+    }
+    struct Rebalance: Codable, Hashable { let available: Bool?; let note: String? }
 
     let id: String
     let name: String
@@ -50,6 +82,12 @@ struct BasketDetail: Codable, Hashable {
     let best: Extreme?
     let worst: Extreme?
     let stocks: [Leg]
+    /// Two short paragraphs.
+    let about: [String]?
+    let performance: Performance?
+    /// Null when there is not enough history to measure.
+    let risk: Risk?
+    let rebalance: Rebalance?
 
     var canTrade: Bool { tradable ?? true }
     var feeRate: Double { Double(feeBps ?? 100) / 10_000 }

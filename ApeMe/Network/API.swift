@@ -153,6 +153,10 @@ actor API {
         let body: [String: Any] = ["signed": signed.map { ["requestId": $0.requestId, "signedTransaction": $0.signedTransaction] }]
         return try decoder.decode(BasketSubmitResponse.self, from: try await send("POST", "/baskets/orders/\(orderId)/submit", body: body, timeout: 90))
     }
+    /// Only this basket's stocks, newest first, at most three per stock.
+    func basketNews(_ id: String, limit: Int = 20) async throws -> NewsResponse {
+        let r: NewsResponse = try await fetch("/baskets/\(id)/news?limit=\(limit)", ttl: 60); return r.visible
+    }
     func basketPositions() async throws -> BasketPositionsResponse {
         try decoder.decode(BasketPositionsResponse.self, from: try await send("GET", "/me/baskets"))
     }
