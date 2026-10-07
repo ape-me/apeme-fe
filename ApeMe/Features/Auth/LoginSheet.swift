@@ -7,7 +7,7 @@ struct LoginSheet: View {
     var emailOnly = false
     @Environment(\.dismiss) private var dismiss
     /// The brand kit is black and lime whatever the phone is set to.
-    var body: some View { content.preferredColorScheme(.dark) }
+    var body: some View { content.environment(\.colorScheme, .dark) }
 
     private var content: some View {
         LoginForm(emailOnly: emailOnly, onClose: { dismiss() }, onDone: { dismiss() })

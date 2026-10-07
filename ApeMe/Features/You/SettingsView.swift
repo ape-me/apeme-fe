@@ -28,6 +28,9 @@ struct SettingsView: View {
                     KCard {
                         toggle("Hide dust (< $0.01)", s.hideDust ?? false) { s.hideDust = $0; save(["hideDust": $0]) }
                     }
+                    section("Appearance") {
+                        chips([("system", "System"), ("light", "Light"), ("dark", "Dark")], selected: app.appearance) { app.appearance = $0 }
+                    }
                     if let error { Text(error).font(.sub).foregroundStyle(Theme.red) }
                 }
                 .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)

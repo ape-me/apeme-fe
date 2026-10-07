@@ -13,7 +13,7 @@ struct InviteView: View {
     @FocusState private var focused: Bool
 
     /// The brand kit is black and lime whatever the phone is set to.
-    var body: some View { content.preferredColorScheme(.dark) }
+    var body: some View { content.environment(\.colorScheme, .dark) }
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
