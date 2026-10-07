@@ -288,19 +288,32 @@ struct BasketView: View {
             SectionTitle("Resources")
             KCard {
                 ForEach(d.stocks) { leg in
-                    HStack(spacing: 10) {
+                    HStack(spacing: 8) {
                         Text(leg.stock.symbol).font(.system(size: 13, weight: .semibold)).frame(width: 84, alignment: .leading).lineLimit(1)
                         Spacer(minLength: 0)
-                        ForEach([("Issuer", leg.links?.issuer), ("Solscan", leg.links?.solscan), ("Yahoo", leg.links?.yahoo)], id: \.0) { name, link in
+                        // The issuer by name — xStocks, Backpack, PreStocks — not the word "Issuer".
+                        ForEach([(issuerName(leg.stock.issuer), leg.links?.issuer), ("Solscan", leg.links?.solscan), ("Yahoo", leg.links?.yahoo)], id: \.0) { name, link in
                             if let link, let u = URL(string: link) {
-                                Button(name) { openURL(u) }.font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink).buttonStyle(.plain)
+                                Button { openURL(u) } label: {
+                                    HStack(spacing: 3) {
+                                        Text(name)
+                                        Image(systemName: "arrow.up.right").font(.system(size: 9, weight: .bold))
+                                    }
+                                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)
+                                    .padding(.horizontal, 9).frame(height: 26).background(Theme.surface2, in: .capsule)
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
-                    .frame(height: 40)
+                    .frame(height: 44)
                 }
             }
         }
+    }
+
+    private func issuerName(_ issuer: String) -> String {
+        switch issuer { case "xstocks": "xStocks"; case "backpack": "Backpack"; case "prestocks": "PreStocks"; case "ondo": "Ondo"; default: issuer.capitalizedFirst }
     }
 
     // MARK: Performance
