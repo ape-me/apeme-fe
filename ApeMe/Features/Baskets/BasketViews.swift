@@ -69,7 +69,9 @@ struct LogoStack: View {
                     .overlay(Circle().stroke(Theme.surface, lineWidth: 2))
             }
         }
-        .frame(width: size + CGFloat(max(0, min(urls.count, 5) - 1)) * size * 0.68, alignment: .leading)
+        // Always the width of five, so the name column starts at the same place on every card
+        // whether the basket holds three stocks or seven.
+        .frame(width: size + 4 * size * 0.68, alignment: .leading)
     }
 }
 
@@ -77,7 +79,7 @@ struct LogoStack: View {
 
 struct BasketView: View {
     enum Tab: String, CaseIterable, Identifiable {
-        case about, performance, risk, news, rebalance
+        case about, performance, risk, news
         var id: String { rawValue }
         var label: String { rawValue.capitalized }
     }
@@ -111,7 +113,6 @@ struct BasketView: View {
                         case .performance: performance(d)
                         case .risk: risk(d)
                         case .news: newsTab
-                        case .rebalance: rebalance(d)
                         }
                     }
                     .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 130)
@@ -287,10 +288,10 @@ struct BasketView: View {
                 KCard {
                     if let v = r.volatilityPct { KV("Swings", String(format: "%.1f%% a year", v)) }
                     if let dd = r.maxDrawdown, let pct = dd.pct {
-                        KV("Biggest drop", "\(Fmt.pct(pct, 1))" + ((dd.from != nil && dd.to != nil) ? " (\(Fmt.date(dd.from!)) → \(Fmt.date(dd.to!)))" : ""))
+                        riskRow("Biggest drop", Fmt.pct(pct, 1), (dd.from != nil && dd.to != nil) ? "\(Fmt.date(dd.from!)) → \(Fmt.date(dd.to!))" : nil, Theme.red)
                     }
-                    if let w = r.worstDay, let pct = w.pct { KV("Worst day", "\(Fmt.pct(pct, 1))" + (w.t.map { " (\(Fmt.date($0)))" } ?? "")) }
-                    if let b = r.bestDay, let pct = b.pct { KV("Best day", "\(Fmt.pct(pct, 1))" + (b.t.map { " (\(Fmt.date($0)))" } ?? "")) }
+                    if let w = r.worstDay, let pct = w.pct { riskRow("Worst day", Fmt.pct(pct, 1), w.t.map(Fmt.date), Theme.red) }
+                    if let b = r.bestDay, let pct = b.pct { riskRow("Best day", Fmt.pct(pct, 1), b.t.map(Fmt.date), Theme.green) }
                 }
                 if let notes = r.notes, !notes.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
@@ -306,31 +307,25 @@ struct BasketView: View {
         }
     }
 
+    /// The figure on the row, the dates under it — inline they ran off the right edge.
+    private func riskRow(_ label: String, _ value: String, _ when: String?, _ tint: Color) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label).font(.system(size: 15)).foregroundStyle(Theme.muted)
+            Spacer()
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(value).font(.system(size: 15, weight: .semibold)).monospacedDigit().foregroundStyle(tint)
+                if let when { Text(when).font(.sub).foregroundStyle(Theme.faint) }
+            }
+        }
+        .padding(.vertical, 12)
+    }
+
     // MARK: News
 
     @ViewBuilder private var newsTab: some View {
         if !newsLoaded { NewsListSkeleton() }
         else if news.isEmpty { EmptyState(title: "No news this week.", subtitle: "Stories about these stocks land here.") }
         else { NewsList(items: news, open: { openArticle($0, openURL) }, openStock: { app.openStock($0) }) }
-    }
-
-    // MARK: Rebalance
-
-    private func rebalance(_ d: BasketDetail) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Rebalance").font(.system(size: 15, weight: .semibold))
-                    Text("Keep every stock at equal weight").font(.sub).foregroundStyle(Theme.muted)
-                }
-                Spacer()
-                Text("COMING SOON").font(.system(size: 9, weight: .bold)).tracking(0.4).foregroundStyle(Theme.amber)
-                    .padding(.horizontal, 6).frame(height: 17).background(Theme.amberT, in: .rect(cornerRadius: 5))
-                Toggle("", isOn: .constant(d.rebalance?.available ?? false)).labelsHidden().disabled(true)
-            }
-            .padding(14).background(Theme.surface, in: .rect(cornerRadius: 14))
-            if let n = d.rebalance?.note { Text(n).font(.sub).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true) }
-        }
     }
 
     // MARK: Invest bar
