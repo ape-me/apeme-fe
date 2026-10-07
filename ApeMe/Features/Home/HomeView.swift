@@ -61,10 +61,10 @@ struct HomeView: View {
                 // One page to scroll, in the order a first-time visitor should meet things.
                 VStack(alignment: .leading, spacing: 8) {
                     BasketsSection()
-                    PreIPOSection(stocks: store.preipo)
                     MoversSection(store: store)
                     ExploreSection(store: store)
                 }
+            case .preipo: PreIPOSection(stocks: store.preipo)
             case .watch: WatchSection(store: store)
             case .news: NewsSection(store: store)
             }
