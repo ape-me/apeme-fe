@@ -262,14 +262,16 @@ struct BasketView: View {
                             HStack(alignment: .top, spacing: 12) {
                                 Logo(url: leg.stock.logoURL, symbol: leg.stock.symbol)
                                 VStack(alignment: .leading, spacing: 3) {
-                                    HStack(spacing: 6) {
-                                        Text(leg.stock.name).font(.rowTitle).tracking(-0.2).lineLimit(1)
-                                        Text(String(format: "%.0f%%", leg.weight ?? 0)).font(.sub).monospacedDigit().foregroundStyle(Theme.faint)
-                                    }
+                                    Text(leg.stock.name).font(.rowTitle).tracking(-0.2).lineLimit(1)
                                     if let why = leg.why { Text(why).font(.sub).foregroundStyle(Theme.muted).lineLimit(2).fixedSize(horizontal: false, vertical: true) }
+                                    Text(String(format: "%.0f%% of the basket", leg.weight ?? 0)).font(.sub).monospacedDigit().foregroundStyle(Theme.faint)
                                 }
                                 Spacer(minLength: 8)
-                                Text(Fmt.pct(leg.return1y, 0)).font(.rowChange).monospacedDigit().foregroundStyle(Theme.change(leg.return1y))
+                                // Two numbers nobody could tell apart until they were named.
+                                VStack(alignment: .trailing, spacing: 2) {
+                                    Text(Fmt.pct(leg.return1y, 0)).font(.rowChange).monospacedDigit().foregroundStyle(Theme.change(leg.return1y))
+                                    Text(d.returnLabel ?? "1Y").font(.system(size: 11)).foregroundStyle(Theme.faint)
+                                }
                             }
                             .padding(.vertical, 10).contentShape(.rect)
                         }
@@ -277,43 +279,7 @@ struct BasketView: View {
                     }
                 }
             }
-            resources(d)
         }
-    }
-
-    /// Issuer, Solscan, Yahoo per stock. A null link is hidden, not shown dead — pre-IPO has no
-    /// listing to point at.
-    private func resources(_ d: BasketDetail) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SectionTitle("Resources")
-            KCard {
-                ForEach(d.stocks) { leg in
-                    HStack(spacing: 8) {
-                        Text(leg.stock.symbol).font(.system(size: 13, weight: .semibold)).frame(width: 84, alignment: .leading).lineLimit(1)
-                        Spacer(minLength: 0)
-                        // The issuer by name — xStocks, Backpack, PreStocks — not the word "Issuer".
-                        ForEach([(issuerName(leg.stock.issuer), leg.links?.issuer), ("Solscan", leg.links?.solscan), ("Yahoo", leg.links?.yahoo)], id: \.0) { name, link in
-                            if let link, let u = URL(string: link) {
-                                Button { openURL(u) } label: {
-                                    HStack(spacing: 3) {
-                                        Text(name)
-                                        Image(systemName: "arrow.up.right").font(.system(size: 9, weight: .bold))
-                                    }
-                                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)
-                                    .padding(.horizontal, 9).frame(height: 26).background(Theme.surface2, in: .capsule)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-                    .frame(height: 44)
-                }
-            }
-        }
-    }
-
-    private func issuerName(_ issuer: String) -> String {
-        switch issuer { case "xstocks": "xStocks"; case "backpack": "Backpack"; case "prestocks": "PreStocks"; case "ondo": "Ondo"; default: issuer.capitalizedFirst }
     }
 
     // MARK: Performance
