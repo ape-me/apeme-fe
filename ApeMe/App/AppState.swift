@@ -12,6 +12,8 @@ final class AppState {
     var onboarded: Bool { didSet { defaults.set(onboarded, forKey: "apeme.onboarded") } }
     var demoWallet: Bool { didSet { defaults.set(demoWallet, forKey: "apeme.demo"); if !demoWallet { wallet = nil } } }
     var watch: [String] { didSet { defaults.set(watch, forKey: "apeme.watch") } }
+    /// Stocks opened on this device, newest first, capped at ten. Device-local, like the watchlist.
+    var recent: [String] { didSet { defaults.set(recent, forKey: "apeme.recent") } }
 
     /// Replay the intro from You. Not persisted: a fresh install with a restored session should
     /// land in the app, not on a welcome with nothing to do but Continue.
@@ -39,6 +41,7 @@ final class AppState {
         onboarded = defaults.bool(forKey: "apeme.onboarded")
         demoWallet = defaults.bool(forKey: "apeme.demo")
         watch = defaults.stringArray(forKey: "apeme.watch") ?? []
+        recent = defaults.stringArray(forKey: "apeme.recent") ?? []
     }
 
     /// Privy wallet when signed in, the demo wallet when that's switched on, otherwise nothing.
@@ -77,7 +80,12 @@ final class AppState {
         path.append(r)
     }
 
-    func openStock(_ mint: String) { push(.stock(mint)) }
+    func openStock(_ mint: String) {
+        recent.removeAll { $0 == mint }
+        recent.insert(mint, at: 0)
+        if recent.count > 10 { recent.removeLast(recent.count - 10) }
+        push(.stock(mint))
+    }
 
     // MARK: Data
 

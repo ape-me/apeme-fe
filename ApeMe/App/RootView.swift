@@ -90,6 +90,7 @@ struct MainShell: View {
                         switch route {
                         case .stock(let mint): StockView(mint: mint)
                         case .basket(let id): BasketView(id: id)
+                        case .baskets: BasketsListView()
                         case .basketPosition(let id): BasketPositionView(basketId: id)
                         case .settings: SettingsView()
                         case .referrals: ReferralsView()

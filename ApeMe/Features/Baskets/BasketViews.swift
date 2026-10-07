@@ -2,28 +2,126 @@ import SwiftUI
 
 // MARK: - Home chip
 
-/// The list, as cards. Everything on it is what /baskets returned.
+/// What this phone looked at, then the baskets as a grid. "Recently viewed" exists only once
+/// there is something in it; an empty section with a heading is a shelf with nothing on it.
 struct BasketsSection: View {
     @Environment(AppState.self) private var app
     @State private var store = BasketsStore()
 
+    private var recent: [Stock] { app.recent.compactMap { app.stocksByMint[$0] } }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 28) {
+            if !recent.isEmpty { recentlyViewed }
+            VStack(alignment: .leading, spacing: 14) {
                 Text("Baskets").h2Text()
-                Text("A whole theme in one tap, equal weight").font(.sub).foregroundStyle(Theme.muted)
-            }
-            if let err = store.error, store.baskets.isEmpty {
-                ErrorBar(text: err).padding(.horizontal, -20)
-            } else if store.baskets.isEmpty {
-                VStack(spacing: 10) { Skeleton(height: 92); Skeleton(height: 92); Skeleton(height: 92) }
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(store.baskets) { b in BasketCard(basket: b) { app.push(.basket(b.id)) } }
+                if let err = store.error, store.baskets.isEmpty {
+                    ErrorBar(text: err).padding(.horizontal, -20)
+                } else if store.baskets.isEmpty {
+                    LazyVGrid(columns: [.init(.flexible(), spacing: 10), .init(.flexible(), spacing: 10)], spacing: 10) {
+                        ForEach(0..<4, id: \.self) { _ in Skeleton(height: 150) }
+                    }
+                } else {
+                    LazyVGrid(columns: [.init(.flexible(), spacing: 10), .init(.flexible(), spacing: 10)], spacing: 10) {
+                        ForEach(store.baskets.prefix(3)) { b in BasketTile(basket: b) { app.push(.basket(b.id)) } }
+                        seeMore
+                    }
                 }
             }
         }
         .padding(.horizontal, 20).padding(.top, 20)
+        .task { await store.load() }
+    }
+
+    private var recentlyViewed: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Recently viewed").h2Text()
+            ScrollView(.horizontal) {
+                HStack(alignment: .top, spacing: 18) {
+                    ForEach(recent) { s in
+                        Button { app.openStock(s.mint) } label: {
+                            VStack(spacing: 8) {
+                                Logo(url: s.logoURL, symbol: s.symbol, size: 56)
+                                Text(s.symbol).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                                Text(Fmt.pct(s.change24h, 2)).font(.system(size: 12, weight: .semibold)).monospacedDigit()
+                                    .foregroundStyle(Theme.change(s.change24h))
+                            }
+                            .frame(width: 76)
+                        }
+                        .buttonStyle(RowPress())
+                    }
+                }
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+
+    /// The rest of the shelf, four logos as a hint of what is behind it.
+    private var seeMore: some View {
+        Button { app.push(.baskets) } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                let rest = store.baskets.dropFirst(3).prefix(4)
+                LazyVGrid(columns: [.init(.fixed(34), spacing: 8), .init(.fixed(34), spacing: 8)], alignment: .leading, spacing: 8) {
+                    ForEach(rest) { b in
+                        RemoteImage(url: b.logoURLs.first, fallback: String(b.name.prefix(1)))
+                            .frame(width: 34, height: 34).clipShape(.rect(cornerRadius: 9))
+                    }
+                }
+                Spacer(minLength: 10)
+                HStack(spacing: 4) {
+                    Text("See more").font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.muted)
+                    Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)
+                }
+            }
+            .padding(14).frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
+            .background(Theme.surface, in: .rect(cornerRadius: 16)).contentShape(.rect)
+        }
+        .buttonStyle(RowPress())
+    }
+}
+
+/// One basket as a grid tile: logos, name, the return and its period.
+struct BasketTile: View {
+    let basket: Basket
+    let open: () -> Void
+
+    var body: some View {
+        Button(action: open) {
+            VStack(alignment: .leading, spacing: 0) {
+                LogoStack(urls: basket.logoURLs, size: 28)
+                Spacer(minLength: 12)
+                Text(basket.name).font(.system(size: 15, weight: .semibold)).tracking(-0.2).lineLimit(1)
+                Spacer(minLength: 10)
+                Text(Fmt.pct(basket.return1y, 1)).font(.system(size: 16, weight: .semibold)).monospacedDigit()
+                    .foregroundStyle(basket.return1y == nil ? Theme.muted : Theme.change(basket.return1y))
+                Text(basket.returnLabel ?? "1Y").font(.sub).foregroundStyle(Theme.faint)
+            }
+            .padding(14).frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
+            .background(Theme.surface, in: .rect(cornerRadius: 16)).contentShape(.rect)
+        }
+        .buttonStyle(RowPress())
+    }
+}
+
+/// Every basket, as rows. Reached from See more.
+struct BasketsListView: View {
+    @Environment(AppState.self) private var app
+    @State private var store = BasketsStore()
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) { BackButton(); Text("Baskets").h2Text(); Spacer() }
+                .padding(.horizontal, 12).padding(.top, 6).frame(height: 56)
+            ScrollView {
+                VStack(spacing: 10) {
+                    if let err = store.error, store.baskets.isEmpty { ErrorBar(text: err) }
+                    ForEach(store.baskets) { b in BasketCard(basket: b) { app.push(.basket(b.id)) } }
+                }
+                .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .background(Theme.ground)
         .task { await store.load() }
     }
 }
