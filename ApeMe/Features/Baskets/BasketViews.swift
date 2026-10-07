@@ -220,8 +220,14 @@ struct BasketView: View {
                 } else if let err = store.error {
                     ErrorBar(text: err)
                 } else {
-                    VStack(spacing: 12) { Skeleton(height: 60); Skeleton(height: 200); Skeleton(height: 64) }
-                        .padding(.horizontal, 20).padding(.top, 20)
+                    // Header row, tab strip, two paragraphs, then stock rows — the About tab's shape.
+                    VStack(alignment: .leading, spacing: 18) {
+                        HStack { Skeleton(height: 36).frame(width: 150); Spacer(); Skeleton(height: 36).frame(width: 90) }
+                        Skeleton(height: 18).frame(width: 260)
+                        VStack(alignment: .leading, spacing: 8) { Skeleton(height: 14); Skeleton(height: 14).frame(width: 240) }
+                        ForEach(0..<4, id: \.self) { _ in RowSkeleton() }
+                    }
+                    .padding(.horizontal, 20).padding(.top, 8)
                 }
             }
             .scrollIndicators(.hidden)

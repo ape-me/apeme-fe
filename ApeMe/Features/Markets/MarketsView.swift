@@ -75,7 +75,8 @@ struct MarketsView: View {
         if let err = store.error, store.stocks.isEmpty {
             ErrorBar(text: err)
         } else if store.stocks.isEmpty {
-            Skeleton(height: 64)
+            // Six rows the shape of StockRow: a 40pt mark, two lines, a price on the right.
+            VStack(spacing: 0) { ForEach(0..<6, id: \.self) { _ in RowSkeleton() } }
         } else {
             let rows = store.filtered()
             if rows.isEmpty {

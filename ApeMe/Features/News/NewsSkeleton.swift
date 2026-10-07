@@ -12,7 +12,7 @@ private struct Bar: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: radius)
-            .fill(Theme.surface)
+            .fill(Theme.accent.opacity(0.10))
             .frame(width: width, height: height)
             .frame(maxWidth: width == nil ? .infinity : nil, alignment: .leading)
             .opacity(dim ? 0.45 : 1)
@@ -28,7 +28,7 @@ struct NewsRowSkeleton: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             if showThumb {
-                RoundedRectangle(cornerRadius: 12).fill(Theme.surface).frame(width: 40, height: 40)
+                RoundedRectangle(cornerRadius: 12).fill(Theme.accent.opacity(0.10)).frame(width: 40, height: 40)
             }
             VStack(alignment: .leading, spacing: 8) {
                 Bar(width: 150, height: 11)
@@ -71,7 +71,7 @@ struct InsightCardSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             SectionTitle(title)
-            RoundedRectangle(cornerRadius: 16).fill(Theme.surface).frame(height: height)
+            RoundedRectangle(cornerRadius: 16).fill(Theme.accent.opacity(0.10)).frame(height: height)
                 .opacity(0.6)
         }
     }

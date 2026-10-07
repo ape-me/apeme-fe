@@ -53,8 +53,14 @@ struct HomeView: View {
         if let err = store.error, store.preipo.isEmpty {
             EmptyState(title: err, subtitle: "Pull to retry from the Home tab.")
         } else if store.loading && store.preipo.isEmpty {
-            VStack(spacing: 12) { Skeleton(height: 220); Skeleton(height: 64); Skeleton(height: 64) }
-                .padding(.horizontal, 20).padding(.top, 26)
+            // Explore's first screen: a heading, then the baskets grid.
+            VStack(alignment: .leading, spacing: 14) {
+                Skeleton(height: 22).frame(width: 120)
+                LazyVGrid(columns: [.init(.flexible(), spacing: 10), .init(.flexible(), spacing: 10)], spacing: 10) {
+                    ForEach(0..<4, id: \.self) { _ in Skeleton(height: 150) }
+                }
+            }
+            .padding(.horizontal, 20).padding(.top, 20)
         } else {
             switch store.investTab {
             case .explore:

@@ -152,6 +152,19 @@ struct HR: View {
 }
 
 /// Moving highlight over a muted bar — "the number is on its way".
+/// The shape of a 64pt stock row: mark, title and subtitle, price and change on the right.
+struct RowSkeleton: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            Skeleton(height: 40).frame(width: 40)
+            VStack(alignment: .leading, spacing: 7) { Skeleton(height: 13).frame(width: 90); Skeleton(height: 11).frame(width: 140) }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 7) { Skeleton(height: 13).frame(width: 64); Skeleton(height: 11).frame(width: 44) }
+        }
+        .frame(height: 64)
+    }
+}
+
 struct Shimmer: View {
     @State private var x: CGFloat = -1
     var body: some View {
