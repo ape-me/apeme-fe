@@ -241,6 +241,7 @@ struct BasketPositionView: View {
                             Toggle("", isOn: .constant(p.rebalance ?? false)).labelsHidden().disabled(true)
                         }
                         .padding(14).background(Theme.surface, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.line, lineWidth: 1))
                         BigButton(label: "Close position", style: .sell) { Haptic.medium(); app.sheet = .closeBasket(p) }
                     }
                     .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)

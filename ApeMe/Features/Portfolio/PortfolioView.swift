@@ -121,7 +121,8 @@ struct PortfolioView: View {
                     Pill(label: "Deposit", wide: true) { app.sheet = .deposit }
                 }
             }
-            .padding(16).background(Theme.surface, in: .rect(cornerRadius: 16)).padding(.top, 18)
+            .padding(16).background(Theme.surface, in: .rect(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1)).padding(.top, 18)
 
             if let sol = w.sol, (sol.valueUsd ?? 0) > 0 {
                 HStack(spacing: 12) {
@@ -134,7 +135,8 @@ struct PortfolioView: View {
                     Text("\(Fmt.qty(sol.amount, symbol: "")) SOL")
                         .font(.sub).monospacedDigit().foregroundStyle(Theme.faint)
                 }
-                .padding(16).background(Theme.surface, in: .rect(cornerRadius: 16)).padding(.top, 10)
+                .padding(16).background(Theme.surface, in: .rect(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1)).padding(.top, 10)
             }
 
             // Withdraw was a half-opaque button that only ever produced a toast, and the

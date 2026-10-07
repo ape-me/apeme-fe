@@ -29,7 +29,8 @@ struct YouView: View {
                             }
                             Text("20% of Stonks247's fee on every trade they make, forever.").font(.sub).foregroundStyle(Theme.muted)
                         }
-                        .padding(16).frame(maxWidth: .infinity, alignment: .leading).background(Theme.surface, in: .rect(cornerRadius: 16)).contentShape(.rect)
+                        .padding(16).frame(maxWidth: .infinity, alignment: .leading).background(Theme.surface, in: .rect(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1)).contentShape(.rect)
                     }
                     .buttonStyle(.plain).padding(.top, 12).padding(.bottom, 8)
                     }

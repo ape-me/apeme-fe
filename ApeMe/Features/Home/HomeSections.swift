@@ -76,6 +76,7 @@ struct FeatureCard: View {
             }
             .padding(18)
             .background(Theme.surface, in: .rect(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.line, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
@@ -142,6 +143,7 @@ struct MiniCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
             .background(Theme.surface, in: .rect(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }

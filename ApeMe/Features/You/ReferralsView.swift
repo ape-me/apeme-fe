@@ -24,6 +24,7 @@ struct ReferralsView: View {
                         }
                     }
                     .padding(18).frame(maxWidth: .infinity, alignment: .leading).background(Theme.surface, in: .rect(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.line, lineWidth: 1))
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Earnings").font(.system(size: 16, weight: .semibold)).tracking(-0.3)

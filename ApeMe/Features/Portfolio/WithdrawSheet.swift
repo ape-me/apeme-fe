@@ -130,6 +130,7 @@ struct WithdrawSheet: View {
                 Image(systemName: "chevron.up.chevron.down").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)
             }
             .padding(14).background(Theme.surface, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.line, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
@@ -150,6 +151,7 @@ struct WithdrawSheet: View {
                 .lineLimit(mono ? 2 : 1)
                 .focused($focus, equals: f)
                 .padding(14).background(Theme.surface, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.line, lineWidth: 1))
         }
     }
 

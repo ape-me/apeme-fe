@@ -74,7 +74,8 @@ struct BasketsSection: View {
                 }
             }
             .padding(14).frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
-            .background(Theme.surface, in: .rect(cornerRadius: 16)).contentShape(.rect)
+            .background(Theme.surface, in: .rect(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1)).contentShape(.rect)
         }
         .buttonStyle(RowPress())
     }
@@ -97,7 +98,8 @@ struct BasketTile: View {
                 Text(basket.returnLabel ?? "1Y").font(.sub).foregroundStyle(Theme.faint)
             }
             .padding(14).frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
-            .background(Theme.surface, in: .rect(cornerRadius: 16)).contentShape(.rect)
+            .background(Theme.surface, in: .rect(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1)).contentShape(.rect)
         }
         .buttonStyle(RowPress())
     }
@@ -147,6 +149,7 @@ struct BasketCard: View {
             }
             .padding(14)
             .background(Theme.surface, in: .rect(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1))
             .contentShape(.rect)
         }
         .buttonStyle(RowPress())
@@ -349,6 +352,7 @@ struct BasketView: View {
             Text(Fmt.pct(e.return1y, 1)).font(.system(size: 14, weight: .semibold)).monospacedDigit().foregroundStyle(Theme.change(e.return1y))
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading).background(Theme.surface, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.line, lineWidth: 1))
     }
 
     // MARK: Risk

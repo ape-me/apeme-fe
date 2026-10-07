@@ -52,6 +52,7 @@ struct PositionCard: View {
             }
             .padding(16)
             .background(Theme.surface, in: .rect(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1))
         }
     }
 

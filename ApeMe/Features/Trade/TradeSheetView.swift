@@ -232,6 +232,7 @@ struct TradeSheetView: View {
             }
             .padding(.horizontal, 16).frame(height: 64)
             .background(Theme.surface, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.line, lineWidth: 1))
         }
         .buttonStyle(PressScale())
         .padding(.top, 16)

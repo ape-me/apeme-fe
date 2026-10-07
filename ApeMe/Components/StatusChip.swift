@@ -4,11 +4,12 @@ struct Skeleton: View {
     var height: CGFloat = 14
     @State private var dim = false
     var body: some View {
+        // White on a white page is invisible. The accent at a whisper, pulsing, is unmistakably
+        // "something is coming here" and matches the blue the rest of the page reserves for emphasis.
         RoundedRectangle(cornerRadius: 12)
-            .fill(Theme.surface)
+            .fill(Theme.accent.opacity(dim ? 0.05 : 0.12))
             .frame(maxWidth: .infinity)
             .frame(height: height)
-            .opacity(dim ? 0.5 : 1)
             .onAppear { withAnimation(.easeInOut(duration: 0.6).repeatForever()) { dim = true } }
     }
 }
@@ -111,6 +112,7 @@ struct AppDialog: ViewModifier {
                     .padding(20)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.surface, in: .rect(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.line, lineWidth: 1))
                     .padding(.horizontal, 28)
                     .transition(.scale(scale: 0.96).combined(with: .opacity))
                 }
@@ -153,10 +155,10 @@ struct HR: View {
 struct Shimmer: View {
     @State private var x: CGFloat = -1
     var body: some View {
-        RoundedRectangle(cornerRadius: 6).fill(Theme.surface2)
+        RoundedRectangle(cornerRadius: 6).fill(Theme.accent.opacity(0.08))
             .overlay(
                 GeometryReader { g in
-                    LinearGradient(colors: [.clear, Theme.ink.opacity(0.35), .clear], startPoint: .leading, endPoint: .trailing)
+                    LinearGradient(colors: [.clear, Theme.accent.opacity(0.18), .clear], startPoint: .leading, endPoint: .trailing)
                         .frame(width: g.size.width * 0.6)
                         .offset(x: x * g.size.width)
                 }

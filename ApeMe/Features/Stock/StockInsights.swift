@@ -190,6 +190,7 @@ struct EarningsNote: View {
             .padding(.horizontal, 16).padding(.vertical, 14)
             .background(Theme.surface, in: .rect(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.line, lineWidth: 1))
         }
     }
 }
