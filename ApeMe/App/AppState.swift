@@ -14,9 +14,6 @@ final class AppState {
     var watch: [String] { didSet { defaults.set(watch, forKey: "apeme.watch") } }
     /// Stocks opened on this device, newest first, capped at ten. Device-local, like the watchlist.
     var recent: [String] { didSet { defaults.set(recent, forKey: "apeme.recent") } }
-    /// "system", "light" or "dark". Device-local; the brand screens ignore it and stay dark.
-    var appearance: String { didSet { defaults.set(appearance, forKey: "apeme.appearance") } }
-    var colorScheme: ColorScheme? { appearance == "light" ? .light : appearance == "dark" ? .dark : nil }
 
     /// Replay the intro from You. Not persisted: a fresh install with a restored session should
     /// land in the app, not on a welcome with nothing to do but Continue.
@@ -45,7 +42,6 @@ final class AppState {
         demoWallet = defaults.bool(forKey: "apeme.demo")
         watch = defaults.stringArray(forKey: "apeme.watch") ?? []
         recent = defaults.stringArray(forKey: "apeme.recent") ?? []
-        appearance = defaults.string(forKey: "apeme.appearance") ?? "system"
     }
 
     /// Privy wallet when signed in, the demo wallet when that's switched on, otherwise nothing.

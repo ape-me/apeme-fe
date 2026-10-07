@@ -22,12 +22,13 @@ struct Pill: View {
                 // "Withdraw" into two lines and the pill into a box.
                 Text(label).lineLimit(1).fixedSize(horizontal: true, vertical: false)
             }
-            .font(.system(size: size == .regular ? 13 : 12, weight: size == .xsmall ? .medium : .semibold))
+            .font(.instrument(size == .regular ? 13 : 12, size == .xsmall ? 500 : 600))
             .foregroundStyle(fg)
             .padding(.horizontal, size == .regular ? 14 : size == .small ? 11 : 10)
             .frame(maxWidth: wide ? .infinity : nil)
             .frame(height: size == .regular ? 36 : size == .small ? 30 : 28)
-            .background(bg, in: .capsule)
+            .background(bg, in: .rect(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(on || filled ? .clear : Theme.line, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }

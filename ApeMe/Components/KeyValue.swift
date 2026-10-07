@@ -45,7 +45,9 @@ struct KCard<Content: View>: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.surface, in: .rect(cornerRadius: 16))
+        .background(Theme.surface, in: .rect(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.line, lineWidth: 1))
+        .shadow(color: .black.opacity(0.06), radius: 12, y: 4)
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1))
     }
 }
@@ -119,7 +121,9 @@ struct StatGrid: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .background(Theme.surface, in: .rect(cornerRadius: 16))
+        .background(Theme.surface, in: .rect(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.line, lineWidth: 1))
+        .shadow(color: .black.opacity(0.06), radius: 12, y: 4)
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1))
     }
 

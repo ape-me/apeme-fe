@@ -9,7 +9,7 @@ struct Stonks247App: App {
             RootView()
                 .environment(app)
                 // nil follows the phone; Settings can pin light or dark.
-                .preferredColorScheme(app.colorScheme)
+                .preferredColorScheme(.light)
         }
     }
 }

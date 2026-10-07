@@ -13,22 +13,24 @@ struct BigButton: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(small ? .system(size: 14, weight: .semibold) : .system(size: 17, weight: .semibold))
+                .font(.instrument(small ? 14 : 16, 600))
                 .tracking(-0.2)
                 .foregroundStyle(fg)
                 .padding(.horizontal, small ? 16 : 20)
                 .frame(maxWidth: .infinity)
                 .frame(height: small ? 40 : 52)
-                .background(AnyShapeStyle(background), in: .capsule)
+                .background(AnyShapeStyle(background), in: .rect(cornerRadius: 8))
+                // Zoneless buttons are outlines. Only Buy and Sell keep a fill — a trading app
+                // needs those two to shout, and they are the two colours the palette allows.
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(border, lineWidth: 1.5))
         }
         .buttonStyle(PressScale())
     }
 
     private var fg: Color {
         switch style {
-        case .primary, .cta: skin.accentInk
+        case .primary, .cta, .white: Theme.accent
         case .buy, .sell: .white
-        case .white: Theme.ground
         case .ghost: Theme.ink
         case .danger: Theme.red
         case .off: Theme.faint
@@ -36,12 +38,17 @@ struct BigButton: View {
     }
     private var background: AnyShapeStyle {
         switch style {
-        case .primary: AnyShapeStyle(skin.accent)
-        case .cta: AnyShapeStyle(skin.cta)
         case .buy: AnyShapeStyle(Theme.buyGradient)
         case .sell: AnyShapeStyle(Theme.sellGradient)
-        case .white: AnyShapeStyle(Theme.ink)
-        case .ghost, .danger, .off: AnyShapeStyle(Theme.surface2)
+        default: AnyShapeStyle(Color.clear)
+        }
+    }
+    private var border: Color {
+        switch style {
+        case .primary, .cta, .white: Theme.accent
+        case .danger: Theme.red
+        case .buy, .sell: .clear
+        case .ghost, .off: Theme.line
         }
     }
 }
