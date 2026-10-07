@@ -47,6 +47,8 @@ struct RootView: View {
             case .sell(let h): TradeSheetView(side: .sell, asset: .holding(h))
             case .deposit: DepositSheet()
             case .withdraw: WithdrawSheet()
+            case .basket(let b, let usd): BasketOrderSheet(basketId: b.id, name: b.name, sell: false, amountUsd: usd)
+            case .closeBasket(let p): BasketOrderSheet(basketId: p.basketId, name: p.name, sell: true, amountUsd: 0)
             case .tx(let a): TxSheet(activity: a)
             case .resume(let r): TradeSheetView(resume: r)
             case .position(let h): PositionSheet(holding: h)
@@ -87,6 +89,8 @@ struct MainShell: View {
                     Group {
                         switch route {
                         case .stock(let mint): StockView(mint: mint)
+                        case .basket(let id): BasketView(id: id)
+                        case .basketPosition(let id): BasketPositionView(basketId: id)
                         case .settings: SettingsView()
                         case .referrals: ReferralsView()
                         }

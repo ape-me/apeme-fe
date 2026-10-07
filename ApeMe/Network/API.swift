@@ -133,6 +133,30 @@ actor API {
         // send it again.
         try decoder.decode(SubmitResponse.self, from: try await send("POST", "/swap/submit", body: ["requestId": requestId, "signedTransaction": signedTransaction], timeout: 60))
     }
+    // MARK: Baskets (several swaps, one tap)
+
+    func baskets() async throws -> BasketsResponse { try await fetch("/baskets", ttl: 60) }
+    func basket(_ id: String) async throws -> BasketDetail { try await fetch("/baskets/\(id)", ttl: 60) }
+
+    /// One Jupiter quote per stock on the backend, so this takes 5–10s for a seven-stock basket.
+    func basketQuote(_ id: String, amountUsd: Double, taker: String) async throws -> BasketQuote {
+        try decoder.decode(BasketQuote.self, from: try await send("POST", "/baskets/\(id)/quote",
+                                                                  body: ["amountUsd": amountUsd, "taker": taker], timeout: 60))
+    }
+    /// Sells everything the basket holds back to USDC. Same shape as a quote, signed the same way.
+    func basketSell(_ id: String, taker: String) async throws -> BasketQuote {
+        try decoder.decode(BasketQuote.self, from: try await send("POST", "/baskets/\(id)/sell",
+                                                                  body: ["taker": taker], timeout: 60))
+    }
+    /// Returns once the swaps have landed. A leg that fails leaves its USDC in the wallet.
+    func basketSubmit(orderId: String, signed: [(requestId: String, signedTransaction: String)]) async throws -> BasketSubmitResponse {
+        let body: [String: Any] = ["signed": signed.map { ["requestId": $0.requestId, "signedTransaction": $0.signedTransaction] }]
+        return try decoder.decode(BasketSubmitResponse.self, from: try await send("POST", "/baskets/orders/\(orderId)/submit", body: body, timeout: 90))
+    }
+    func basketPositions() async throws -> BasketPositionsResponse {
+        try decoder.decode(BasketPositionsResponse.self, from: try await send("GET", "/me/baskets"))
+    }
+
     // MARK: Withdrawals (quote, sign, submit — the same shape as a swap)
 
     func withdrawQuote(from: String, mint: String, amountRaw: String, to: String) async throws -> WithdrawQuote {

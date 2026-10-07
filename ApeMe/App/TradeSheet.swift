@@ -6,6 +6,9 @@ enum TradeSheet: Identifiable {
     case sell(Holding)
     case deposit
     case withdraw
+    /// Open a basket (buy every leg) or close one (sell every leg).
+    case basket(BasketDetail, amountUsd: Double)
+    case closeBasket(BasketPosition)
     case login
     case tx(Activity)
     case resume(TradeResume)
@@ -17,6 +20,8 @@ enum TradeSheet: Identifiable {
         case .sell(let h): "sell-\(h.mint)"
         case .deposit: "deposit"
         case .withdraw: "withdraw"
+        case .basket(let b, _): "basket-\(b.id)"
+        case .closeBasket(let p): "close-basket-\(p.basketId)"
         case .tx(let a): "tx-\(a.id)"
         case .resume(let r): "resume-\(r.id)"
         case .position(let h): "pos-\(h.mint)"

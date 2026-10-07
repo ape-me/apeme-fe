@@ -28,11 +28,13 @@ struct PortfolioView: View {
                 .padding(.horizontal, 20).padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
-            .refreshable { await app.loadWallet(fresh: true, bustCache: true) }
+            .refreshable { async let b: () = BasketPositionsStore.shared.load(); await app.loadWallet(fresh: true, bustCache: true); await b }
         }
         .background(Theme.ground)
         .task(id: app.walletAddress) {
+            async let b: () = BasketPositionsStore.shared.load()
             await app.loadWallet(fresh: true)
+            await b
             if app.wallet == nil, let e = app.walletError { error = Failure.loading("your wallet", e) }
         }
         .onChange(of: app.wallet?.pendingSwaps ?? 0, initial: true) { _, pending in
@@ -143,8 +145,15 @@ struct PortfolioView: View {
             Group {
                 switch tab {
                 case .positions:
-                    if positions.isEmpty { EmptyState(title: "No positions yet.", subtitle: "Buy a stock to see it here.") }
-                    else { VStack(spacing: 0) { ForEach(positions) { PositionRow(holding: $0) } } }
+                    let baskets = BasketPositionsStore.shared.positions
+                    if positions.isEmpty && baskets.isEmpty { EmptyState(title: "No positions yet.", subtitle: "Buy a stock to see it here.") }
+                    else {
+                        VStack(spacing: 0) {
+                            // A basket is one position to the user, however many tokens it holds.
+                            ForEach(baskets) { BasketPositionRow(position: $0) }
+                            ForEach(positions) { PositionRow(holding: $0) }
+                        }
+                    }
                 case .orders: OrdersPanel()
                 case .activity: ActivityList(activity: w.activity)
                 }

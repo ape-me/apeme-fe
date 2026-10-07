@@ -57,6 +57,7 @@ struct HomeView: View {
                 .padding(.horizontal, 20).padding(.top, 26)
         } else {
             switch store.investTab {
+            case .baskets: BasketsSection()
             case .preipo: PreIPOSection(stocks: store.preipo)
             case .movers: MoversSection(store: store)
             case .explore: ExploreSection(store: store)
