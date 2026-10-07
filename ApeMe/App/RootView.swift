@@ -101,7 +101,6 @@ struct MainShell: View {
                 .toolbar(.hidden, for: .navigationBar)
         }
         .tint(Theme.ink)
-        .preferredColorScheme(app.colorScheme)
         // The wallet used to be fetched only when the Wallet tab opened, so Home's news, the
         // position card on a stock page and the sell flow all behaved as though nothing was
         // held until you had visited it once. Signed in is enough of a reason to load it.

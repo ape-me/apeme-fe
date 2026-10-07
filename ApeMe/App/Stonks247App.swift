@@ -8,7 +8,8 @@ struct Stonks247App: App {
         WindowGroup {
             RootView()
                 .environment(app)
-                .preferredColorScheme(.dark)
+                // nil follows the phone; Settings can pin light or dark.
+                .preferredColorScheme(app.colorScheme)
         }
     }
 }
