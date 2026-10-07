@@ -57,10 +57,14 @@ struct HomeView: View {
                 .padding(.horizontal, 20).padding(.top, 26)
         } else {
             switch store.investTab {
-            case .baskets: BasketsSection()
-            case .preipo: PreIPOSection(stocks: store.preipo)
-            case .movers: MoversSection(store: store)
-            case .explore: ExploreSection(store: store)
+            case .explore:
+                // One page to scroll, in the order a first-time visitor should meet things.
+                VStack(alignment: .leading, spacing: 8) {
+                    BasketsSection()
+                    PreIPOSection(stocks: store.preipo)
+                    MoversSection(store: store)
+                    ExploreSection(store: store)
+                }
             case .watch: WatchSection(store: store)
             case .news: NewsSection(store: store)
             }

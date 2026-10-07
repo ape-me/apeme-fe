@@ -4,16 +4,16 @@ import Observation
 @Observable @MainActor
 final class HomeStore {
     enum InvestTab: String, CaseIterable, Identifiable {
-        case baskets, preipo, movers, news, explore, watch
+        case explore, news, watch
         var id: String { rawValue }
-        var label: String { switch self { case .baskets: "Baskets"; case .preipo: "Pre-IPO"; case .movers: "Movers"; case .news: "News"; case .explore: "Explore"; case .watch: "Watchlist" } }
+        var label: String { switch self { case .explore: "Explore"; case .news: "News"; case .watch: "Watchlist" } }
 
         /// Watching something is the clearest thing a user ever tells us about what they care
         /// about, so once the list has anything in it, it leads. Empty, it sits at the back.
         static func ordered(watching: Bool) -> [InvestTab] {
-            // Baskets lead: one tap buys a whole theme, which is the pitch. The watchlist still
-            // jumps ahead of the single-stock chips once it has anything in it.
-            watching ? [.baskets, .watch, .preipo, .movers, .news, .explore] : [.baskets, .preipo, .movers, .news, .explore, .watch]
+            // Three chips, not six. Baskets, pre-IPO, movers and collections are sections of one
+            // Explore page; the watchlist only appears once it has something in it.
+            watching ? [.explore, .news, .watch] : [.explore, .news]
         }
     }
 
@@ -23,7 +23,7 @@ final class HomeStore {
     var watched: [Stock] = []
     var loading = true
     var error: String?
-    var investTab: InvestTab = .preipo
+    var investTab: InvestTab = .explore
     private var pickedFirstTab = false
     var moversSide = 0          // 0 gainers, 1 losers
     var exploreId: String?
