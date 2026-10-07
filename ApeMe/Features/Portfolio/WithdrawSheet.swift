@@ -95,8 +95,8 @@ struct WithdrawSheet: View {
             Spacer(minLength: 8)
 
             if store.phase == .quoting {
-                HStack(spacing: 10) { ProgressView().tint(.white); Text("Checking…").font(.system(size: 17, weight: .semibold)) }
-                    .foregroundStyle(.white).frame(maxWidth: .infinity).frame(height: 52)
+                HStack(spacing: 10) { ProgressView().tint(Theme.ink); Text("Checking…").font(.system(size: 17, weight: .semibold)) }
+                    .foregroundStyle(Theme.ink).frame(maxWidth: .infinity).frame(height: 52)
                     .background(Theme.surface2, in: .capsule)
             } else {
                 BigButton(label: "Review", style: canReview ? .white : .off) {
@@ -185,10 +185,10 @@ struct WithdrawSheet: View {
 
             if store.busy {
                 HStack(spacing: 10) {
-                    ProgressView().tint(.white)
+                    ProgressView().tint(Theme.ink)
                     Text(store.phase == .signing ? "Signing…" : "Sending…").font(.system(size: 17, weight: .semibold))
                 }
-                .foregroundStyle(.white).frame(maxWidth: .infinity).frame(height: 52)
+                .foregroundStyle(Theme.ink).frame(maxWidth: .infinity).frame(height: 52)
                 .background(Theme.surface2, in: .capsule)
             } else {
                 HStack(spacing: 10) {

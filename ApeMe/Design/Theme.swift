@@ -1,21 +1,25 @@
 import SwiftUI
 
-/// One dark ground, two accents. Values are the prototype's CSS tokens.
+/// Two palettes, one set of names. Every token is a light/dark pair resolved by the system, so a
+/// screen never asks which mode it is in — it asks for `Theme.surface` and gets the right one.
+/// The dark values are the prototype's CSS tokens; the light ones are picked to sit the same
+/// distance apart, with a slight cool bias so the greys read as chosen rather than default.
 enum Theme {
-    static let ground = Color(hex: 0x0a0b0d)
-    static let surface = Color(hex: 0x16181d)
-    static let surface2 = Color(hex: 0x1e2126)
-    static let line = Color(hex: 0x23262c)
-    static let ink = Color.white
-    static let muted = Color(hex: 0xa6a6ae)
-    static let faint = Color(hex: 0x75757e)
-    static let green = Color(hex: 0x00d632)
-    static let red = Color(hex: 0xff5c5c)
-    static let amber = Color(hex: 0xf5b640)
-    static let amberT = Color(hex: 0x2a2212)
-    static let greenT = Color(hex: 0x0f2a17)
-    static let redT = Color(hex: 0x2a1517)
-    static let greyT = Color(hex: 0x1e2126)
+    static let ground   = Color(light: 0xF5F6F8, dark: 0x0a0b0d)
+    static let surface  = Color(light: 0xFFFFFF, dark: 0x16181d)
+    static let surface2 = Color(light: 0xEEF0F3, dark: 0x1e2126)
+    static let line     = Color(light: 0xE3E5EA, dark: 0x23262c)
+    static let ink      = Color(light: 0x0B0B0C, dark: 0xFFFFFF)
+    static let muted    = Color(light: 0x5F6370, dark: 0xa6a6ae)
+    static let faint    = Color(light: 0x8A8E99, dark: 0x75757e)
+    /// Darker on white than on black: the same green that pops on a dark ground washes out on a light one.
+    static let green    = Color(light: 0x0F9D3F, dark: 0x00d632)
+    static let red      = Color(light: 0xD93F3F, dark: 0xff5c5c)
+    static let amber    = Color(light: 0xB7791F, dark: 0xf5b640)
+    static let amberT   = Color(light: 0xFFF3DC, dark: 0x2a2212)
+    static let greenT   = Color(light: 0xE3F7EA, dark: 0x0f2a17)
+    static let redT     = Color(light: 0xFDE4E4, dark: 0x2a1517)
+    static let greyT    = Color(light: 0xEEF0F3, dark: 0x1e2126)
 
     /// Trade buttons: Phantom's green and red, white text, same in both modes.
     static let buy = Color(hex: 0x3fa86a)
@@ -34,6 +38,11 @@ enum Theme {
 }
 
 extension Color {
+    /// Resolved per trait collection, so the pair swaps with the system setting live.
+    init(light: UInt32, dark: UInt32) {
+        self.init(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(Color(hex: dark)) : UIColor(Color(hex: light)) })
+    }
+
     init(hex: UInt32) {
         self.init(.sRGB,
                   red: Double((hex >> 16) & 0xff) / 255,

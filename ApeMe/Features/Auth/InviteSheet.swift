@@ -12,7 +12,10 @@ struct InviteView: View {
     @State private var error: String?
     @FocusState private var focused: Bool
 
-    var body: some View {
+    /// The brand kit is black and lime whatever the phone is set to.
+    var body: some View { content.preferredColorScheme(.dark) }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
             Spacer()
             Text("Invite code").font(.system(size: 40, weight: .semibold)).tracking(-1.8)

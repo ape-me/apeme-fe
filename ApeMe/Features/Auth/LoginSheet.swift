@@ -6,7 +6,10 @@ import AuthenticationServices
 struct LoginSheet: View {
     var emailOnly = false
     @Environment(\.dismiss) private var dismiss
-    var body: some View {
+    /// The brand kit is black and lime whatever the phone is set to.
+    var body: some View { content.preferredColorScheme(.dark) }
+
+    private var content: some View {
         LoginForm(emailOnly: emailOnly, onClose: { dismiss() }, onDone: { dismiss() })
             .padding(.horizontal, 24).padding(.top, 22).padding(.bottom, 18)
             .frame(maxHeight: .infinity, alignment: .top)

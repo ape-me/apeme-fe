@@ -4,7 +4,7 @@ import SwiftUI
 struct Skin: Equatable {
     var accent: Color { Color(hex: 0x578bfa) }
     var accentInk: Color { .white }
-    var accentTint: Color { Color(hex: 0x17233f) }
+    var accentTint: Color { Color(light: 0xE4ECFF, dark: 0x17233f) }
     var cta: LinearGradient {
         LinearGradient(colors: [Color(hex: 0x4f7bf7), Color(hex: 0x6cc7f0)], startPoint: .leading, endPoint: .trailing)
     }

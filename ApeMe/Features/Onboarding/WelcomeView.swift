@@ -37,7 +37,10 @@ struct WelcomeView: View {
     private static let dockW: CGFloat = 124
 
 
-    var body: some View {
+    /// The brand kit is black and lime whatever the phone is set to.
+    var body: some View { content.preferredColorScheme(.dark) }
+
+    private var content: some View {
         GeometryReader { g in
             let m = LogoMetrics(width: Self.centerW)
             let s = Self.dockW / Self.centerW

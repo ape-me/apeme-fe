@@ -40,7 +40,7 @@ struct BigButton: View {
         case .cta: AnyShapeStyle(skin.cta)
         case .buy: AnyShapeStyle(Theme.buyGradient)
         case .sell: AnyShapeStyle(Theme.sellGradient)
-        case .white: AnyShapeStyle(Color.white)
+        case .white: AnyShapeStyle(Theme.ink)
         case .ghost, .danger, .off: AnyShapeStyle(Theme.surface2)
         }
     }
@@ -86,7 +86,7 @@ struct BackButton: View {
 struct RowPress: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .background(configuration.isPressed ? Color.white.opacity(0.05) : .clear,
+            .background(configuration.isPressed ? Theme.ink.opacity(0.05) : .clear,
                         in: .rect(cornerRadius: 12))
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
