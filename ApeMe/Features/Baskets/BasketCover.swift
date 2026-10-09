@@ -70,6 +70,7 @@ struct BasketCover<Bar: View, Trailing: View>: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
+                .frame(maxWidth: .infinity).clipped()
                 .padding(.horizontal, 20).padding(.top, 16)
             }
             Color.clear.frame(height: 22)

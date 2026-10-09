@@ -219,6 +219,10 @@ struct BasketView: View {
                         }
                         .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 130)
                     }
+                    // Exactly the viewport wide. Four flexible cells in the cover's stat strip
+                    // round up by a fraction of a point, and a vertical scroll view whose content
+                    // is a hair too wide starts rubber-banding sideways.
+                    .containerRelativeFrame(.horizontal, alignment: .leading)
                 } else if let err = store.error {
                     ErrorBar(text: err).padding(.top, 56)
                 } else {

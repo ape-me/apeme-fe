@@ -270,6 +270,7 @@ struct BasketPositionView: View {
                         }
                         .padding(.horizontal, 20).padding(.top, 18).padding(.bottom, 24)
                     }
+                    .containerRelativeFrame(.horizontal, alignment: .leading)
                 } else {
                     EmptyState(title: "This basket is closed.", subtitle: "Its stocks were sold back to USDC.").padding(.top, 56)
                 }
