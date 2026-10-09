@@ -4,22 +4,51 @@ import SwiftUI
 struct BasketOrderSheet: View {
     let basketId: String
     let name: String
+    var tagline: String? = nil
+    var logos: [URL] = []
     let sell: Bool
     let amountUsd: Double
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
     @State private var store: BasketOrderStore
 
-    init(basketId: String, name: String, sell: Bool, amountUsd: Double) {
-        self.basketId = basketId; self.name = name; self.sell = sell; self.amountUsd = amountUsd
+    init(basketId: String, name: String, tagline: String? = nil, logos: [URL] = [], sell: Bool, amountUsd: Double) {
+        self.basketId = basketId; self.name = name; self.tagline = tagline; self.logos = logos
+        self.sell = sell; self.amountUsd = amountUsd
         _store = State(initialValue: BasketOrderStore(basketId: basketId, name: name, sell: sell))
     }
 
+    /// The cover names the basket; the title says what is happening to it.
     private var title: String {
         switch store.phase {
         case .done: sell ? "Closed" : "Bought"
-        default: sell ? "Close \(name)?" : "Buy \(name)"
+        default: sell ? "Close position?" : "Buy basket"
         }
+    }
+
+    /// Amount on a buy, what comes back on a sell; the result shows how much of it landed.
+    private var cover: some View {
+        BasketCover(id: basketId, name: name, tagline: tagline, logos: logos) {
+            VStack(alignment: .trailing, spacing: 2) {
+                if store.result != nil {
+                    Text("\(store.landed)/\(store.legCount)")
+                        .font(.system(size: 26, weight: .semibold)).tracking(-0.8).monospacedDigit()
+                        .foregroundStyle(store.failedLegs.isEmpty ? Theme.green : Theme.amber)
+                    Text(sell ? "sold" : "bought").font(.sub).foregroundStyle(Theme.muted)
+                } else if let q = store.quote {
+                    Text(sell ? "≈ \(Fmt.cash(q.totalOutUsd))" : Fmt.cash(q.amountUsd))
+                        .font(.system(size: 26, weight: .semibold)).tracking(-0.8).monospacedDigit().foregroundStyle(Theme.ink)
+                    Text(sell ? "USDC back" : "\(q.legs.count) stocks").font(.sub).foregroundStyle(Theme.muted)
+                } else if !sell {
+                    Text(Fmt.cash(amountUsd))
+                        .font(.system(size: 26, weight: .semibold)).tracking(-0.8).monospacedDigit().foregroundStyle(Theme.ink)
+                    Text("pricing…").font(.sub).foregroundStyle(Theme.muted)
+                } else {
+                    Skeleton(height: 26).frame(width: 90)
+                }
+            }
+        }
+        .padding(.bottom, 14)
     }
 
     /// Quote legs carry a symbol, not a mint; the stock list already loaded gives the mark.
@@ -27,7 +56,6 @@ struct BasketOrderSheet: View {
         guard let symbol else { return nil }
         return app.stocksByMint.values.first { $0.symbol == symbol }
     }
-    private var legLogos: [URL] { (store.quote?.legs ?? []).compactMap { stock($0.symbol)?.logoURL } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -53,9 +81,10 @@ struct BasketOrderSheet: View {
         switch store.phase {
         case .idle, .quoting:
             VStack(alignment: .leading, spacing: 14) {
+                cover
                 Text(sell ? "Pricing every stock in the basket…" : "Getting prices for the stocks…")
                     .font(.sub).foregroundStyle(Theme.muted)
-                Skeleton(height: 52); Skeleton(height: 52); Skeleton(height: 52)
+                ForEach(0..<3, id: \.self) { _ in RowSkeleton() }
                 Spacer()
             }
         case .ready, .signing, .submitting, .retrying:
@@ -78,17 +107,7 @@ struct BasketOrderSheet: View {
 
     private func review(_ q: BasketQuote) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 12) {
-                LogoStack(urls: legLogos, size: 32)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(sell ? "≈ \(Fmt.cash(q.totalOutUsd))" : Fmt.cash(q.amountUsd))
-                        .font(.system(size: 28, weight: .semibold)).tracking(-0.8).monospacedDigit()
-                    Text(sell ? "USDC back for everything in \(name)" : "\(q.legs.count) stocks · equal weight")
-                        .font(.sub).foregroundStyle(Theme.muted)
-                }
-            }
-            .padding(.bottom, 18)
-
+            cover
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     KCard {
@@ -155,10 +174,7 @@ struct BasketOrderSheet: View {
 
     private var result: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("\(store.landed)/\(store.legCount) \(sell ? "sold" : "bought")")
-                .font(.system(size: 30, weight: .semibold)).tracking(-0.8).monospacedDigit()
-                .foregroundStyle(store.failedLegs.isEmpty ? Theme.green : Theme.amber)
-                .padding(.bottom, 16)
+            cover
             ScrollView {
                 KCard {
                     ForEach(store.outcomes) { leg in
@@ -237,7 +253,7 @@ struct BasketPositionView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 10) { BackButton(); Text(p?.name ?? "Basket").h2Text(); Spacer() }
+            HStack(spacing: 10) { BackButton(); Spacer() }
                 .padding(.horizontal, 12).padding(.top, 6).frame(height: 56)
             ScrollView {
                 if let p {
@@ -274,21 +290,18 @@ struct BasketPositionView: View {
         .task { await positions.load() }
     }
 
-    /// Value, gain as a tinted chip, and what it cost, in one glance.
+    /// The cover with what the position is worth now, then what it cost.
     private func hero(_ p: BasketPosition) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
-                LogoStack(urls: p.stocks.compactMap(\.logoURL), size: 32)
-                Text("\(p.stocks.count) stocks").font(.sub).foregroundStyle(Theme.muted)
-                Spacer()
-            }
-            VStack(alignment: .leading, spacing: 6) {
-                Text(Fmt.usd(p.valueUsd)).font(.system(size: 34, weight: .semibold)).tracking(-1).monospacedDigit()
-                if let g = p.pnlUsd {
-                    HStack(spacing: 8) {
-                        Text(Fmt.signedCash(g)).font(.system(size: 15, weight: .semibold)).monospacedDigit().foregroundStyle(Theme.change(g))
-                        Text(Fmt.arrow(p.pnlPct ?? 0, 2)).font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(Theme.change(g))
-                            .padding(.horizontal, 7).frame(height: 22).background(g >= 0 ? Theme.greenT : Theme.redT, in: .capsule)
+            BasketCover(id: p.basketId, name: p.name,
+                        tagline: p.openedAt.map { "\(p.stocks.count) stocks · since \(Fmt.date($0))" } ?? "\(p.stocks.count) stocks",
+                        logos: p.stocks.prefix(5).compactMap(\.logoURL)) {
+                VStack(alignment: .trailing, spacing: 6) {
+                    Text(Fmt.usd(p.valueUsd)).font(.system(size: 26, weight: .semibold)).tracking(-0.8).monospacedDigit().foregroundStyle(Theme.ink)
+                    if let g = p.pnlUsd {
+                        Text("\(Fmt.signedCash(g)) · \(Fmt.arrow(p.pnlPct ?? 0, 2))")
+                            .font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(Theme.change(g))
+                            .padding(.horizontal, 8).frame(height: 24).background(g >= 0 ? Theme.greenT : Theme.redT, in: .capsule)
                     }
                 }
             }

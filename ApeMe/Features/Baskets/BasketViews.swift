@@ -89,16 +89,23 @@ struct BasketTile: View {
     var body: some View {
         Button(action: open) {
             VStack(alignment: .leading, spacing: 0) {
+                // The basket's tint as a band behind its stocks, so the tile and the page it
+                // opens are visibly the same thing.
                 LogoStack(urls: basket.logoURLs, size: 28)
-                Spacer(minLength: 12)
-                Text(basket.name).font(.system(size: 15, weight: .semibold)).tracking(-0.2).lineLimit(1)
-                Spacer(minLength: 10)
-                Text(Fmt.pct(basket.return1y, 1)).font(.system(size: 16, weight: .semibold)).monospacedDigit()
-                    .foregroundStyle(basket.return1y == nil ? Theme.muted : Theme.change(basket.return1y))
-                Text(basket.returnLabel ?? "1Y").font(.sub).foregroundStyle(Theme.faint)
+                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(BasketTint.gradient(basket.id))
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(basket.name).font(.system(size: 15, weight: .semibold)).tracking(-0.2).lineLimit(1)
+                    Spacer(minLength: 10)
+                    Text(Fmt.pct(basket.return1y, 1)).font(.system(size: 16, weight: .semibold)).monospacedDigit()
+                        .foregroundStyle(basket.return1y == nil ? Theme.muted : Theme.change(basket.return1y))
+                    Text(basket.returnLabel ?? "1Y").font(.sub).foregroundStyle(Theme.faint)
+                }
+                .padding(14)
             }
-            .padding(14).frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
-            .background(Theme.surface, in: .rect(cornerRadius: 16))
+            .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
+            .background(Theme.surface)
+            .clipShape(.rect(cornerRadius: 16))
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1)).contentShape(.rect)
         }
         .buttonStyle(RowPress())
@@ -136,6 +143,7 @@ struct BasketCard: View {
         Button(action: open) {
             HStack(spacing: 14) {
                 LogoStack(urls: basket.logoURLs)
+                    .padding(8).background(BasketTint.gradient(basket.id), in: .rect(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 3) {
                     Text(basket.name).font(.rowTitle).tracking(-0.2)
                     if let t = basket.tagline { Text(t).font(.sub).foregroundStyle(Theme.muted).lineLimit(1) }
@@ -199,7 +207,8 @@ struct BasketView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 10) { BackButton(); Text(d?.name ?? "Basket").h2Text(); Spacer() }
+            // The cover carries the name; a title above it said the same thing twice.
+            HStack(spacing: 10) { BackButton(); Spacer() }
                 .padding(.horizontal, 12).padding(.top, 6).frame(height: 56)
             ScrollView {
                 if let d {
@@ -222,7 +231,7 @@ struct BasketView: View {
                 } else {
                     // Header row, tab strip, two paragraphs, then stock rows — the About tab's shape.
                     VStack(alignment: .leading, spacing: 18) {
-                        HStack { Skeleton(height: 36).frame(width: 150); Spacer(); Skeleton(height: 36).frame(width: 90) }
+                        Skeleton(height: 130)
                         Skeleton(height: 18).frame(width: 260)
                         VStack(alignment: .leading, spacing: 8) { Skeleton(height: 14); Skeleton(height: 14).frame(width: 240) }
                         ForEach(0..<4, id: \.self) { _ in RowSkeleton() }
@@ -243,12 +252,10 @@ struct BasketView: View {
     }
 
     private func header(_ d: BasketDetail) -> some View {
-        HStack(alignment: .top, spacing: 14) {
-            LogoStack(urls: (d.logos ?? []).compactMap(URL.init(string:)), size: 36)
-            Spacer()
+        BasketCover(id: d.id, name: d.name, tagline: d.tagline, logos: (d.logos ?? []).prefix(5).compactMap(URL.init(string:))) {
             VStack(alignment: .trailing, spacing: 2) {
                 Text(Fmt.pct(d.return1y, 1))
-                    .font(.system(size: 30, weight: .semibold)).tracking(-0.8).monospacedDigit()
+                    .font(.system(size: 26, weight: .semibold)).tracking(-0.8).monospacedDigit()
                     .foregroundStyle(d.return1y == nil ? Theme.muted : Theme.change(d.return1y))
                 Text(d.returnLabel ?? "1Y").font(.sub).foregroundStyle(Theme.muted)
             }
