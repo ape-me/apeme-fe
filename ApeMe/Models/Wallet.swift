@@ -26,6 +26,22 @@ struct Wallet: Codable, Hashable {
             .sorted { ($0.valueUsd ?? 0) > ($1.valueUsd ?? 0) }
     }
     var sol: Holding? { holdings.first { $0.kind == "sol" } }
+
+    /// Stocks held outside any basket. A basket is one position to the user, so what it holds
+    /// comes off the plain list; AAPLx bought on its own and AAPLx inside Mag 7 are not the same
+    /// thing twice. A remainder's cost basis is unknown, so it carries no P&L.
+    func positions(outside baskets: [BasketPosition]) -> [Holding] {
+        var inBaskets: [String: Double] = [:]
+        for b in baskets { for h in b.stocks { inBaskets[h.mint, default: 0] += h.amount ?? 0 } }
+        return positions.compactMap { h in
+            guard let held = inBaskets[h.mint], held > 0 else { return h }
+            var rest = h
+            rest.amount = max(0, h.amount - held)
+            rest.valueUsd = h.priceUsd.map { $0 * rest.amount } ?? h.valueUsd.map { $0 * rest.amount / max(h.amount, 1e-12) }
+            rest.pnlUsd = nil; rest.pnlPct = nil
+            return rest.isDust ? nil : rest
+        }
+    }
     var isEmpty: Bool { (cashUsd ?? 0) == 0 && holdings.count <= 1 }
     /// Sum of cost for positions bought through Stonks247. Outside deposits (costUsd nil) don't count.
     var investedUsd: Double { positions.compactMap(\.costUsd).reduce(0, +) }

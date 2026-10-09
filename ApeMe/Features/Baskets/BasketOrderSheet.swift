@@ -22,6 +22,13 @@ struct BasketOrderSheet: View {
         }
     }
 
+    /// Quote legs carry a symbol, not a mint; the stock list already loaded gives the mark.
+    private func stock(_ symbol: String?) -> Stock? {
+        guard let symbol else { return nil }
+        return app.stocksByMint.values.first { $0.symbol == symbol }
+    }
+    private var legLogos: [URL] { (store.quote?.legs ?? []).compactMap { stock($0.symbol)?.logoURL } }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack { Text(title).h2Text(); Spacer(); IconButton(symbol: "xmark", label: "Close") { dismiss() }.disabled(busy) }
@@ -71,31 +78,40 @@ struct BasketOrderSheet: View {
 
     private func review(_ q: BasketQuote) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(sell ? "≈ \(Fmt.cash(q.totalOutUsd)) USDC" : Fmt.cash(q.amountUsd))
-                    .font(.system(size: 30, weight: .semibold)).tracking(-0.8).monospacedDigit()
-                Text(sell ? "for everything in \(name)" : "across \(q.legs.count) stocks, equal weight")
-                    .font(.sub).foregroundStyle(Theme.muted)
+            HStack(spacing: 12) {
+                LogoStack(urls: legLogos, size: 32)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(sell ? "≈ \(Fmt.cash(q.totalOutUsd))" : Fmt.cash(q.amountUsd))
+                        .font(.system(size: 28, weight: .semibold)).tracking(-0.8).monospacedDigit()
+                    Text(sell ? "USDC back for everything in \(name)" : "\(q.legs.count) stocks · equal weight")
+                        .font(.sub).foregroundStyle(Theme.muted)
+                }
             }
-            .padding(.bottom, 16)
+            .padding(.bottom, 18)
 
             ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(q.legs) { leg in
-                        HStack {
-                            Text(leg.symbol ?? "—").font(.system(size: 15, weight: .semibold))
-                            Spacer()
-                            Text(sell ? Fmt.cash(leg.outUsd) : Fmt.cash(leg.inUsd)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                VStack(alignment: .leading, spacing: 14) {
+                    KCard {
+                        ForEach(q.legs) { leg in
+                            HStack(spacing: 12) {
+                                Logo(url: stock(leg.symbol)?.logoURL, symbol: leg.symbol ?? "", size: 32)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(leg.symbol ?? "—").font(.system(size: 15, weight: .semibold))
+                                    if let w = leg.weight { Text(Fmt.pct(w * 100, 0)).font(.sub).foregroundStyle(Theme.muted) }
+                                }
+                                Spacer()
+                                Text(sell ? Fmt.cash(leg.outUsd) : Fmt.cash(leg.inUsd)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                            }
+                            .frame(height: 52)
                         }
-                        .frame(height: 44)
-                        Divider().overlay(Theme.line)
                     }
-                    HStack {
-                        Text("Stonks247 fee 1%").font(.system(size: 15)).foregroundStyle(Theme.muted)
-                        Spacer()
-                        Text(Fmt.cash(q.feeUsd)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                    KCard {
+                        KV("Stonks247 fee 1%", Fmt.cash(q.feeUsd))
+                        KV(sell ? "You get" : "Into stocks") {
+                            Text(sell ? "≈ \(Fmt.cash(q.totalOutUsd))" : Fmt.cash(q.legs.compactMap(\.inUsd).reduce(0, +)))
+                                .font(.system(size: 14, weight: .semibold)).monospacedDigit()
+                        }
                     }
-                    .frame(height: 44)
                 }
             }
             .scrollIndicators(.hidden)
@@ -139,19 +155,20 @@ struct BasketOrderSheet: View {
                 .foregroundStyle(store.failedLegs.isEmpty ? Theme.green : Theme.amber)
                 .padding(.bottom, 16)
             ScrollView {
-                VStack(spacing: 0) {
+                KCard {
                     ForEach(store.outcomes) { leg in
-                        HStack(spacing: 10) {
-                            Image(systemName: leg.landed ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                .foregroundStyle(leg.landed ? Theme.green : Theme.red)
-                            Text(store.symbol(for: leg.requestId)).font(.system(size: 15, weight: .semibold))
+                        let sym = store.symbol(for: leg.requestId)
+                        HStack(spacing: 12) {
+                            Logo(url: stock(sym)?.logoURL, symbol: sym, size: 32)
+                            Text(sym).font(.system(size: 15, weight: .semibold))
                             Spacer()
                             if !leg.landed, let e = leg.error {
                                 Text(e).font(.sub).foregroundStyle(Theme.red).lineLimit(1)
                             }
+                            Image(systemName: leg.landed ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .foregroundStyle(leg.landed ? Theme.green : Theme.red)
                         }
-                        .frame(height: 44)
-                        Divider().overlay(Theme.line)
+                        .frame(height: 52)
                     }
                 }
             }
@@ -198,7 +215,7 @@ struct BasketPositionRow: View {
                     }
                 }
             }
-            .padding(.vertical, 8).frame(minHeight: 60).contentShape(.rect)
+            .padding(.vertical, 8).frame(minHeight: 64).contentShape(.rect)
         }
         .buttonStyle(RowPress())
     }
@@ -217,46 +234,19 @@ struct BasketPositionView: View {
             ScrollView {
                 if let p {
                     VStack(alignment: .leading, spacing: 22) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(Fmt.usd(p.valueUsd)).font(.system(size: 34, weight: .semibold)).tracking(-1).monospacedDigit()
-                            if let g = p.pnlUsd {
-                                Text("\(Fmt.signedCash(g)) · \(Fmt.pct(p.pnlPct, 2))").font(.system(size: 15, weight: .semibold)).monospacedDigit().foregroundStyle(Theme.change(g))
-                            }
-                        }
-                        KCard {
-                            KV("Paid", Fmt.cash(p.paidUsd))
-                            if let t = p.openedAt { KV("Opened", Fmt.date(t)) }
-                        }
-                        VStack(alignment: .leading, spacing: 8) {
-                            SectionTitle("Holdings")
-                            KCard {
-                                ForEach(p.stocks.filter { ($0.valueUsd ?? 0) >= 0.01 }) { h in
-                                    HStack(spacing: 12) {
-                                        Logo(url: h.logoURL, symbol: h.symbol, size: 32)
-                                        Text(h.symbol).font(.system(size: 15, weight: .semibold))
-                                        Spacer()
-                                        VStack(alignment: .trailing, spacing: 2) {
-                                            Text(Fmt.usd(h.valueUsd)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
-                                            Text(Fmt.qty(h.amount ?? 0, symbol: h.symbol)).font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
-                                        }
-                                    }
-                                    .frame(height: 52)
-                                }
-                            }
-                        }
+                        hero(p)
+                        holdings(p)
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Rebalance").font(.system(size: 15, weight: .semibold))
-                                Text("Off").font(.sub).foregroundStyle(Theme.muted)
+                                Text("Keeps every stock at its target weight").font(.sub).foregroundStyle(Theme.muted)
                             }
                             Spacer()
                             Text("COMING SOON").font(.system(size: 9, weight: .bold)).tracking(0.4).foregroundStyle(Theme.amber)
                                 .padding(.horizontal, 6).frame(height: 17).background(Theme.amberT, in: .rect(cornerRadius: 5))
-                            Toggle("", isOn: .constant(p.rebalance ?? false)).labelsHidden().disabled(true)
                         }
-                        .padding(14).background(Theme.surface, in: .rect(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.line, lineWidth: 1))
-                        BigButton(label: "Close position", style: .sell) { Haptic.medium(); app.sheet = .closeBasket(p) }
+                        .padding(14).background(Theme.surface, in: .rect(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.line, lineWidth: 1))
                     }
                     .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
                 } else {
@@ -264,8 +254,68 @@ struct BasketPositionView: View {
                 }
             }
             .scrollIndicators(.hidden)
+            .safeAreaInset(edge: .bottom) {
+                if let p {
+                    BigButton(label: "Close position", style: .sell) { Haptic.medium(); app.sheet = .closeBasket(p) }
+                        .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 8)
+                        .background(Theme.ground)
+                }
+            }
         }
         .background(Theme.ground)
         .task { await positions.load() }
+    }
+
+    /// Value, gain as a tinted chip, and what it cost, in one glance.
+    private func hero(_ p: BasketPosition) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                LogoStack(urls: p.stocks.compactMap(\.logoURL), size: 32)
+                Text("\(p.stocks.count) stocks").font(.sub).foregroundStyle(Theme.muted)
+                Spacer()
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                Text(Fmt.usd(p.valueUsd)).font(.system(size: 34, weight: .semibold)).tracking(-1).monospacedDigit()
+                if let g = p.pnlUsd {
+                    HStack(spacing: 8) {
+                        Text(Fmt.signedCash(g)).font(.system(size: 15, weight: .semibold)).monospacedDigit().foregroundStyle(Theme.change(g))
+                        Text(Fmt.arrow(p.pnlPct ?? 0, 2)).font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(Theme.change(g))
+                            .padding(.horizontal, 7).frame(height: 22).background(g >= 0 ? Theme.greenT : Theme.redT, in: .capsule)
+                    }
+                }
+            }
+            KCard {
+                KV("Paid", Fmt.cash(p.paidUsd))
+                if let t = p.openedAt { KV("Opened", Fmt.date(t)) }
+            }
+        }
+    }
+
+    /// Each stock with its share of the basket today, so a drift from equal weight is visible.
+    private func holdings(_ p: BasketPosition) -> some View {
+        let rows = p.stocks.filter { ($0.valueUsd ?? 0) >= 0.01 }
+        let total = rows.compactMap(\.valueUsd).reduce(0, +)
+        return VStack(alignment: .leading, spacing: 8) {
+            SectionTitle("Holdings")
+            KCard {
+                ForEach(rows) { h in
+                    HStack(spacing: 12) {
+                        Logo(url: h.logoURL, symbol: h.symbol, size: 32)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(h.symbol).font(.system(size: 15, weight: .semibold))
+                            Text(Fmt.qty(h.amount ?? 0, symbol: h.symbol)).font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text(Fmt.usd(h.valueUsd)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                            if total > 0, let v = h.valueUsd {
+                                Text(Fmt.pct(v / total * 100, 1)).font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
+                            }
+                        }
+                    }
+                    .frame(height: 56)
+                }
+            }
+        }
     }
 }

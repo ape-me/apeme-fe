@@ -147,13 +147,26 @@ struct PortfolioView: View {
                 switch tab {
                 case .positions:
                     let baskets = BasketPositionsStore.shared.positions
-                    if positions.isEmpty && baskets.isEmpty { EmptyState(title: "No positions yet.", subtitle: "Buy a stock to see it here.") }
+                    let stocks = w.positions(outside: baskets)
+                    if stocks.isEmpty && baskets.isEmpty { EmptyState(title: "No positions yet.", subtitle: "Buy a stock to see it here.") }
                     else {
-                        VStack(spacing: 0) {
-                            // A basket is one position to the user, however many tokens it holds.
-                            ForEach(baskets) { BasketPositionRow(position: $0) }
-                            ForEach(positions) { PositionRow(holding: $0) }
+                        VStack(alignment: .leading, spacing: 20) {
+                            // A basket is one position to the user, however many tokens it holds,
+                            // and its tokens do not show up a second time as stocks.
+                            if !baskets.isEmpty {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    SectionTitle("Baskets")
+                                    KCard { ForEach(baskets) { BasketPositionRow(position: $0) } }
+                                }
+                            }
+                            if !stocks.isEmpty {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    SectionTitle("Stocks")
+                                    KCard { ForEach(stocks) { PositionRow(holding: $0) } }
+                                }
+                            }
                         }
+                        .padding(.top, 8)
                     }
                 case .orders: OrdersPanel()
                 case .activity: ActivityList(activity: w.activity)
