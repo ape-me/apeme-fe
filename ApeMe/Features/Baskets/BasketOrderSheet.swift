@@ -80,10 +80,19 @@ struct BasketOrderSheet: View {
     @ViewBuilder private var content: some View {
         switch store.phase {
         case .idle, .quoting:
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(0..<5, id: \.self) { _ in
+                    HStack(spacing: 10) {
+                        Skeleton(height: 24).frame(width: 24)
+                        Skeleton(height: 14).frame(width: 64)
+                        Spacer()
+                        Skeleton(height: 14).frame(width: 48)
+                    }
+                    .frame(height: 40)
+                    Rectangle().fill(Theme.line).frame(height: 1)
+                }
                 Text(sell ? "Pricing every stock in the basket…" : "Getting prices for the stocks…")
-                    .font(.sub).foregroundStyle(Theme.muted)
-                ForEach(0..<3, id: \.self) { _ in RowSkeleton() }
+                    .font(.sub).foregroundStyle(Theme.muted).padding(.top, 14)
                 Spacer()
             }
         case .ready, .signing, .submitting, .retrying:
@@ -104,32 +113,32 @@ struct BasketOrderSheet: View {
         }
     }
 
+    /// The order as a ledger, the way every broker shows one: a line per stock, the fee, a
+    /// heavier rule, and the one number that matters. Hairlines only; nothing in a box.
     private func review(_ q: BasketQuote) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    KCard {
-                        ForEach(q.legs) { leg in
-                            HStack(spacing: 12) {
-                                Logo(url: stock(leg.symbol)?.logoURL, symbol: leg.symbol ?? "", size: 32)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(leg.symbol ?? "—").font(.system(size: 15, weight: .semibold))
-                                    // Weight arrives as a percent already, and it is a share, not a move: no sign.
-                                    if let w = leg.weight { Text(String(format: "%.0f%% of the basket", w)).font(.sub).foregroundStyle(Theme.muted) }
-                                }
-                                Spacer()
-                                Text(sell ? Fmt.cash(leg.outUsd) : Fmt.cash(leg.inUsd)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
-                            }
-                            .frame(height: 52)
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(q.legs) { leg in
+                        ledgerRow(symbol: leg.symbol ?? "—") {
+                            Text(sell ? Fmt.cash(leg.outUsd) : Fmt.cash(leg.inUsd))
+                                .font(.system(size: 15, weight: .medium)).monospacedDigit().foregroundStyle(Theme.ink)
                         }
                     }
-                    KCard {
-                        KV("Stonks247 fee 1%", Fmt.cash(q.feeUsd))
-                        KV(sell ? "You get" : "Into stocks") {
-                            Text(sell ? "≈ \(Fmt.cash(q.totalOutUsd))" : Fmt.cash(q.legs.compactMap(\.inUsd).reduce(0, +)))
-                                .font(.system(size: 14, weight: .semibold)).monospacedDigit()
-                        }
+                    HStack {
+                        Text("Stonks247 fee 1% · included").font(.system(size: 15)).foregroundStyle(Theme.muted)
+                        Spacer()
+                        Text(Fmt.cash(q.feeUsd)).font(.system(size: 15, weight: .medium)).monospacedDigit().foregroundStyle(Theme.muted)
                     }
+                    .frame(height: 40)
+                    Rectangle().fill(Theme.ink.opacity(0.4)).frame(height: 1.5)
+                    HStack {
+                        Text(sell ? "You get" : "You pay").font(.system(size: 17, weight: .semibold))
+                        Spacer()
+                        Text(sell ? "≈ \(Fmt.cash(q.totalOutUsd))" : Fmt.cash(q.amountUsd))
+                            .font(.system(size: 17, weight: .semibold)).monospacedDigit()
+                    }
+                    .frame(height: 48)
                 }
             }
             .scrollIndicators(.hidden)
@@ -158,6 +167,24 @@ struct BasketOrderSheet: View {
         }
     }
 
+    /// One line of the ledger: a small mark, the symbol, whatever belongs on the right, and a
+    /// hairline under it. A failed leg's reason sits under the symbol in red.
+    private func ledgerRow<Trailing: View>(symbol: String, note: String? = nil, @ViewBuilder trailing: () -> Trailing) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Logo(url: stock(symbol)?.logoURL, symbol: symbol, size: 24)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(symbol).font(.system(size: 15, weight: .semibold))
+                    if let note { Text(note).font(.system(size: 12)).foregroundStyle(Theme.red).lineLimit(1) }
+                }
+                Spacer()
+                trailing()
+            }
+            .frame(minHeight: 40)
+            Rectangle().fill(Theme.line).frame(height: 1)
+        }
+    }
+
     private func progress(_ label: String) -> some View {
         HStack(spacing: 10) { ProgressView().tint(.white); Text(label).font(.system(size: 17, weight: .semibold)) }
             .foregroundStyle(.white).frame(maxWidth: .infinity).frame(height: 52)
@@ -173,21 +200,21 @@ struct BasketOrderSheet: View {
     private var result: some View {
         VStack(alignment: .leading, spacing: 0) {
             ScrollView {
-                KCard {
+                VStack(alignment: .leading, spacing: 0) {
                     ForEach(store.outcomes) { leg in
                         let sym = store.symbol(for: leg.requestId)
-                        HStack(spacing: 12) {
-                            Logo(url: stock(sym)?.logoURL, symbol: sym, size: 32)
-                            Text(sym).font(.system(size: 15, weight: .semibold))
-                            Spacer()
-                            if !leg.landed, let e = leg.error {
-                                Text(e).font(.sub).foregroundStyle(Theme.red).lineLimit(1)
-                            }
+                        ledgerRow(symbol: sym, note: leg.landed ? nil : leg.error) {
                             Image(systemName: leg.landed ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                .foregroundStyle(leg.landed ? Theme.green : Theme.red)
+                                .font(.system(size: 17)).foregroundStyle(leg.landed ? Theme.green : Theme.red)
                         }
-                        .frame(height: 52)
                     }
+                    Rectangle().fill(Theme.ink.opacity(0.4)).frame(height: 1.5)
+                    HStack {
+                        Text("\(store.landed) of \(store.legCount) \(sell ? "sold" : "bought")").font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(store.failedLegs.isEmpty ? Theme.green : Theme.amber)
+                        Spacer()
+                    }
+                    .frame(height: 48)
                 }
             }
             .scrollIndicators(.hidden)
