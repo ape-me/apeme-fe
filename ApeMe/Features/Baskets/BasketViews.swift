@@ -255,21 +255,22 @@ struct BasketView: View {
                     chart: d.chart?.points.map(\.value) ?? [], chartTint: Theme.change(d.return1y), stats: coverStats(d))
     }
 
-    /// The year's return, how the index did, how rough the ride is, and who carried it. A basket
-    /// with no history (pre-IPO) falls back to what it is made of and what it costs to start.
+    /// The same four cells on every basket, in the same order, so the eye learns where to look:
+    /// the return over the period, the index over the same period, how rough the ride is, and
+    /// which stock carried it. A cell the backend cannot fill shows a dash rather than a
+    /// different stat that happens to exist.
     private func coverStats(_ d: BasketDetail) -> [CoverStat] {
-        var out: [CoverStat] = []
         // "+408%" where "+408.1%" would not fit the cell.
-        func pct(_ r: Double) -> String { Fmt.pct(r, abs(r) >= 100 ? 0 : 1) }
-        if let r = d.return1y { out.append(.init(label: d.returnLabel ?? "1Y", value: pct(r), color: Theme.change(r))) }
-        if let b = d.performance?.benchmark, let r = b.ranges?["1Y"] ?? nil {
-            out.append(.init(label: "vs \(b.name ?? "S&P 500")", value: pct(r), color: Theme.change(r)))
-        }
-        if let level = d.risk?.level { out.append(.init(label: "Risk", value: level)) }
-        if let best = d.best, let r = best.return1y { out.append(.init(label: "Best · \(Fmt.pct(r, 0))", value: best.symbol, color: Theme.change(r))) }
-        if out.count < 4 { out.append(.init(label: "Stocks", value: "\(d.stocks.count)")) }
-        if out.count < 4 { out.append(.init(label: "Min", value: Fmt.cash(d.minUsd ?? 10))) }
-        return Array(out.prefix(4))
+        func pct(_ r: Double?) -> String { r.map { Fmt.pct($0, abs($0) >= 100 ? 0 : 1) } ?? "—" }
+        let bench = d.performance?.benchmark
+        let benchReturn: Double? = bench?.ranges?["1Y"] ?? nil
+        return [
+            .init(label: d.returnLabel ?? "1Y", value: pct(d.return1y), color: Theme.change(d.return1y)),
+            .init(label: "vs \(bench?.name ?? "S&P 500")", value: pct(benchReturn), color: Theme.change(benchReturn)),
+            .init(label: "Risk", value: d.risk?.level ?? "—"),
+            .init(label: "Best" + (d.best?.return1y.map { " · \(Fmt.pct($0, 0))" } ?? ""), value: d.best?.symbol ?? "—",
+                  color: Theme.change(d.best?.return1y)),
+        ]
     }
 
     // MARK: About
