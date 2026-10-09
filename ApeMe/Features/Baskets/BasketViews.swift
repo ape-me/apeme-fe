@@ -235,6 +235,7 @@ struct BasketView: View {
         .background(Theme.ground)
         .safeAreaInset(edge: .bottom) { if let d { invest(d) } }
         .task { await store.load(id) }
+        .task { if app.wallet == nil { await app.loadWallet() } }
         .task(id: tab) {
             guard tab == .news, !newsLoaded else { return }
             news = (try? await API.shared.basketNews(id).items) ?? []; newsLoaded = true
@@ -419,26 +420,37 @@ struct BasketView: View {
 
     private var usd: Double { Double(amount) ?? 0 }
     private var minUsd: Double { d?.minUsd ?? 10 }
+    /// Spendable USDC, floored to the cent. nil until the wallet has been read; signed out is 0.
+    private var cash: Double? { app.walletAddress == nil ? 0 : app.wallet.map { floor(($0.cashUsd ?? 0) * 100) / 100 } }
+    private var short: Bool { cash.map { usd > $0 + 0.0001 } ?? false }
 
     private func invest(_ d: BasketDetail) -> some View {
         VStack(spacing: 10) {
             HStack(spacing: 8) {
+                // A chip above the balance is not an option, so it does not light up.
                 ForEach([10, 25, 50, 100], id: \.self) { v in
+                    let ok = cash.map { Double(v) <= $0 } ?? true
                     Pill(label: "$\(v)", on: usd == Double(v), size: .small, wide: true) { amount = "\(v)" }
+                        .opacity(ok ? 1 : 0.35).disabled(!ok)
+                }
+                if let c = cash, c >= minUsd {
+                    Pill(label: "Max", on: usd == c, size: .small, wide: true) { amount = Fmt.plain(c) }
                 }
             }
             HStack(spacing: 10) {
                 TextField("Amount", text: $amount)
                     .keyboardType(.decimalPad).font(.system(size: 20, weight: .semibold)).monospacedDigit()
                     .padding(.horizontal, 14).frame(height: 52).background(Theme.surface, in: .capsule)
-                BigButton(label: !d.canTrade ? "Market closed" : usd < minUsd ? "Min \(Fmt.cash(minUsd))" : "Invest \(Fmt.cash(usd))",
-                          style: d.canTrade && usd >= minUsd ? .buy : .off) {
-                    guard d.canTrade, usd >= minUsd else { return }
+                    .overlay(Capsule().stroke(short ? Theme.red : Theme.line, lineWidth: 1))
+                BigButton(label: !d.canTrade ? "Market closed" : short ? "Not enough USDC" : usd < minUsd ? "Min \(Fmt.cash(minUsd))" : "Invest \(Fmt.cash(usd))",
+                          style: d.canTrade && usd >= minUsd && !short ? .buy : .off) {
+                    guard d.canTrade, usd >= minUsd, !short else { return }
                     guard app.walletAddress != nil else { app.sheet = .login; return }
                     Haptic.medium(); app.sheet = .basket(d, amountUsd: usd)
                 }
             }
-            Text("1% fee on each swap · min \(Fmt.cash(minUsd))").font(.system(size: 11)).foregroundStyle(Theme.faint)
+            Text(cash.map { "You have \(Fmt.cash($0)) · 1% fee on each swap · min \(Fmt.cash(minUsd))" } ?? "1% fee on each swap · min \(Fmt.cash(minUsd))")
+                .font(.system(size: 11)).foregroundStyle(short ? Theme.red : Theme.faint)
         }
         .padding(.horizontal, 20).padding(.vertical, 12).background(Theme.ground)
     }

@@ -70,6 +70,8 @@ final class BasketOrderStore {
     var failedLegs: [BasketSubmitResponse.Leg] { outcomes.filter { !$0.landed } }
     /// A buy that landed some stocks and not others. Sells re-quote whatever is left instead.
     var canRetry: Bool { !sell && !failedLegs.isEmpty && result != nil }
+    /// The legs that failed did so for want of USDC; buying them again would fail the same way.
+    var ranOutOfMoney: Bool { failedLegs.contains { ($0.error ?? "").lowercased().contains("insufficient") } }
 
     func symbol(for requestId: String) -> String { symbols[requestId] ?? "—" }
 
@@ -112,10 +114,11 @@ final class BasketOrderStore {
             // Seven swaps cannot share one transaction, so a basket can land in part. One quiet
             // retry of just the stocks that missed covers the usual cause (a quote that went
             // stale while the others were landing). After that the user decides.
-            if r.status == "partial", !sell {
+            if r.status == "partial", !sell, !ranOutOfMoney {
                 retriedOnce = true
                 await retry(wallet: wallet)
             } else {
+                if ranOutOfMoney { error = "Ran out of USDC part way. Add funds to buy the rest." }
                 finish(r.status)
             }
         } catch APIError.http(410, _) {

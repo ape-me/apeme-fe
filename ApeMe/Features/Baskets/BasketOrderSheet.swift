@@ -127,6 +127,10 @@ struct BasketOrderSheet: View {
                 default:
                     BigButton(label: sell ? "Close basket" : "Buy \(Fmt.cash(q.amountUsd))", style: sell ? .sell : .buy) {
                         guard let w = app.auth.activeWallet, let t = app.walletAddress else { app.show("Sign in first.", error: true); return }
+                        // The page checks this too, but the balance can move between the two.
+                        if amountUsd > app.cashUsd + 0.0001 {
+                            store.error = "You have \(Fmt.cash(app.cashUsd)) USDC. Lower the amount or deposit first."; return
+                        }
                         Haptic.medium()
                         Task { await store.send(wallet: w, amountUsd: amountUsd, taker: t) }
                     }
@@ -176,11 +180,14 @@ struct BasketOrderSheet: View {
             if let e = store.error, store.canRetry {
                 ErrorBar(text: e).padding(.horizontal, -20).padding(.top, 10)
             }
-            if !store.failedLegs.isEmpty {
+            if !store.failedLegs.isEmpty, !store.ranOutOfMoney {
                 Text(retrying ? "Buying the rest…" : "The USDC for anything that failed is still in your wallet.")
                     .font(.sub).foregroundStyle(Theme.muted).padding(.top, 10)
             }
-            if store.canRetry {
+            if store.ranOutOfMoney {
+                BigButton(label: "Deposit USDC", style: .cta) { dismiss(); app.sheet = .deposit }.padding(.top, 14)
+                BigButton(label: "Done", style: .ghost) { app.settleWallet(); dismiss() }.padding(.top, 8)
+            } else if store.canRetry {
                 BigButton(label: retrying ? "Buying \(store.failedLegs.count) more…" : "Buy the \(store.failedLegs.count) that missed", style: .cta) {
                     Task { if let w = app.auth.activeWallet { await store.retry(wallet: w) } }
                 }
