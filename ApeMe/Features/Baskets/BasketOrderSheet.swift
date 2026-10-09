@@ -97,7 +97,8 @@ struct BasketOrderSheet: View {
                                 Logo(url: stock(leg.symbol)?.logoURL, symbol: leg.symbol ?? "", size: 32)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(leg.symbol ?? "—").font(.system(size: 15, weight: .semibold))
-                                    if let w = leg.weight { Text(Fmt.pct(w * 100, 0)).font(.sub).foregroundStyle(Theme.muted) }
+                                    // Weight arrives as a percent already, and it is a share, not a move: no sign.
+                                    if let w = leg.weight { Text(String(format: "%.0f%% of the basket", w)).font(.sub).foregroundStyle(Theme.muted) }
                                 }
                                 Spacer()
                                 Text(sell ? Fmt.cash(leg.outUsd) : Fmt.cash(leg.inUsd)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
@@ -316,7 +317,7 @@ struct BasketPositionView: View {
                         VStack(alignment: .trailing, spacing: 2) {
                             Text(Fmt.usd(h.valueUsd)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
                             if total > 0, let v = h.valueUsd {
-                                Text(Fmt.pct(v / total * 100, 1)).font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
+                                Text(String(format: "%.1f%% of it", v / total * 100)).font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
                             }
                         }
                     }
