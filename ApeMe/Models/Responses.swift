@@ -43,4 +43,7 @@ struct ErrorBody: Codable {
     /// 422 slippage — the band Jupiter would pick for this same trade, sized at the moment it
     /// refused. The retry offers this rather than a number the client invented.
     let suggestedSlippageBps: Int?
+    /// no_route / rate_limited / upstream_error on a basket leg: which stock, and what Jupiter said.
+    let symbol: String?
+    let upstreamStatus: Int?
 }

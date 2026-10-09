@@ -13,6 +13,9 @@ enum APIError: LocalizedError {
     case regionBlocked(country: String?)
     /// The price moved past the limit this quote was built with.
     case slippageExceeded(suggestedBps: Int?)
+    /// The price source could not answer: no_route (Jupiter found nothing), rate_limited
+    /// (Jupiter said 429) or upstream_error. `symbol` names the leg on a basket.
+    case pricing(reason: String, symbol: String?, upstreamStatus: Int?)
     case transport(Error)
     case decoding(Error)
 
@@ -25,6 +28,7 @@ enum APIError: LocalizedError {
         case .marketClosed(let opensAt): "market_closed · opens \(opensAt ?? "later")"
         case .regionBlocked(let country): "region_blocked · \(country ?? "")"
         case .slippageExceeded(let bps): "slippage · suggests \(bps.map(String.init) ?? "?") bps"
+        case .pricing(let reason, let symbol, let up): "\(reason)\(symbol.map { " · \($0)" } ?? "") · upstream \(up.map(String.init) ?? "?")"
         case .transport(let e): e.localizedDescription
         case .decoding: "Unexpected response"
         }

@@ -117,9 +117,9 @@ final class BasketOrderStore {
 
     /// Jupiter failing to answer, or the backend saying it could not route: worth one more go.
     private static func isUpstreamHiccup(_ error: Error) -> Bool {
-        guard case APIError.http(let code, let raw) = error else { return false }
-        let r = raw.lowercased()
-        return code >= 500 || r.contains("jupiter") || r.contains("failed to get quotes") || r.contains("no_route")
+        if case APIError.pricing = error { return true }
+        guard case APIError.http(let code, _) = error else { return false }
+        return code >= 500
     }
 
     /// Signs every leg, then submits them together. A 410 means a leg expired between quote and
@@ -207,12 +207,7 @@ final class BasketOrderStore {
             if r.contains("nothing_to_retry") { return "Everything in this basket has already landed." }
             if r.contains("retry_buy_only") { return "To finish a sell, tap Close position again." }
             if r.contains("insufficient") { return "Not enough USDC." }
-            if r.contains("no_route") || r.contains("jupiter") || r.contains("failed to get quotes") {
-                // "AAPLx: jupiter: Failed to get quotes." — the symbol is the useful part.
-                let sym = reason.split(separator: ":").first.map { String($0).trimmingCharacters(in: .whitespaces) }
-                let named = sym.map { $0.count <= 8 && !$0.contains(" ") ? $0 : nil } ?? nil
-                return "Couldn't price \(named ?? "one stock") just now. Try again."
-            }
+
             if code == 404 { return "That basket isn't available any more." }
             if code == 429 { return "Slow down — try again in a bit." }
             if code == 410 { return "Prices expired. Getting fresh ones." }

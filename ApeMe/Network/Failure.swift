@@ -37,6 +37,14 @@ enum Failure {
             guard let s = suggested else { return "The price moved past your limit. Nothing was charged." }
             return "The price moved past your limit. This route needs about \(String(format: "%g", Double(s) / 100))%."
         }
+        if case APIError.pricing(let reason, let symbol, _) = error {
+            let what = symbol ?? "this"
+            switch reason {
+            case "rate_limited": return "Prices are busy right now. Try again in a few seconds."
+            case "upstream_error": return "Our price source hiccupped on \(what). Try again."
+            default: return "Couldn't price \(what) just now. Try again."
+            }
+        }
         if case APIError.decoding = error { return "We couldn't read that response." }
         if case APIError.http(let code, let raw) = error {
             let reason = raw.split(separator: "·").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? raw

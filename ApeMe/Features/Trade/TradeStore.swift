@@ -268,6 +268,7 @@ final class TradeStore {
             if let n = needed, let h = held { return "Needs \(Fmt.cash(n)), you have \(Fmt.cash(h))." }
             return short > 0 ? "Add \(Fmt.cash(short)) USDC to place this order" : "Not enough USDC for this order."
         }
+        if case APIError.pricing = error { return Failure.action(error) }
         if case APIError.http(let code, let msg) = error {
             let m = msg.lowercased()
             // 409 is the issuer suspending the underlying — their wording is already plain.

@@ -263,6 +263,9 @@ actor API {
                 throw APIError.slippageExceeded(suggestedBps: body?.suggestedSlippageBps)
             }
             if body?.error == "region_blocked" { throw APIError.regionBlocked(country: body?.country) }
+            if let e = body?.error, ["no_route", "rate_limited", "upstream_error"].contains(e) {
+                throw APIError.pricing(reason: e, symbol: body?.symbol, upstreamStatus: body?.upstreamStatus)
+            }
             if let b = body, b.minUsd != nil || b.excludedIssuers != nil {
                 throw APIError.orderRefused(reason: b.error, minUsd: b.minUsd, excludedIssuers: b.excludedIssuers)
             }
