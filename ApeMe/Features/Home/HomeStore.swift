@@ -11,9 +11,9 @@ final class HomeStore {
         /// Watching something is the clearest thing a user ever tells us about what they care
         /// about, so once the list has anything in it, it leads. Empty, it sits at the back.
         static func ordered(watching: Bool) -> [InvestTab] {
-            // Three chips, not six. Baskets, pre-IPO, movers and collections are sections of one
-            // Explore page; the watchlist only appears once it has something in it.
-            watching ? [.explore, .preipo, .movers, .news, .watch] : [.explore, .preipo, .movers, .news]
+            // Movers is a section of the Explore page, under the baskets, not a chip of its own;
+            // the watchlist only appears once it has something in it.
+            watching ? [.explore, .preipo, .news, .watch] : [.explore, .preipo, .news]
         }
     }
 
