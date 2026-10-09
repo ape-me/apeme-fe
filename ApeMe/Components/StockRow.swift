@@ -35,6 +35,11 @@ struct StockRow: View {
                         .font(.sub).foregroundStyle(Theme.muted).lineLimit(1)
                 }
                 Spacer(minLength: 8)
+                if let sp = stock.spark, sp.count > 1 {
+                    RowSpark(points: sp, baseline: stock.prevClose,
+                             tint: RowSpark.tint(points: sp, baseline: stock.prevClose, change: stock.change24h))
+                        .padding(.trailing, 4)
+                }
                 VStack(alignment: .trailing, spacing: 3) {
                     Text(Fmt.usd(stock.priceUsd)).font(.rowPrice).monospacedDigit()
                     // An earn token's 24h change is near zero by design; printing it as a market

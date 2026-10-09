@@ -197,7 +197,12 @@ struct PositionRow: View {
                     Text(holding.symbol).font(.rowTitle)
                     Text(Fmt.qty(holding.amount, symbol: holding.symbol)).font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
                 }
-                Spacer()
+                Spacer(minLength: 8)
+                if let sp = holding.spark, sp.count > 1 {
+                    RowSpark(points: sp, baseline: holding.prevClose,
+                             tint: RowSpark.tint(points: sp, baseline: holding.prevClose, change: holding.change24h))
+                        .padding(.trailing, 4)
+                }
                 VStack(alignment: .trailing, spacing: 3) {
                     Text(Fmt.usd(holding.valueUsd)).font(.rowPrice).monospacedDigit()
                     // No cost basis (deposited from outside) → no P&L, not a fake $0.

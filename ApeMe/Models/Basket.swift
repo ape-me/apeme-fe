@@ -161,6 +161,10 @@ struct BasketPosition: Codable, Hashable, Identifiable {
     /// Always false for now; the toggle renders disabled with "Coming soon".
     let rebalance: Bool?
     let stocks: [Holding]
+    /// The basket's value, hourly over the last day, and a day ago. Null if any stock in it
+    /// lacks a day of history.
+    let spark: [Double]?
+    let prevClose: Double?
     var id: String { basketId }
 }
 

@@ -32,6 +32,10 @@ struct Stock: Codable, Identifiable, Hashable {
     let stockVol24hUsd: Double?
     let buys24h: Int?
     let sells24h: Int?
+    /// 24 hourly closes over the last day, oldest first, and the price a day ago. Null where
+    /// the history is shorter than that.
+    let spark: [Double]?
+    let prevClose: Double?
 
     var logoURL: URL? { logo.flatMap { $0.isEmpty ? nil : URL(string: $0) } }
     var isPreIPO: Bool { issuer == "prestocks" }

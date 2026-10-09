@@ -310,7 +310,12 @@ struct BasketPositionRow: View {
                     Text(position.name).font(.rowTitle)
                     Text("\(position.stocks.count) stocks · basket").font(.sub).foregroundStyle(Theme.muted)
                 }
-                Spacer()
+                Spacer(minLength: 8)
+                if let sp = position.spark, sp.count > 1 {
+                    RowSpark(points: sp, baseline: position.prevClose,
+                             tint: RowSpark.tint(points: sp, baseline: position.prevClose, change: position.pnlPct))
+                        .padding(.trailing, 4)
+                }
                 VStack(alignment: .trailing, spacing: 3) {
                     Text(Fmt.usd(position.valueUsd)).font(.rowPrice).monospacedDigit()
                     if let p = position.pnlUsd {

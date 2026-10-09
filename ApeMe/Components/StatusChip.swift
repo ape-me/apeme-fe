@@ -157,6 +157,8 @@ struct HR: View {
 struct RowSkeleton: View {
     /// Markets rows carry a small premium badge beside the symbol; the placeholder does too.
     var badge = false
+    /// List rows carry the day's line before the price. Rows that don't pass false.
+    var spark = true
     var body: some View {
         HStack(spacing: 12) {
             Skeleton(height: 40).frame(width: 40)
@@ -168,6 +170,7 @@ struct RowSkeleton: View {
                 Skeleton(height: 11).frame(width: 140)
             }
             Spacer()
+            if spark { Skeleton(height: 24, radius: 6).frame(width: 60).padding(.trailing, 4) }
             VStack(alignment: .trailing, spacing: 7) { Skeleton(height: 13).frame(width: 64); Skeleton(height: 11).frame(width: 44) }
         }
         .frame(height: 64)

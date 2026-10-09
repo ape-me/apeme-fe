@@ -238,7 +238,7 @@ struct BasketView: View {
                                 Skeleton(height: 16).frame(width: 280).padding(.top, 4)
                             }
                             Skeleton(height: 20).frame(width: 190)
-                            ForEach(0..<4, id: \.self) { _ in RowSkeleton() }
+                            ForEach(0..<4, id: \.self) { _ in RowSkeleton(spark: false) }
                         }
                         .padding(.horizontal, 20).padding(.top, 16)
                     }

@@ -21,6 +21,9 @@ struct Holding: Codable, Identifiable, Hashable {
     let avgEntryUsd: Double?
     /// Stonks247 fee + rent + issuer fee paid on this stock's buys and sells.
     let feesUsd: Double?
+    /// The last day, hourly, and the price a day ago. Null for cash and SOL.
+    let spark: [Double]?
+    let prevClose: Double?
 
     var imageURL: URL? { image.flatMap { $0.isEmpty ? nil : URL(string: $0) } }
     /// Worth under a cent, or nothing at all. A sell rounds down to whole raw units, so a few
