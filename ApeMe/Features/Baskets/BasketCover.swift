@@ -22,7 +22,12 @@ struct BasketCover<Bar: View, Trailing: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            bar.padding(.horizontal, 12).frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+            // An EmptyView takes no space whatever frame it is given, so the band is a real
+            // 56pt of colour and the bar sits in it.
+            ZStack(alignment: .leading) {
+                Color.clear.frame(height: 56)
+                bar.padding(.horizontal, 12)
+            }
             HStack(alignment: .center, spacing: 14) {
                 VStack(alignment: .leading, spacing: 12) {
                     LogoStack(urls: logos, size: 40)

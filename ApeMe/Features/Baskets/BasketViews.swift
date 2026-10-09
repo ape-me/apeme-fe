@@ -89,23 +89,16 @@ struct BasketTile: View {
     var body: some View {
         Button(action: open) {
             VStack(alignment: .leading, spacing: 0) {
-                // The basket's tint as a band behind its stocks, so the tile and the page it
-                // opens are visibly the same thing.
                 LogoStack(urls: basket.logoURLs, size: 28)
-                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(BasketTint.gradient)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(basket.name).font(.system(size: 15, weight: .semibold)).tracking(-0.2).lineLimit(1)
-                    Spacer(minLength: 10)
-                    Text(Fmt.pct(basket.return1y, 1)).font(.system(size: 16, weight: .semibold)).monospacedDigit()
-                        .foregroundStyle(basket.return1y == nil ? Theme.muted : Theme.change(basket.return1y))
-                    Text(basket.returnLabel ?? "1Y").font(.sub).foregroundStyle(Theme.faint)
-                }
-                .padding(14)
+                Spacer(minLength: 12)
+                Text(basket.name).font(.system(size: 15, weight: .semibold)).tracking(-0.2).lineLimit(1)
+                Spacer(minLength: 10)
+                Text(Fmt.pct(basket.return1y, 1)).font(.system(size: 16, weight: .semibold)).monospacedDigit()
+                    .foregroundStyle(basket.return1y == nil ? Theme.muted : Theme.change(basket.return1y))
+                Text(basket.returnLabel ?? "1Y").font(.sub).foregroundStyle(Theme.faint)
             }
-            .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
-            .background(Theme.surface)
-            .clipShape(.rect(cornerRadius: 16))
+            .padding(14).frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
+            .background(Theme.surface, in: .rect(cornerRadius: 16))
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1)).contentShape(.rect)
         }
         .buttonStyle(RowPress())
@@ -143,7 +136,6 @@ struct BasketCard: View {
         Button(action: open) {
             HStack(spacing: 14) {
                 LogoStack(urls: basket.logoURLs)
-                    .padding(8).background(BasketTint.gradient, in: .rect(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 3) {
                     Text(basket.name).font(.rowTitle).tracking(-0.2)
                     if let t = basket.tagline { Text(t).font(.sub).foregroundStyle(Theme.muted).lineLimit(1) }
