@@ -78,6 +78,13 @@ enum Fmt {
         return s + String(format: "%.\(d)f%%", abs(n))
     }
 
+    /// "13.4% ↑": the direction after the number, for a cell that is already coloured.
+    static func trailingArrow(_ n: Double?, _ d: Int = 2) -> String {
+        guard let n, n.isFinite else { return "—" }
+        let v = String(format: "%.\(d)f%%", abs(n))
+        return n > 0 ? v + " ↑" : n < 0 ? v + " ↓" : v
+    }
+
     static func arrow(_ n: Double?, _ d: Int = 2) -> String {
         guard let n, n.isFinite else { return "—" }
         return (n >= 0 ? "↑ " : "↓ ") + String(format: "%.\(d)f%%", abs(n))

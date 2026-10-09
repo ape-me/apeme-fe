@@ -295,7 +295,7 @@ struct BasketPositionView: View {
     private func cover(_ p: BasketPosition) -> some View {
         BasketCover(name: p.name, logos: p.stocks.prefix(5).compactMap(\.logoURL), stats: [
             .init(label: "Paid", value: Fmt.cash(p.paidUsd)),
-            .init(label: "Return", value: Fmt.pct(p.pnlPct, 2), color: Theme.change(p.pnlPct)),
+            .init(label: "Return", value: Fmt.trailingArrow(p.pnlPct, 2), color: Theme.change(p.pnlPct)),
             .init(label: "Since", value: p.openedAt.map { Fmt.monthDay($0) } ?? "—"),
             .init(label: "Stocks", value: "\(p.stocks.count)"),
         ]) {

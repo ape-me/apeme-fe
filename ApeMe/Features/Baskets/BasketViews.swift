@@ -271,15 +271,16 @@ struct BasketView: View {
     /// which stock carried it. A cell the backend cannot fill shows a dash rather than a
     /// different stat that happens to exist.
     private func coverStats(_ d: BasketDetail) -> [CoverStat] {
-        // "+408%" where "+408.1%" would not fit the cell.
-        func pct(_ r: Double?) -> String { r.map { Fmt.pct($0, abs($0) >= 100 ? 0 : 1) } ?? "—" }
+        // "408% ↑" where "408.1% ↑" would not fit the cell. The colour says the sign already;
+        // the arrow after the number says it again for anyone who does not read colour.
+        func pct(_ r: Double?) -> String { r.map { Fmt.trailingArrow($0, abs($0) >= 100 ? 0 : 1) } ?? "—" }
         let bench = d.performance?.benchmark
         let benchReturn = bench?.returnPct
         return [
             .init(label: d.returnLabel ?? "1Y", value: pct(d.return1y), color: Theme.change(d.return1y)),
             .init(label: "vs \(bench?.name ?? "S&P 500")", value: pct(benchReturn), color: Theme.change(benchReturn)),
             .init(label: "Risk", value: d.risk?.level ?? "—"),
-            .init(label: "Best" + (d.best?.return1y.map { " · \(Fmt.pct($0, 0))" } ?? ""), value: d.best?.symbol ?? "—",
+            .init(label: "Best" + (d.best?.return1y.map { " · \(Fmt.trailingArrow($0, 0))" } ?? ""), value: d.best?.symbol ?? "—",
                   color: Theme.change(d.best?.return1y)),
         ]
     }
