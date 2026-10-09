@@ -255,10 +255,6 @@ struct BasketPositionView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         cover(p)
                         VStack(alignment: .leading, spacing: 22) {
-                            KCard {
-                                KV("Paid", Fmt.cash(p.paidUsd))
-                                if let t = p.openedAt { KV("Opened", Fmt.date(t)) }
-                            }
                             holdings(p)
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
@@ -293,11 +289,15 @@ struct BasketPositionView: View {
         .task { await positions.load() }
     }
 
-    /// The cover with what the position is worth now and how that compares to what was paid.
+    /// The cover with what the position is worth now, and under it what it cost, how it has
+    /// done, since when, and of how many stocks.
     private func cover(_ p: BasketPosition) -> some View {
-        BasketCover(name: p.name,
-                    tagline: p.openedAt.map { "\(p.stocks.count) stocks · since \(Fmt.date($0))" } ?? "\(p.stocks.count) stocks",
-                    logos: p.stocks.prefix(5).compactMap(\.logoURL)) {
+        BasketCover(name: p.name, logos: p.stocks.prefix(5).compactMap(\.logoURL), stats: [
+            .init(label: "Paid", value: Fmt.cash(p.paidUsd)),
+            .init(label: "Return", value: Fmt.pct(p.pnlPct, 2), color: Theme.change(p.pnlPct)),
+            .init(label: "Since", value: p.openedAt.map { Fmt.date($0) } ?? "—"),
+            .init(label: "Stocks", value: "\(p.stocks.count)"),
+        ]) {
             VStack(alignment: .trailing, spacing: 6) {
                 Text(Fmt.usd(p.valueUsd)).font(.system(size: 26, weight: .semibold)).tracking(-0.8).monospacedDigit().foregroundStyle(Theme.ink)
                 if let g = p.pnlUsd {

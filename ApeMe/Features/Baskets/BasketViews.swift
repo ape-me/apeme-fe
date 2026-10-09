@@ -224,7 +224,7 @@ struct BasketView: View {
                 } else {
                     // Cover, tab strip, two paragraphs, then stock rows — the About tab's shape.
                     VStack(alignment: .leading, spacing: 18) {
-                        Skeleton(height: 140).padding(.horizontal, -20)
+                        Skeleton(height: 290).padding(.horizontal, -20)
                         Skeleton(height: 18).frame(width: 260)
                         VStack(alignment: .leading, spacing: 8) { Skeleton(height: 14); Skeleton(height: 14).frame(width: 240) }
                         ForEach(0..<4, id: \.self) { _ in RowSkeleton() }
@@ -247,14 +247,23 @@ struct BasketView: View {
     }
 
     private func header(_ d: BasketDetail) -> some View {
-        BasketCover(name: d.name, tagline: d.tagline, logos: (d.logos ?? []).prefix(5).compactMap(URL.init(string:))) {
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(Fmt.pct(d.return1y, 1))
-                    .font(.system(size: 26, weight: .semibold)).tracking(-0.8).monospacedDigit()
-                    .foregroundStyle(d.return1y == nil ? Theme.muted : Theme.change(d.return1y))
-                Text(d.returnLabel ?? "1Y").font(.sub).foregroundStyle(Theme.muted)
-            }
+        BasketCover(name: d.name, tagline: d.tagline, logos: (d.logos ?? []).prefix(5).compactMap(URL.init(string:)),
+                    chart: d.chart?.points.map(\.value) ?? [], chartTint: Theme.change(d.return1y), stats: coverStats(d))
+    }
+
+    /// The year's return, how the index did, how rough the ride is, and who carried it. A basket
+    /// with no history (pre-IPO) falls back to what it is made of and what it costs to start.
+    private func coverStats(_ d: BasketDetail) -> [CoverStat] {
+        var out: [CoverStat] = []
+        if let r = d.return1y { out.append(.init(label: d.returnLabel ?? "1Y", value: Fmt.pct(r, 1), color: Theme.change(r))) }
+        if let b = d.performance?.benchmark, let r = b.ranges?["1Y"] ?? nil {
+            out.append(.init(label: "vs \(b.name ?? "S&P 500")", value: Fmt.pct(r, 1), color: Theme.change(r)))
         }
+        if let level = d.risk?.level { out.append(.init(label: "Risk", value: level)) }
+        if let best = d.best, let r = best.return1y { out.append(.init(label: "Best", value: "\(best.symbol) \(Fmt.pct(r, 0))", color: Theme.change(r))) }
+        if out.count < 4 { out.append(.init(label: "Stocks", value: "\(d.stocks.count)")) }
+        if out.count < 4 { out.append(.init(label: "Min", value: Fmt.cash(d.minUsd ?? 10))) }
+        return Array(out.prefix(4))
     }
 
     // MARK: About

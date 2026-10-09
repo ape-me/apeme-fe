@@ -7,16 +7,29 @@ import SwiftUI
 /// `bar` is the row that sits in the cover's top band: a sheet's title and close button. Pages
 /// leave it empty and pin their back button over the band instead, so it is still there once
 /// the cover has scrolled away.
+/// One cell of the strip under a cover: the number, and what it is.
+struct CoverStat: Hashable {
+    let label: String
+    let value: String
+    var color: Color = Theme.ink
+}
+
 struct BasketCover<Bar: View, Trailing: View>: View {
     let name: String
     var tagline: String? = nil
     let logos: [URL]
+    /// The value of $100 over the period, drawn as a sparkline. Empty draws nothing.
+    var chart: [Double] = []
+    var chartTint: Color = Theme.accent
+    /// Up to four, edge to edge.
+    var stats: [CoverStat] = []
     @ViewBuilder let bar: Bar
     @ViewBuilder let trailing: Trailing
 
-    init(name: String, tagline: String? = nil, logos: [URL],
-         @ViewBuilder bar: () -> Bar = { EmptyView() }, @ViewBuilder trailing: () -> Trailing) {
+    init(name: String, tagline: String? = nil, logos: [URL], chart: [Double] = [], chartTint: Color = Theme.accent, stats: [CoverStat] = [],
+         @ViewBuilder bar: () -> Bar = { EmptyView() }, @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
         self.name = name; self.tagline = tagline; self.logos = logos
+        self.chart = chart; self.chartTint = chartTint; self.stats = stats
         self.bar = bar(); self.trailing = trailing()
     }
 
@@ -41,7 +54,25 @@ struct BasketCover<Bar: View, Trailing: View>: View {
                 Spacer(minLength: 12)
                 trailing
             }
-            .padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 24)
+            .padding(.horizontal, 20).padding(.top, 4)
+            if chart.count > 1 {
+                Sparkline(values: chart, tint: chartTint)
+                    .frame(height: 60).padding(.horizontal, 20).padding(.top, 16)
+            }
+            if !stats.isEmpty {
+                HStack(spacing: 0) {
+                    ForEach(Array(stats.prefix(4).enumerated()), id: \.offset) { i, st in
+                        if i > 0 { Rectangle().fill(Theme.line).frame(width: 1, height: 30).padding(.horizontal, 12) }
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(st.value).font(.system(size: 15, weight: .semibold)).monospacedDigit().foregroundStyle(st.color).lineLimit(1)
+                            Text(st.label).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.muted).lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(.horizontal, 20).padding(.top, 16)
+            }
+            Color.clear.frame(height: 22)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(BasketTint.gradient)
@@ -54,5 +85,38 @@ struct BasketCover<Bar: View, Trailing: View>: View {
 enum BasketTint {
     static var gradient: LinearGradient {
         LinearGradient(colors: [Color(hex: 0xD6E4FF), Color(hex: 0xEEF4FF)], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+}
+
+/// A line and the wash under it. No axes, no labels, no touch: the shape of the year at a glance.
+struct Sparkline: View {
+    let values: [Double]
+    let tint: Color
+
+    var body: some View {
+        GeometryReader { g in
+            let lo = values.min() ?? 0, hi = values.max() ?? 1
+            let span = max(hi - lo, 1e-9)
+            let inset: CGFloat = 2
+            let n = values.count
+            let pt: (Int) -> CGPoint = { i in
+                CGPoint(x: g.size.width * CGFloat(i) / CGFloat(max(n - 1, 1)),
+                        y: inset + (g.size.height - 2 * inset) * (1 - CGFloat((values[i] - lo) / span)))
+            }
+            let line = Path { p in
+                p.move(to: pt(0))
+                for i in 1..<n { p.addLine(to: pt(i)) }
+            }
+            ZStack {
+                Path { p in
+                    p.addPath(line)
+                    p.addLine(to: CGPoint(x: g.size.width, y: g.size.height))
+                    p.addLine(to: CGPoint(x: 0, y: g.size.height))
+                    p.closeSubpath()
+                }
+                .fill(LinearGradient(colors: [tint.opacity(0.22), tint.opacity(0)], startPoint: .top, endPoint: .bottom))
+                line.stroke(tint, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+            }
+        }
     }
 }
