@@ -19,9 +19,11 @@ struct StockView: View {
             topbar
             ScrollView {
                 Group {
-                    if let s = store.stock { content(s) }
+                    // The list that opened this page already had the stock; show it now and let
+                    // the fresh read replace it, rather than a skeleton for a thing we know.
+                    if let s = store.stock ?? app.stocksByMint[store.mint] { content(s) }
                     else if let err = store.error { ErrorBar(text: err) }
-                    else { VStack(spacing: 10) { Skeleton(); Skeleton(height: 44); Skeleton(height: 200) }.padding(20) }
+                    else { skeleton }
                 }
                 .containerRelativeFrame(.horizontal)
                 .reportScrollOffset(in: "stock")
@@ -251,6 +253,45 @@ struct StockView: View {
             }
         }
         .padding(.horizontal, 20).padding(.top, 8)
+    }
+
+    /// The page's own shape while the stock is unknown: mark, symbol and name, hairline, price and
+    /// change, caption, chart, range pills, Buy and Sell, tabs, headlines. Each in its place, so
+    /// the real thing lands on top of it rather than beside it.
+    private var skeleton: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 12) {
+                    Skeleton(height: 40).frame(width: 40)
+                    Skeleton(height: 30).frame(width: 110)
+                    Skeleton(height: 18).frame(width: 150)
+                }
+                .padding(.bottom, 14)
+                Rectangle().fill(Theme.line).frame(height: 1)
+                HStack(spacing: 10) { Skeleton(height: 26).frame(width: 96); Skeleton(height: 18).frame(width: 130) }
+                    .padding(.top, 14)
+                Skeleton(height: 18).frame(width: 44).padding(.top, 6)
+            }
+            .padding(.horizontal, 20).padding(.top, 8)
+            Skeleton(height: Self.chartHeight).padding(.horizontal, 20).padding(.top, 20)
+            HStack(spacing: 0) {
+                ForEach(0..<5, id: \.self) { i in
+                    Spacer(minLength: 0)
+                    Skeleton(height: 18).frame(width: i == 3 ? 44 : 34)
+                    Spacer(minLength: 0)
+                }
+            }
+            .frame(height: 32).padding(.horizontal, 20).padding(.top, 14)
+            HStack(spacing: 10) { Skeleton(height: 52); Skeleton(height: 52) }
+                .padding(.horizontal, 20).padding(.top, 18)
+            HR().padding(.top, 22)
+            HStack(spacing: 0) {
+                ForEach([56, 84, 60], id: \.self) { w in Skeleton(height: 18).frame(width: CGFloat(w)).frame(maxWidth: .infinity) }
+            }
+            .padding(.horizontal, 20).padding(.top, 18)
+            NewsListSkeleton(count: 3, showThumb: false).padding(.horizontal, 20).padding(.top, 16)
+        }
+        .padding(.bottom, 24)
     }
 
     /// "$0.86  9.21% ↓": the colour and the arrow carry the direction, so neither number needs a sign.
