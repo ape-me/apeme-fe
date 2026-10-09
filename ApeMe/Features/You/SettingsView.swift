@@ -25,9 +25,6 @@ struct SettingsView: View {
                     section("Quick sell %") {
                         editableChips(values: s.quickSellPct ?? [], suffix: "%", max: 4) { s.quickSellPct = $0; save(["quickSellPct": $0]) }
                     }
-                    KCard {
-                        toggle("Hide dust (< $0.01)", s.hideDust ?? false) { s.hideDust = $0; save(["hideDust": $0]) }
-                    }
                     if let error { Text(error).font(.sub).foregroundStyle(Theme.red) }
                 }
                 .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
@@ -77,12 +74,5 @@ struct SettingsView: View {
             }
         }
     }
-
-    private func toggle(_ title: String, _ on: Bool, set: @escaping (Bool) -> Void) -> some View {
-        Button { Haptic.light(); set(!on) } label: {
-            HStack { Text(title).font(.system(size: 15, weight: .medium)); Spacer(); SwitchShape(on: on, tint: skin.accent) }
-                .frame(minHeight: 52).contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-    }
+}
 }

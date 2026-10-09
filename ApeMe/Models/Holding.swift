@@ -23,4 +23,7 @@ struct Holding: Codable, Identifiable, Hashable {
     let feesUsd: Double?
 
     var imageURL: URL? { image.flatMap { $0.isEmpty ? nil : URL(string: $0) } }
+    /// Worth under a cent, or nothing at all. A sell rounds down to whole raw units, so a few
+    /// units always stay behind; showing them as a position says the sell did not finish.
+    var isDust: Bool { amount <= 0 || (valueUsd.map { $0 < 0.01 } ?? false) }
 }

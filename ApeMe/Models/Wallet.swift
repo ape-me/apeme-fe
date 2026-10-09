@@ -18,9 +18,11 @@ struct Wallet: Codable, Hashable {
     let asOf: Int?
 
     var cash: Holding? { holdings.first { $0.kind == "cash" } }
+    /// A sold position leaves a few raw units behind (rounding on the sell side). That is dust,
+    /// not a holding: anything worth under a cent is hidden from every list.
     var positions: [Holding] {
         holdings
-            .filter { $0.kind == "stock" }
+            .filter { $0.kind == "stock" && !$0.isDust }
             .sorted { ($0.valueUsd ?? 0) > ($1.valueUsd ?? 0) }
     }
     var sol: Holding? { holdings.first { $0.kind == "sol" } }

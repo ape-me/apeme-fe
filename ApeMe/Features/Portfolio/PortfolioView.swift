@@ -82,8 +82,7 @@ struct PortfolioView: View {
     }
 
     @ViewBuilder private func content(_ w: Wallet) -> some View {
-        let hideDust = app.auth.settings.hideDust ?? false
-        let positions = w.positions.filter { !hideDust || ($0.valueUsd ?? 0) >= 0.01 }
+        let positions = w.positions
         let invested = w.positionsUsd
         let cost = w.investedUsd
         let pct: Double? = { guard let p = w.pnlUsd, cost > 0 else { return nil }; return p / cost * 100 }()
@@ -123,21 +122,6 @@ struct PortfolioView: View {
             }
             .padding(16).background(Theme.surface, in: .rect(cornerRadius: 16))
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1)).padding(.top, 18)
-
-            if let sol = w.sol, (sol.valueUsd ?? 0) > 0 {
-                HStack(spacing: 12) {
-                    Logo(url: sol.imageURL, symbol: "SOL", size: 40)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("SOL refunds").font(.sub).foregroundStyle(Theme.muted)
-                        Text(Fmt.usd(sol.valueUsd)).font(.system(size: 22, weight: .semibold)).tracking(-0.6).monospacedDigit()
-                    }
-                    Spacer()
-                    Text("\(Fmt.qty(sol.amount, symbol: "")) SOL")
-                        .font(.sub).monospacedDigit().foregroundStyle(Theme.faint)
-                }
-                .padding(16).background(Theme.surface, in: .rect(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1)).padding(.top, 10)
-            }
 
             // Withdraw was a half-opaque button that only ever produced a toast, and the
             // Deposit beside it was the second Deposit on the screen.

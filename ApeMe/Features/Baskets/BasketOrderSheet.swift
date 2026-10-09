@@ -216,7 +216,7 @@ struct BasketPositionView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             SectionTitle("Holdings")
                             KCard {
-                                ForEach(p.stocks) { h in
+                                ForEach(p.stocks.filter { ($0.valueUsd ?? 0) >= 0.01 }) { h in
                                     HStack(spacing: 12) {
                                         Logo(url: h.logoURL, symbol: h.symbol, size: 32)
                                         Text(h.symbol).font(.system(size: 15, weight: .semibold))
