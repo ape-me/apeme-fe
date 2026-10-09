@@ -170,8 +170,9 @@ struct RowSkeleton: View {
                 Skeleton(height: 11).frame(width: 140)
             }
             Spacer()
-            if spark { Skeleton(height: 24, radius: 6).frame(width: 60).padding(.trailing, 4) }
+            if spark { Skeleton(height: 26, radius: 6).frame(width: 60).padding(.trailing, 6) }
             VStack(alignment: .trailing, spacing: 7) { Skeleton(height: 13).frame(width: 64); Skeleton(height: 11).frame(width: 44) }
+                .frame(minWidth: 92, alignment: .trailing)
         }
         .frame(height: 64)
     }

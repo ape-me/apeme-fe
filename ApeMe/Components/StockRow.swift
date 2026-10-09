@@ -38,7 +38,7 @@ struct StockRow: View {
                 if let sp = stock.spark, sp.count > 1 {
                     RowSpark(points: sp, baseline: stock.prevClose,
                              tint: RowSpark.tint(points: sp, baseline: stock.prevClose, change: stock.change24h))
-                        .padding(.trailing, 4)
+                        .padding(.trailing, 6)
                 }
                 VStack(alignment: .trailing, spacing: 3) {
                     Text(Fmt.usd(stock.priceUsd)).font(.rowPrice).monospacedDigit()
@@ -51,6 +51,7 @@ struct StockRow: View {
                             .foregroundStyle(Theme.change(stock.change24h))
                     }
                 }
+                .frame(minWidth: 92, alignment: .trailing)
             }
             .padding(.vertical, 8)
             .frame(minHeight: 64)

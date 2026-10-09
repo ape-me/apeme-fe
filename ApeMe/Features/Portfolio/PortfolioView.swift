@@ -201,13 +201,14 @@ struct PositionRow: View {
                 if let sp = holding.spark, sp.count > 1 {
                     RowSpark(points: sp, baseline: holding.prevClose,
                              tint: RowSpark.tint(points: sp, baseline: holding.prevClose, change: holding.change24h))
-                        .padding(.trailing, 4)
+                        .padding(.trailing, 6)
                 }
                 VStack(alignment: .trailing, spacing: 3) {
                     Text(Fmt.usd(holding.valueUsd)).font(.rowPrice).monospacedDigit()
                     // No cost basis (deposited from outside) → no P&L, not a fake $0.
                     if holding.costUsd != nil, let p = holding.pnlUsd { Text(Fmt.signedCash(p)).font(.rowChange).monospacedDigit().foregroundStyle(Theme.change(p)) }
                 }
+                .frame(minWidth: 92, alignment: .trailing)
             }
             .padding(.vertical, 8).frame(minHeight: 60).contentShape(.rect)
         }

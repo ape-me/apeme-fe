@@ -314,7 +314,7 @@ struct BasketPositionRow: View {
                 if let sp = position.spark, sp.count > 1 {
                     RowSpark(points: sp, baseline: position.prevClose,
                              tint: RowSpark.tint(points: sp, baseline: position.prevClose, change: position.pnlPct))
-                        .padding(.trailing, 4)
+                        .padding(.trailing, 6)
                 }
                 VStack(alignment: .trailing, spacing: 3) {
                     Text(Fmt.usd(position.valueUsd)).font(.rowPrice).monospacedDigit()
@@ -322,6 +322,7 @@ struct BasketPositionRow: View {
                         Text("\(Fmt.signedCash(p)) · \(Fmt.pct(position.pnlPct, 1))").font(.rowChange).monospacedDigit().foregroundStyle(Theme.change(p))
                     }
                 }
+                .frame(minWidth: 92, alignment: .trailing)
             }
             .padding(.vertical, 8).frame(minHeight: 64).contentShape(.rect)
         }

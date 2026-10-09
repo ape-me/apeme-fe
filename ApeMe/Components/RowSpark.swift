@@ -17,9 +17,16 @@ struct RowSpark: View {
             let y: (Double) -> CGFloat = { v in inset + (g.size.height - 2 * inset) * (1 - CGFloat((v - lo) / span)) }
             let n = points.count
             let pt: (Int) -> CGPoint = { i in CGPoint(x: g.size.width * CGFloat(i) / CGFloat(max(n - 1, 1)), y: y(points[i])) }
+            // Curves through the midpoints: 24 hourly closes drawn as straight segments read as
+            // noise at this size, and the shape of the day is what the row is for.
             let line = Path { p in
                 p.move(to: pt(0))
-                for i in 1..<n { p.addLine(to: pt(i)) }
+                guard n > 2 else { if n == 2 { p.addLine(to: pt(1)) }; return }
+                for i in 1..<n - 1 {
+                    let a = pt(i), b = pt(i + 1)
+                    p.addQuadCurve(to: CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2), control: a)
+                }
+                p.addLine(to: pt(n - 1))
             }
             ZStack {
                 Path { p in
@@ -28,15 +35,15 @@ struct RowSpark: View {
                     p.addLine(to: CGPoint(x: 0, y: g.size.height))
                     p.closeSubpath()
                 }
-                .fill(LinearGradient(colors: [tint.opacity(0.28), tint.opacity(0)], startPoint: .top, endPoint: .bottom))
+                .fill(LinearGradient(colors: [tint.opacity(0.16), tint.opacity(0)], startPoint: .top, endPoint: .bottom))
                 if let b = baseline {
                     Path { p in p.move(to: CGPoint(x: 0, y: y(b))); p.addLine(to: CGPoint(x: g.size.width, y: y(b))) }
-                        .stroke(tint.opacity(0.55), style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                        .stroke(tint.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
                 }
-                line.stroke(tint, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                line.stroke(tint, style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
             }
         }
-        .frame(width: 60, height: 24)
+        .frame(width: 60, height: 26)
     }
 
     /// Up if today ended above yesterday's close; the 24h change decides when there is no close.
