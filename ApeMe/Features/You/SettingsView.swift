@@ -75,4 +75,3 @@ struct SettingsView: View {
         }
     }
 }
-}
