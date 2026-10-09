@@ -296,7 +296,7 @@ struct BasketPositionView: View {
         BasketCover(name: p.name, logos: p.stocks.prefix(5).compactMap(\.logoURL), stats: [
             .init(label: "Paid", value: Fmt.cash(p.paidUsd)),
             .init(label: "Return", value: Fmt.pct(p.pnlPct, 2), color: Theme.change(p.pnlPct)),
-            .init(label: "Since", value: p.openedAt.map { Fmt.date($0) } ?? "—"),
+            .init(label: "Since", value: p.openedAt.map { Fmt.monthDay($0) } ?? "—"),
             .init(label: "Stocks", value: "\(p.stocks.count)"),
         ]) {
             VStack(alignment: .trailing, spacing: 6) {

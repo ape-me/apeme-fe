@@ -259,12 +259,14 @@ struct BasketView: View {
     /// with no history (pre-IPO) falls back to what it is made of and what it costs to start.
     private func coverStats(_ d: BasketDetail) -> [CoverStat] {
         var out: [CoverStat] = []
-        if let r = d.return1y { out.append(.init(label: d.returnLabel ?? "1Y", value: Fmt.pct(r, 1), color: Theme.change(r))) }
+        // "+408%" where "+408.1%" would not fit the cell.
+        func pct(_ r: Double) -> String { Fmt.pct(r, abs(r) >= 100 ? 0 : 1) }
+        if let r = d.return1y { out.append(.init(label: d.returnLabel ?? "1Y", value: pct(r), color: Theme.change(r))) }
         if let b = d.performance?.benchmark, let r = b.ranges?["1Y"] ?? nil {
-            out.append(.init(label: "vs \(b.name ?? "S&P 500")", value: Fmt.pct(r, 1), color: Theme.change(r)))
+            out.append(.init(label: "vs \(b.name ?? "S&P 500")", value: pct(r), color: Theme.change(r)))
         }
         if let level = d.risk?.level { out.append(.init(label: "Risk", value: level)) }
-        if let best = d.best, let r = best.return1y { out.append(.init(label: "Best", value: "\(best.symbol) \(Fmt.pct(r, 0))", color: Theme.change(r))) }
+        if let best = d.best, let r = best.return1y { out.append(.init(label: "Best · \(Fmt.pct(r, 0))", value: best.symbol, color: Theme.change(r))) }
         if out.count < 4 { out.append(.init(label: "Stocks", value: "\(d.stocks.count)")) }
         if out.count < 4 { out.append(.init(label: "Min", value: Fmt.cash(d.minUsd ?? 10))) }
         return Array(out.prefix(4))

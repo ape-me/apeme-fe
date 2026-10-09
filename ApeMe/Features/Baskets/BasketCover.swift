@@ -62,10 +62,14 @@ struct BasketCover<Bar: View, Trailing: View>: View {
             if !stats.isEmpty {
                 HStack(spacing: 0) {
                     ForEach(Array(stats.prefix(4).enumerated()), id: \.offset) { i, st in
-                        if i > 0 { Rectangle().fill(Theme.line).frame(width: 1, height: 30).padding(.horizontal, 12) }
+                        if i > 0 { Rectangle().fill(Theme.line).frame(width: 1, height: 30).padding(.horizontal, 10) }
+                        // A cell is about 70pt. Callers keep values to six characters or so; the
+                        // scale factor is only there so a long one loses a little size, not its end.
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(st.value).font(.system(size: 15, weight: .semibold)).monospacedDigit().foregroundStyle(st.color).lineLimit(1)
-                            Text(st.label).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.muted).lineLimit(1)
+                            Text(st.value).font(.system(size: 15, weight: .semibold)).monospacedDigit().foregroundStyle(st.color)
+                                .lineLimit(1).minimumScaleFactor(0.8)
+                            Text(st.label).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.muted)
+                                .lineLimit(1).minimumScaleFactor(0.85)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }

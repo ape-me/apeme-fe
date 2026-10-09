@@ -123,6 +123,10 @@ enum Fmt {
     static func date(_ ts: Int) -> String {
         Date(timeIntervalSince1970: TimeInterval(ts)).formatted(.dateTime.month(.abbreviated).day().year().locale(locale))
     }
+    /// "Oct 9": for a cell with no room for the year.
+    static func monthDay(_ ts: Int) -> String {
+        Date(timeIntervalSince1970: TimeInterval(ts)).formatted(.dateTime.month(.abbreviated).day().locale(locale))
+    }
     static func dateTime(_ ts: Int) -> String {
         Date(timeIntervalSince1970: TimeInterval(ts)).formatted(.dateTime.month(.abbreviated).day().hour().minute().locale(locale))
     }
