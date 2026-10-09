@@ -122,32 +122,39 @@ struct BasketOrderSheet: View {
         }
     }
 
-    /// The order as a ledger, the way every broker shows one: a line per stock, the fee, a
-    /// heavier rule, and the one number that matters. Hairlines only; nothing in a box.
+    @State private var showDetails = false
+
+    /// The same ticket as a stock trade: what goes in, the fee, what comes out, then the total
+    /// with the balance beside it and one button. The per-stock split lives under Details.
     private func review(_ q: BasketQuote) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let fee = q.feeUsd ?? 0
+        let into = sell ? q.totalOutUsd : max(0, (q.amountUsd ?? 0) - fee)
+        return VStack(alignment: .leading, spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(q.legs) { leg in
-                        ledgerRow(symbol: leg.symbol ?? "—") {
-                            Text(sell ? Fmt.cash(leg.outUsd) : Fmt.cash(leg.inUsd))
-                                .font(.system(size: 15, weight: .medium)).monospacedDigit().foregroundStyle(Theme.ink)
+                    VStack(spacing: 0) {
+                        row(sell ? "You sell" : "You pay", sell ? "\(q.legs.count) stocks" : Fmt.cash(q.amountUsd))
+                        Divider().overlay(Theme.line)
+                        row("Stonks247 fee 1%", Fmt.cash(fee))
+                        Divider().overlay(Theme.line)
+                        row("You get", sell ? "≈ \(Fmt.cash(q.totalOutUsd))" : "\(q.legs.count) stocks · ≈ \(Fmt.cash(into))", .outcome)
+                    }
+                    Color.clear.frame(height: 24)
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(sell ? "\(Fmt.cash(q.totalOutUsd)) you get" : "\(Fmt.cash(q.amountUsd)) total")
+                                .font(.system(size: 20, weight: .semibold)).tracking(-0.4).monospacedDigit()
+                            Text(sell ? "after \(Fmt.cash(fee)) fees" : "for ≈ \(Fmt.cash(into)) across \(q.legs.count) stocks, fees \(Fmt.cash(fee))")
+                                .font(.sub).foregroundStyle(Theme.muted)
                         }
-                    }
-                    HStack {
-                        Text("Stonks247 fee 1% · included").font(.system(size: 15)).foregroundStyle(Theme.muted)
                         Spacer()
-                        Text(Fmt.cash(q.feeUsd)).font(.system(size: 15, weight: .medium)).monospacedDigit().foregroundStyle(Theme.muted)
+                        HStack(spacing: 6) {
+                            Image("usdc").resizable().frame(width: 18, height: 18).clipShape(.circle)
+                            Text("USDC · \(Fmt.cash(app.cashUsd))").font(.system(size: 13, weight: .semibold)).monospacedDigit()
+                        }
+                        .padding(.horizontal, 11).frame(height: 32).background(Theme.surface2, in: .capsule)
                     }
-                    .frame(height: 40)
-                    Rectangle().fill(Theme.ink.opacity(0.4)).frame(height: 1.5)
-                    HStack {
-                        Text(sell ? "You get" : "You pay").font(.system(size: 17, weight: .semibold))
-                        Spacer()
-                        Text(sell ? "≈ \(Fmt.cash(q.totalOutUsd))" : Fmt.cash(q.amountUsd))
-                            .font(.system(size: 17, weight: .semibold)).monospacedDigit()
-                    }
-                    .frame(height: 48)
+                    details(q).padding(.top, 10)
                 }
             }
             .scrollIndicators(.hidden)
@@ -161,7 +168,7 @@ struct BasketOrderSheet: View {
                 case .signing, .submitting:
                     progress(sell ? "Selling \(store.legCount) stocks…" : "Buying \(store.legCount) stocks…")
                 default:
-                    BigButton(label: sell ? "Close basket" : "Buy \(Fmt.cash(q.amountUsd))", style: sell ? .sell : .buy) {
+                    BigButton(label: sell ? "Sell now" : "Buy now", style: sell ? .sell : .buy) {
                         guard let w = app.auth.activeWallet, let t = app.walletAddress else { app.show("Sign in first.", error: true); return }
                         // The page checks this too, but the balance can move between the two.
                         if amountUsd > app.cashUsd + 0.0001 {
@@ -174,6 +181,43 @@ struct BasketOrderSheet: View {
             }
             .padding(.top, 14)
         }
+    }
+
+    /// The split by stock, folded away until asked for: seven lines nobody needs to read before
+    /// buying seven stocks in equal parts, and everything someone checking wants.
+    @ViewBuilder private func details(_ q: BasketQuote) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button { withAnimation(.easeOut(duration: 0.15)) { showDetails.toggle() } } label: {
+                HStack(spacing: 4) {
+                    Text("Details").font(.sub).foregroundStyle(Theme.muted)
+                    Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.muted)
+                        .rotationEffect(.degrees(showDetails ? 90 : 0))
+                }
+            }
+            .buttonStyle(.plain)
+            if showDetails {
+                VStack(spacing: 0) {
+                    ForEach(q.legs) { leg in
+                        ledgerRow(symbol: leg.symbol ?? "—") {
+                            Text(sell ? "≈ \(Fmt.cash(leg.outUsd))" : Fmt.cash(leg.inUsd))
+                                .font(.system(size: 15, weight: .medium)).monospacedDigit().foregroundStyle(Theme.ink)
+                        }
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
+    }
+
+    private enum RowRank { case normal, outcome }
+
+    private func row(_ k: String, _ v: String, _ rank: RowRank = .normal) -> some View {
+        HStack {
+            Text(k).font(.system(size: 15)).foregroundStyle(Theme.muted)
+            Spacer()
+            Text(v).font(.system(size: rank == .outcome ? 16 : 15, weight: rank == .outcome ? .bold : .semibold)).monospacedDigit()
+        }
+        .frame(height: 52)
     }
 
     /// One line of the ledger: a small mark, the symbol, whatever belongs on the right, and a
