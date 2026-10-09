@@ -125,3 +125,42 @@ struct Sparkline: View {
         }
     }
 }
+
+/// The cover before the basket has arrived: the same tint from the top of the screen, and a
+/// placeholder in every slot the real one fills, so nothing moves when the numbers land.
+struct BasketCoverSkeleton: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Color.clear.frame(height: 56)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: -40 * 0.32) {
+                    ForEach(0..<5, id: \.self) { _ in
+                        Circle().fill(Theme.accent.opacity(0.10)).frame(width: 40, height: 40)
+                            .overlay(Circle().stroke(Theme.surface, lineWidth: 2))
+                    }
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Skeleton(height: 27).frame(width: 150)
+                    Skeleton(height: 18).frame(width: 230)
+                }
+            }
+            .padding(.horizontal, 20).padding(.top, 4)
+            Skeleton(height: 60).padding(.horizontal, 20).padding(.top, 16)
+            HStack(spacing: 0) {
+                ForEach(0..<4, id: \.self) { i in
+                    if i > 0 { Rectangle().fill(Theme.line).frame(width: 1, height: 30).padding(.horizontal, 10) }
+                    VStack(alignment: .leading, spacing: 3) {
+                        Skeleton(height: 18).frame(width: 52)
+                        Skeleton(height: 13).frame(width: 36)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(.horizontal, 20).padding(.top, 16)
+            Color.clear.frame(height: 22)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(BasketTint.gradient)
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.line).frame(height: 1) }
+    }
+}

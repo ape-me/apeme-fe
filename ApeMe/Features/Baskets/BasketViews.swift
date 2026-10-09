@@ -226,14 +226,25 @@ struct BasketView: View {
                 } else if let err = store.error {
                     ErrorBar(text: err).padding(.top, 56)
                 } else {
-                    // Cover, tab strip, two paragraphs, then stock rows — the About tab's shape.
-                    VStack(alignment: .leading, spacing: 18) {
-                        Skeleton(height: 290).padding(.horizontal, -20)
-                        Skeleton(height: 18).frame(width: 260)
-                        VStack(alignment: .leading, spacing: 8) { Skeleton(height: 14); Skeleton(height: 14).frame(width: 240) }
-                        ForEach(0..<4, id: \.self) { _ in RowSkeleton() }
+                    // Cover, tab strip, two paragraphs, a heading, then stock rows — the About
+                    // tab's shape, in its places.
+                    VStack(alignment: .leading, spacing: 0) {
+                        BasketCoverSkeleton()
+                        VStack(alignment: .leading, spacing: 18) {
+                            HStack(spacing: 14) {
+                                ForEach([52, 96, 40, 48], id: \.self) { w in Skeleton(height: 16).frame(width: CGFloat(w)) }
+                            }
+                            .frame(height: 40)
+                            VStack(alignment: .leading, spacing: 10) {
+                                Skeleton(height: 16); Skeleton(height: 16).frame(width: 150)
+                                Skeleton(height: 16).frame(width: 280).padding(.top, 4)
+                            }
+                            Skeleton(height: 20).frame(width: 190)
+                            ForEach(0..<4, id: \.self) { _ in RowSkeleton() }
+                        }
+                        .padding(.horizontal, 20).padding(.top, 16)
                     }
-                    .padding(.horizontal, 20).padding(.top, 56)
+                    .containerRelativeFrame(.horizontal, alignment: .leading)
                 }
             }
             .scrollIndicators(.hidden)
