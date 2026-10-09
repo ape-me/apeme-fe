@@ -94,13 +94,32 @@ final class BasketOrderStore {
         error = nil; result = nil; signed = 0; outcomes = []; retriedOnce = false
         phase = .quoting
         do {
-            quote = sell ? try await API.shared.basketSell(basketId, taker: taker)
-                         : try await API.shared.basketQuote(basketId, amountUsd: amountUsd, taker: taker)
+            quote = try await fetchQuote(amountUsd: amountUsd, taker: taker)
             quote.map(remember)
             phase = .ready
         } catch {
             self.error = Self.message(error); phase = .failed
         }
+    }
+
+    /// Seven legs means seven Jupiter quotes at once, and one of them failing on Jupiter's side
+    /// is a bad second, not a bad basket. A quiet second attempt covers it before anyone is told.
+    private func fetchQuote(amountUsd: Double, taker: String) async throws -> BasketQuote {
+        do {
+            return sell ? try await API.shared.basketSell(basketId, taker: taker)
+                        : try await API.shared.basketQuote(basketId, amountUsd: amountUsd, taker: taker)
+        } catch let e where Self.isUpstreamHiccup(e) {
+            try? await Task.sleep(for: .seconds(1.2))
+            return sell ? try await API.shared.basketSell(basketId, taker: taker)
+                        : try await API.shared.basketQuote(basketId, amountUsd: amountUsd, taker: taker)
+        }
+    }
+
+    /// Jupiter failing to answer, or the backend saying it could not route: worth one more go.
+    private static func isUpstreamHiccup(_ error: Error) -> Bool {
+        guard case APIError.http(let code, let raw) = error else { return false }
+        let r = raw.lowercased()
+        return code >= 500 || r.contains("jupiter") || r.contains("failed to get quotes") || r.contains("no_route")
     }
 
     /// Signs every leg, then submits them together. A 410 means a leg expired between quote and
@@ -188,9 +207,11 @@ final class BasketOrderStore {
             if r.contains("nothing_to_retry") { return "Everything in this basket has already landed." }
             if r.contains("retry_buy_only") { return "To finish a sell, tap Close position again." }
             if r.contains("insufficient") { return "Not enough USDC." }
-            if r.contains("no_route") {
+            if r.contains("no_route") || r.contains("jupiter") || r.contains("failed to get quotes") {
+                // "AAPLx: jupiter: Failed to get quotes." — the symbol is the useful part.
                 let sym = reason.split(separator: ":").first.map { String($0).trimmingCharacters(in: .whitespaces) }
-                return "Couldn't price \(sym ?? "one stock") right now. Try again."
+                let named = sym.map { $0.count <= 8 && !$0.contains(" ") ? $0 : nil } ?? nil
+                return "Couldn't price \(named ?? "one stock") just now. Try again."
             }
             if code == 404 { return "That basket isn't available any more." }
             if code == 429 { return "Slow down — try again in a bit." }
