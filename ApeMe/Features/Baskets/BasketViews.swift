@@ -274,7 +274,7 @@ struct BasketView: View {
         // "+408%" where "+408.1%" would not fit the cell.
         func pct(_ r: Double?) -> String { r.map { Fmt.pct($0, abs($0) >= 100 ? 0 : 1) } ?? "—" }
         let bench = d.performance?.benchmark
-        let benchReturn: Double? = bench?.ranges?["1Y"] ?? nil
+        let benchReturn = bench?.returnPct
         return [
             .init(label: d.returnLabel ?? "1Y", value: pct(d.return1y), color: Theme.change(d.return1y)),
             .init(label: "vs \(bench?.name ?? "S&P 500")", value: pct(benchReturn), color: Theme.change(benchReturn)),

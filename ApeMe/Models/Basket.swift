@@ -46,6 +46,10 @@ struct BasketDetail: Codable, Hashable {
         struct Benchmark: Codable, Hashable {
             let name: String?
             let ticker: String?
+            /// The index over the basket's own window, so the cover can compare the two whatever
+            /// the window is. `ranges` stays null where the basket's history is shorter.
+            let returnPct: Double?
+            let returnLabel: String?
             let ranges: [String: Double?]?
             let points: [ChartPoint]?
         }
