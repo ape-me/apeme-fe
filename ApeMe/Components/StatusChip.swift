@@ -2,11 +2,12 @@ import SwiftUI
 
 struct Skeleton: View {
     var height: CGFloat = 14
+    var radius: CGFloat = 12
     @State private var dim = false
     var body: some View {
         // White on a white page is invisible. The accent at a whisper, pulsing, is unmistakably
         // "something is coming here" and matches the blue the rest of the page reserves for emphasis.
-        RoundedRectangle(cornerRadius: 12)
+        RoundedRectangle(cornerRadius: radius)
             .fill(Theme.accent.opacity(dim ? 0.05 : 0.12))
             .frame(maxWidth: .infinity)
             .frame(height: height)
@@ -154,10 +155,18 @@ struct HR: View {
 /// Moving highlight over a muted bar — "the number is on its way".
 /// The shape of a 64pt stock row: mark, title and subtitle, price and change on the right.
 struct RowSkeleton: View {
+    /// Markets rows carry a small premium badge beside the symbol; the placeholder does too.
+    var badge = false
     var body: some View {
         HStack(spacing: 12) {
             Skeleton(height: 40).frame(width: 40)
-            VStack(alignment: .leading, spacing: 7) { Skeleton(height: 13).frame(width: 90); Skeleton(height: 11).frame(width: 140) }
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 7) {
+                    Skeleton(height: 13).frame(width: badge ? 64 : 90)
+                    if badge { Skeleton(height: 17, radius: 5).frame(width: 46) }
+                }
+                Skeleton(height: 11).frame(width: 140)
+            }
             Spacer()
             VStack(alignment: .trailing, spacing: 7) { Skeleton(height: 13).frame(width: 64); Skeleton(height: 11).frame(width: 44) }
         }

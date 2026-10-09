@@ -57,6 +57,11 @@ struct MarketsView: View {
                 Pill(label: store.sort.label, size: .small, icon: "line.3.horizontal.decrease") { showSort = true }
                 Pill(label: "All", on: store.tag == nil, size: .small) { store.tag = nil }
                 if store.category == .stocks {
+                    if store.collections.isEmpty, store.stocks.isEmpty {
+                        // The chips come with the data; until then, pill-shaped placeholders
+                        // hold their row so the list below does not jump when they arrive.
+                        ForEach([74, 40, 82, 62], id: \.self) { w in Skeleton(height: 30, radius: 8).frame(width: CGFloat(w)) }
+                    }
                     ForEach(store.collections) { c in
                         Pill(label: store.chipTitle(c), on: store.tag == c.id, size: .small) { store.tag = c.id }
                     }
@@ -76,7 +81,7 @@ struct MarketsView: View {
             ErrorBar(text: err)
         } else if store.stocks.isEmpty {
             // Six rows the shape of StockRow: a 40pt mark, two lines, a price on the right.
-            VStack(spacing: 0) { ForEach(0..<6, id: \.self) { _ in RowSkeleton() } }
+            VStack(spacing: 0) { ForEach(0..<8, id: \.self) { _ in RowSkeleton(badge: store.category == .stocks) } }
         } else {
             let rows = store.filtered()
             if rows.isEmpty {
