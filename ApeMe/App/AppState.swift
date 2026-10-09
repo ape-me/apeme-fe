@@ -298,6 +298,41 @@ final class AppState {
         }
     }
 
+    var basketInFlight: BasketOrderStore?
+
+    /// Same shape as a stock trade: close the sheet, spin a toast, run the order, then a green
+    /// toast. Anything short of every stock landing brings the sheet back on the result, with
+    /// the retry where it was; fresh prices after an expiry bring it back on the review.
+    func runBasket(_ r: BasketResume, wallet: any PrivySDK.EmbeddedSolanaWallet, taker: String, retry: Bool = false) {
+        guard basketInFlight == nil else { return }
+        basketInFlight = r.store
+        sheet = nil
+        let img = ToastImage(url: r.logos.first, symbol: r.name)
+        let n = retry ? r.store.failedLegs.count : r.store.legCount
+        show(retry ? "Buying \(n) more…" : "\(r.sell ? "Closing" : "Buying") \(r.name)…", pending: true, image: img)
+        Task {
+            if retry { await r.store.retry(wallet: wallet) }
+            else { await r.store.send(wallet: wallet, amountUsd: r.amountUsd, taker: taker) }
+            basketInFlight = nil
+            let store = r.store
+            if store.phase == .done, store.failedLegs.isEmpty {
+                settleWallet()
+                let what = store.sell ? "≈ \(Fmt.cash(store.quote?.totalOutUsd))" : Fmt.cash(r.amountUsd)
+                show("\(store.sell ? "Closed" : "Bought") \(r.name) · \(what)", image: img)
+            } else if store.phase == .ready {
+                show("Prices changed — take a look", error: true, image: img)
+                sheet = .resumeBasket(r)
+            } else if store.result != nil {
+                settleWallet()
+                show("\(store.landed) of \(store.legCount) \(store.sell ? "sold" : "bought") — take a look", error: true, image: img)
+                sheet = .resumeBasket(r)
+            } else {
+                show(store.error ?? "Order didn't go through. Nothing was charged.", error: true, image: img)
+                sheet = .resumeBasket(r)
+            }
+        }
+    }
+
     func copy(_ value: String) {
         Haptic.light()
         UIPasteboard.general.string = value

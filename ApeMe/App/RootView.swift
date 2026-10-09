@@ -55,6 +55,7 @@ struct RootView: View {
                                  logos: p.stocks.prefix(5).compactMap(\.logoURL), sell: true, amountUsd: 0)
             case .tx(let a): TxSheet(activity: a)
             case .resume(let r): TradeSheetView(resume: r)
+            case .resumeBasket(let r): BasketOrderSheet(resume: r)
             case .position(let h): PositionSheet(holding: h)
             case .login: LoginSheet()
             }

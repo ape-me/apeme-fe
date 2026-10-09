@@ -18,6 +18,15 @@ struct BasketOrderSheet: View {
         _store = State(initialValue: BasketOrderStore(basketId: basketId, name: name, sell: sell))
     }
 
+    /// Back around an order that already ran: same store, so the result and the retry are there.
+    init(resume r: BasketResume) {
+        self.basketId = r.store.basketId; self.name = r.name; self.tagline = r.tagline; self.logos = r.logos
+        self.sell = r.sell; self.amountUsd = r.amountUsd
+        _store = State(initialValue: r.store)
+    }
+
+    private var resume: BasketResume { BasketResume(store: store, tagline: tagline, logos: logos, amountUsd: amountUsd) }
+
     /// The cover names the basket; the title says what is happening to it.
     private var title: String {
         switch store.phase {
@@ -70,7 +79,7 @@ struct BasketOrderSheet: View {
         .presentationBackground(Theme.ground)
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(busy)
-        .task { if let t = app.walletAddress { await store.getQuote(amountUsd: amountUsd, taker: t) } }
+        .task { if store.phase == .idle, let t = app.walletAddress { await store.getQuote(amountUsd: amountUsd, taker: t) } }
     }
 
     private var busy: Bool {
@@ -159,7 +168,7 @@ struct BasketOrderSheet: View {
                             store.error = "You have \(Fmt.cash(app.cashUsd)) USDC. Lower the amount or deposit first."; return
                         }
                         Haptic.medium()
-                        Task { await store.send(wallet: w, amountUsd: amountUsd, taker: t) }
+                        app.runBasket(resume, wallet: w, taker: t)
                     }
                 }
             }
@@ -230,7 +239,9 @@ struct BasketOrderSheet: View {
                 BigButton(label: "Done", style: .ghost) { app.settleWallet(); dismiss() }.padding(.top, 8)
             } else if store.canRetry {
                 BigButton(label: retrying ? "Buying \(store.failedLegs.count) more…" : "Buy the \(store.failedLegs.count) that missed", style: .cta) {
-                    Task { if let w = app.auth.activeWallet { await store.retry(wallet: w) } }
+                    guard let w = app.auth.activeWallet, let t = app.walletAddress else { return }
+                    Haptic.medium()
+                    app.runBasket(resume, wallet: w, taker: t, retry: true)
                 }
                 .disabled(busy).padding(.top, 14)
                 BigButton(label: "Done", style: .ghost) { app.settleWallet(); dismiss() }.padding(.top, 8)
