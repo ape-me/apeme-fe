@@ -39,7 +39,7 @@ struct BasketOrderSheet: View {
     }
 
     private var busy: Bool {
-        switch store.phase { case .quoting, .signing, .submitting: true; default: false }
+        switch store.phase { case .quoting, .signing, .submitting, .retrying: true; default: false }
     }
 
     @ViewBuilder private var content: some View {
@@ -51,8 +51,8 @@ struct BasketOrderSheet: View {
                 Skeleton(height: 52); Skeleton(height: 52); Skeleton(height: 52)
                 Spacer()
             }
-        case .ready, .signing, .submitting:
-            if let q = store.quote { review(q) }
+        case .ready, .signing, .submitting, .retrying:
+            if store.result != nil { result } else if let q = store.quote { review(q) }
         case .done:
             result
         case .failed:
@@ -128,16 +128,19 @@ struct BasketOrderSheet: View {
 
     /// Every leg named, landed ones ticked, failed ones red with the reason. A failed leg's USDC
     /// never left the wallet, and the sheet says so.
+    private var retrying: Bool {
+        switch store.phase { case .retrying, .signing, .submitting: store.result != nil; default: false }
+    }
+
     private var result: some View {
         VStack(alignment: .leading, spacing: 0) {
-            let r = store.result
             Text("\(store.landed)/\(store.legCount) \(sell ? "sold" : "bought")")
                 .font(.system(size: 30, weight: .semibold)).tracking(-0.8).monospacedDigit()
                 .foregroundStyle(store.failedLegs.isEmpty ? Theme.green : Theme.amber)
                 .padding(.bottom, 16)
             ScrollView {
                 VStack(spacing: 0) {
-                    ForEach(r?.legs ?? []) { leg in
+                    ForEach(store.outcomes) { leg in
                         HStack(spacing: 10) {
                             Image(systemName: leg.landed ? "checkmark.circle.fill" : "xmark.circle.fill")
                                 .foregroundStyle(leg.landed ? Theme.green : Theme.red)
@@ -153,11 +156,22 @@ struct BasketOrderSheet: View {
                 }
             }
             .scrollIndicators(.hidden)
+            if let e = store.error, store.canRetry {
+                ErrorBar(text: e).padding(.horizontal, -20).padding(.top, 10)
+            }
             if !store.failedLegs.isEmpty {
-                Text("The USDC for anything that failed is still in your wallet.")
+                Text(retrying ? "Buying the rest…" : "The USDC for anything that failed is still in your wallet.")
                     .font(.sub).foregroundStyle(Theme.muted).padding(.top, 10)
             }
-            BigButton(label: "Done", style: .white) { app.settleWallet(); dismiss() }.padding(.top, 14)
+            if store.canRetry {
+                BigButton(label: retrying ? "Buying \(store.failedLegs.count) more…" : "Buy the \(store.failedLegs.count) that missed", style: .cta) {
+                    Task { if let w = app.auth.activeWallet { await store.retry(wallet: w) } }
+                }
+                .disabled(busy).padding(.top, 14)
+                BigButton(label: "Done", style: .ghost) { app.settleWallet(); dismiss() }.padding(.top, 8)
+            } else {
+                BigButton(label: "Done", style: .white) { app.settleWallet(); dismiss() }.padding(.top, 14)
+            }
         }
     }
 }

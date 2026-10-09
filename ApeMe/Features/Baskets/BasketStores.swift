@@ -42,7 +42,7 @@ final class BasketPositionsStore {
 /// of N signatures is invisible to the user.
 @Observable @MainActor
 final class BasketOrderStore {
-    enum Phase: Equatable { case idle, quoting, ready, signing(Int), submitting, done, failed }
+    enum Phase: Equatable { case idle, quoting, ready, signing(Int), submitting, retrying, done, failed }
 
     let basketId: String
     let name: String
@@ -53,25 +53,48 @@ final class BasketOrderStore {
     var error: String?
     /// Legs that have been through Privy so far — drives "3/7 signed".
     var signed = 0
+    /// Symbol for every request id this order has issued, first quote and retries alike.
+    private var symbols: [String: String] = [:]
+    /// What each stock ended up as across every attempt: a leg that lands on a retry replaces
+    /// the failed one from the first pass, so the list reads per stock, not per try.
+    var outcomes: [BasketSubmitResponse.Leg] = []
+    /// Set once the automatic retry has run; the next retry is the user's to ask for.
+    var retriedOnce = false
 
     init(basketId: String, name: String, sell: Bool) {
         self.basketId = basketId; self.name = name; self.sell = sell
     }
 
-    var legCount: Int { quote?.legs.count ?? 0 }
-    var landed: Int { result?.legs.filter(\.landed).count ?? 0 }
-    var failedLegs: [BasketSubmitResponse.Leg] { result?.legs.filter { !$0.landed } ?? [] }
+    var legCount: Int { outcomes.isEmpty ? (quote?.legs.count ?? 0) : outcomes.count }
+    var landed: Int { outcomes.filter(\.landed).count }
+    var failedLegs: [BasketSubmitResponse.Leg] { outcomes.filter { !$0.landed } }
+    /// A buy that landed some stocks and not others. Sells re-quote whatever is left instead.
+    var canRetry: Bool { !sell && !failedLegs.isEmpty && result != nil }
 
-    func symbol(for requestId: String) -> String {
-        quote?.legs.first { $0.requestId == requestId }?.symbol ?? "—"
+    func symbol(for requestId: String) -> String { symbols[requestId] ?? "—" }
+
+    private func remember(_ q: BasketQuote) {
+        for l in q.legs { if let s = l.symbol { symbols[l.requestId] = s } }
+    }
+
+    private func merge(_ r: BasketSubmitResponse) {
+        for leg in r.legs {
+            let sym = symbol(for: leg.requestId)
+            if let i = outcomes.firstIndex(where: { symbol(for: $0.requestId) == sym }) {
+                if !outcomes[i].landed { outcomes[i] = leg }
+            } else {
+                outcomes.append(leg)
+            }
+        }
     }
 
     func getQuote(amountUsd: Double, taker: String) async {
-        error = nil; result = nil; signed = 0
+        error = nil; result = nil; signed = 0; outcomes = []; retriedOnce = false
         phase = .quoting
         do {
             quote = sell ? try await API.shared.basketSell(basketId, taker: taker)
                          : try await API.shared.basketQuote(basketId, amountUsd: amountUsd, taker: taker)
+            quote.map(remember)
             phase = .ready
         } catch {
             self.error = Self.message(error); phase = .failed
@@ -85,18 +108,16 @@ final class BasketOrderStore {
         guard let q = quote else { return }
         error = nil
         do {
-            var out: [(requestId: String, signedTransaction: String)] = []
-            for (i, leg) in q.legs.enumerated() {
-                phase = .signing(i + 1)
-                let s = try await SolanaTx.sign(leg.transaction, with: wallet)
-                out.append((leg.requestId, s)); signed = i + 1
+            let r = try await signAndSubmit(q, wallet: wallet)
+            // Seven swaps cannot share one transaction, so a basket can land in part. One quiet
+            // retry of just the stocks that missed covers the usual cause (a quote that went
+            // stale while the others were landing). After that the user decides.
+            if r.status == "partial", !sell {
+                retriedOnce = true
+                await retry(wallet: wallet)
+            } else {
+                finish(r.status)
             }
-            phase = .submitting
-            let r = try await API.shared.basketSubmit(orderId: q.orderId, signed: out)
-            result = r
-            phase = r.status == "failed" ? .failed : .done
-            if r.status == "failed" { error = "None of the swaps went through. Nothing was charged." }
-            await BasketPositionsStore.shared.load()
         } catch APIError.http(410, _) {
             await getQuote(amountUsd: amountUsd, taker: taker)
             if phase == .ready { error = "Prices refreshed — check the numbers and confirm again." }
@@ -105,12 +126,53 @@ final class BasketOrderStore {
         }
     }
 
+    /// Fresh quotes for the stocks that have not landed, signed and submitted under the same order.
+    func retry(wallet: any EmbeddedSolanaWallet) async {
+        error = nil
+        phase = .retrying
+        do {
+            let q = try await API.shared.basketRetry(orderId: quote?.orderId ?? "")
+            remember(q)
+            let r = try await signAndSubmit(q, wallet: wallet)
+            finish(r.status)
+        } catch APIError.http(409, let raw) where raw.contains("nothing_to_retry") {
+            // Everything is in after all; the position list is the truth.
+            finish("done")
+        } catch {
+            self.error = Self.message(error)
+            phase = result == nil ? .failed : .done
+        }
+    }
+
+    private func signAndSubmit(_ q: BasketQuote, wallet: any EmbeddedSolanaWallet) async throws -> BasketSubmitResponse {
+        var out: [(requestId: String, signedTransaction: String)] = []
+        signed = 0
+        for (i, leg) in q.legs.enumerated() {
+            phase = .signing(i + 1)
+            let s = try await SolanaTx.sign(leg.transaction, with: wallet)
+            out.append((leg.requestId, s)); signed = i + 1
+        }
+        phase = .submitting
+        let r = try await API.shared.basketSubmit(orderId: q.orderId, signed: out)
+        result = r
+        merge(r)
+        return r
+    }
+
+    private func finish(_ status: String) {
+        phase = status == "failed" ? .failed : .done
+        if status == "failed" { error = "None of the swaps went through. Nothing was charged." }
+        Task { await BasketPositionsStore.shared.load() }
+    }
+
     static func message(_ error: Error) -> String {
         if case APIError.http(let code, let raw) = error {
             let reason = raw.split(separator: "·").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? raw
             let r = reason.lowercased()
             if r.contains("below_minimum") { return "Minimum is $10." }
             if r.contains("nothing_to_sell") { return "Nothing left to sell in this basket." }
+            if r.contains("nothing_to_retry") { return "Everything in this basket has already landed." }
+            if r.contains("retry_buy_only") { return "To finish a sell, tap Close position again." }
             if r.contains("insufficient") { return "Not enough USDC." }
             if r.contains("no_route") {
                 let sym = reason.split(separator: ":").first.map { String($0).trimmingCharacters(in: .whitespaces) }

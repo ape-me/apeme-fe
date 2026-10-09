@@ -153,6 +153,11 @@ actor API {
         let body: [String: Any] = ["signed": signed.map { ["requestId": $0.requestId, "signedTransaction": $0.signedTransaction] }]
         return try decoder.decode(BasketSubmitResponse.self, from: try await send("POST", "/baskets/orders/\(orderId)/submit", body: body, timeout: 90))
     }
+    /// Fresh quotes for only the stocks that have not landed in this order, same dollar amounts.
+    /// Buys only. 409 nothing_to_retry once every stock is in.
+    func basketRetry(orderId: String) async throws -> BasketQuote {
+        try decoder.decode(BasketQuote.self, from: try await send("POST", "/baskets/orders/\(orderId)/retry", body: [:], timeout: 60))
+    }
     /// Only this basket's stocks, newest first, at most three per stock.
     func basketNews(_ id: String, limit: Int = 20) async throws -> NewsResponse {
         let r: NewsResponse = try await fetch("/baskets/\(id)/news?limit=\(limit)", ttl: 60); return r.visible
