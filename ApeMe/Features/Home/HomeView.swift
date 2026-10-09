@@ -22,22 +22,25 @@ struct HomeView: View {
         .scrollIndicators(.hidden)
         .background(Theme.ground)
         .task {
+            async let b: () = BasketsStore.shared.load()
             await store.load(app: app)
+            await b
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(15))
                 if Task.isCancelled { break }
                 await store.refreshPrices(app: app)
             }
         }
-        .refreshable { await store.load(app: app) }
+        .refreshable { async let b: () = BasketsStore.shared.load(); await store.load(app: app); await b }
     }
 
     /// No title: the tab bar already says which screen this is, and the market should be the
     /// first thing on it.
-    private var strip: some View {
+    @ViewBuilder private var strip: some View {
         let items = (store.preipo + (store.movers?.mostTraded ?? []).prefix(4))
             .map { StripItem(id: $0.mint, label: $0.symbol, price: $0.priceUsd, change: $0.change24h) }
-        return Strip(items: items).padding(.top, 10)
+        if items.isEmpty { StripSkeleton().padding(.top, 10) }
+        else { Strip(items: items).padding(.top, 10) }
     }
 
     private var tabs: some View {
@@ -52,12 +55,12 @@ struct HomeView: View {
         if let err = store.error, store.preipo.isEmpty {
             EmptyState(title: err, subtitle: "Pull to retry from the Home tab.")
         } else if store.loading && store.preipo.isEmpty {
-            // Explore's first screen: a heading, then the baskets grid.
-            VStack(alignment: .leading, spacing: 14) {
-                Skeleton(height: 22).frame(width: 120)
-                LazyVGrid(columns: [.init(.flexible(), spacing: 10), .init(.flexible(), spacing: 10)], spacing: 10) {
-                    ForEach(0..<4, id: \.self) { _ in Skeleton(height: 150) }
-                }
+            // Explore, in the order it draws: recently viewed when there is any, the baskets
+            // grid, the movers. Each placeholder is the shape of the thing that replaces it.
+            VStack(alignment: .leading, spacing: 28) {
+                if !app.recent.isEmpty { RecentSkeleton(count: min(app.recent.count, 4)) }
+                BasketsGridSkeleton()
+                MoversSkeleton()
             }
             .padding(.horizontal, 20).padding(.top, 20)
         } else {

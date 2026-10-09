@@ -101,6 +101,14 @@ struct MoversSection: View {
     @Environment(AppState.self) private var app
 
     var body: some View {
+        if store.movers == nil {
+            MoversSkeleton().padding(.horizontal, 20).padding(.top, 26)
+        } else {
+            loaded
+        }
+    }
+
+    private var loaded: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("Biggest movers today").h2Text()

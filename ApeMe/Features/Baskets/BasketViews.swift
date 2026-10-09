@@ -6,7 +6,7 @@ import SwiftUI
 /// there is something in it; an empty section with a heading is a shelf with nothing on it.
 struct BasketsSection: View {
     @Environment(AppState.self) private var app
-    @State private var store = BasketsStore()
+    private var store: BasketsStore { BasketsStore.shared }
 
     private var recent: [Stock] { app.recent.compactMap { app.stocksByMint[$0] } }
 
@@ -18,9 +18,7 @@ struct BasketsSection: View {
                 if let err = store.error, store.baskets.isEmpty {
                     ErrorBar(text: err).padding(.horizontal, -20)
                 } else if store.baskets.isEmpty {
-                    LazyVGrid(columns: [.init(.flexible(), spacing: 10), .init(.flexible(), spacing: 10)], spacing: 10) {
-                        ForEach(0..<4, id: \.self) { _ in Skeleton(height: 150) }
-                    }
+                    BasketsGridSkeleton(heading: false)
                 } else {
                     LazyVGrid(columns: [.init(.flexible(), spacing: 10), .init(.flexible(), spacing: 10)], spacing: 10) {
                         ForEach(store.baskets.prefix(3)) { b in BasketTile(basket: b) { app.push(.basket(b.id)) } }
@@ -108,7 +106,7 @@ struct BasketTile: View {
 /// Every basket, as rows. Reached from See more.
 struct BasketsListView: View {
     @Environment(AppState.self) private var app
-    @State private var store = BasketsStore()
+    private var store: BasketsStore { BasketsStore.shared }
 
     var body: some View {
         VStack(spacing: 0) {

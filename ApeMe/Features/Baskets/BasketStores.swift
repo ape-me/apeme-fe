@@ -5,6 +5,9 @@ import PrivySDK
 /// The list and one detail at a time. Both are public, cached 60s on the backend.
 @Observable @MainActor
 final class BasketsStore {
+    /// One list for the Home grid and the See more page, loaded alongside the rest of Home so
+    /// the tiles are there when the page is, not a second later.
+    static let shared = BasketsStore()
     var baskets: [Basket] = []
     var detail: BasketDetail?
     var loading = false
