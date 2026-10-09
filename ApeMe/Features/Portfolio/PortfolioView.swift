@@ -148,7 +148,15 @@ struct PortfolioView: View {
                 case .positions:
                     let baskets = BasketPositionsStore.shared.positions
                     let stocks = w.positions(outside: baskets)
-                    if stocks.isEmpty && baskets.isEmpty { EmptyState(title: "No positions yet.", subtitle: "Buy a stock to see it here.") }
+                    if !BasketPositionsStore.shared.loaded, !w.positions.isEmpty {
+                        // Until the baskets are known every token would list on its own, then
+                        // jump into a basket a moment later.
+                        VStack(alignment: .leading, spacing: 8) {
+                            Skeleton(height: 18).frame(width: 90)
+                            KCard { ForEach(0..<min(3, w.positions.count), id: \.self) { _ in RowSkeleton() } }
+                        }
+                        .padding(.top, 8)
+                    } else if stocks.isEmpty && baskets.isEmpty { EmptyState(title: "No positions yet.", subtitle: "Buy a stock to see it here.") }
                     else {
                         VStack(alignment: .leading, spacing: 20) {
                             // A basket is one position to the user, however many tokens it holds,

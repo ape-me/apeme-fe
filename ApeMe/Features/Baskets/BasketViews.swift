@@ -93,7 +93,7 @@ struct BasketTile: View {
                 // opens are visibly the same thing.
                 LogoStack(urls: basket.logoURLs, size: 28)
                     .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(BasketTint.gradient(basket.id))
+                    .background(BasketTint.gradient)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(basket.name).font(.system(size: 15, weight: .semibold)).tracking(-0.2).lineLimit(1)
                     Spacer(minLength: 10)
@@ -143,7 +143,7 @@ struct BasketCard: View {
         Button(action: open) {
             HStack(spacing: 14) {
                 LogoStack(urls: basket.logoURLs)
-                    .padding(8).background(BasketTint.gradient(basket.id), in: .rect(cornerRadius: 12))
+                    .padding(8).background(BasketTint.gradient, in: .rect(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 3) {
                     Text(basket.name).font(.rowTitle).tracking(-0.2)
                     if let t = basket.tagline { Text(t).font(.sub).foregroundStyle(Theme.muted).lineLimit(1) }
@@ -206,40 +206,43 @@ struct BasketView: View {
     private var d: BasketDetail? { store.detail }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // The cover carries the name; a title above it said the same thing twice.
-            HStack(spacing: 10) { BackButton(); Spacer() }
-                .padding(.horizontal, 12).padding(.top, 6).frame(height: 56)
+        // The cover is the top of the page and scrolls with it; the back button is pinned over
+        // the cover's empty band so it is still there once the cover has gone.
+        ZStack(alignment: .top) {
             ScrollView {
                 if let d {
-                    VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 0) {
                         header(d)
-                        ScrollView(.horizontal) {
-                            UnderlineTabs(items: Tab.allCases, selected: tab, label: \.label) { tab = $0; Haptic.selection() }
+                        VStack(alignment: .leading, spacing: 18) {
+                            ScrollView(.horizontal) {
+                                UnderlineTabs(items: Tab.allCases, selected: tab, label: \.label) { tab = $0; Haptic.selection() }
+                            }
+                            .scrollIndicators(.hidden)
+                            switch tab {
+                            case .about: about(d)
+                            case .performance: performance(d)
+                            case .risk: risk(d)
+                            case .news: newsTab
+                            }
                         }
-                        .scrollIndicators(.hidden)
-                        switch tab {
-                        case .about: about(d)
-                        case .performance: performance(d)
-                        case .risk: risk(d)
-                        case .news: newsTab
-                        }
+                        .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 130)
                     }
-                    .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 130)
                 } else if let err = store.error {
-                    ErrorBar(text: err)
+                    ErrorBar(text: err).padding(.top, 56)
                 } else {
-                    // Header row, tab strip, two paragraphs, then stock rows — the About tab's shape.
+                    // Cover, tab strip, two paragraphs, then stock rows — the About tab's shape.
                     VStack(alignment: .leading, spacing: 18) {
-                        Skeleton(height: 130)
+                        Skeleton(height: 140).padding(.horizontal, -20)
                         Skeleton(height: 18).frame(width: 260)
                         VStack(alignment: .leading, spacing: 8) { Skeleton(height: 14); Skeleton(height: 14).frame(width: 240) }
                         ForEach(0..<4, id: \.self) { _ in RowSkeleton() }
                     }
-                    .padding(.horizontal, 20).padding(.top, 8)
+                    .padding(.horizontal, 20).padding(.top, 56)
                 }
             }
             .scrollIndicators(.hidden)
+            HStack(spacing: 10) { BackButton(); Spacer() }
+                .padding(.horizontal, 12).frame(height: 56)
         }
         .background(Theme.ground)
         .safeAreaInset(edge: .bottom) { if let d { invest(d) } }
@@ -252,7 +255,7 @@ struct BasketView: View {
     }
 
     private func header(_ d: BasketDetail) -> some View {
-        BasketCover(id: d.id, name: d.name, tagline: d.tagline, logos: (d.logos ?? []).prefix(5).compactMap(URL.init(string:))) {
+        BasketCover(name: d.name, tagline: d.tagline, logos: (d.logos ?? []).prefix(5).compactMap(URL.init(string:))) {
             VStack(alignment: .trailing, spacing: 2) {
                 Text(Fmt.pct(d.return1y, 1))
                     .font(.system(size: 26, weight: .semibold)).tracking(-0.8).monospacedDigit()

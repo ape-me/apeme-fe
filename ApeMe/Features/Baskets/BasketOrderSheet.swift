@@ -28,7 +28,10 @@ struct BasketOrderSheet: View {
 
     /// Amount on a buy, what comes back on a sell; the result shows how much of it landed.
     private var cover: some View {
-        BasketCover(id: basketId, name: name, tagline: tagline, logos: logos) {
+        BasketCover(name: name, tagline: tagline, logos: logos) {
+            HStack { Text(title).h2Text(); Spacer(); IconButton(symbol: "xmark", label: "Close") { dismiss() }.disabled(busy) }
+                .padding(.top, 10)
+        } trailing: {
             VStack(alignment: .trailing, spacing: 2) {
                 if store.result != nil {
                     Text("\(store.landed)/\(store.legCount)")
@@ -48,7 +51,6 @@ struct BasketOrderSheet: View {
                 }
             }
         }
-        .padding(.bottom, 14)
     }
 
     /// Quote legs carry a symbol, not a mint; the stock list already loaded gives the mark.
@@ -59,11 +61,9 @@ struct BasketOrderSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack { Text(title).h2Text(); Spacer(); IconButton(symbol: "xmark", label: "Close") { dismiss() }.disabled(busy) }
-                .padding(.bottom, 18)
-            content
+            cover
+            content.padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 20)
         }
-        .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.ground)
         .presentationDetents([.large])
@@ -81,7 +81,6 @@ struct BasketOrderSheet: View {
         switch store.phase {
         case .idle, .quoting:
             VStack(alignment: .leading, spacing: 14) {
-                cover
                 Text(sell ? "Pricing every stock in the basket…" : "Getting prices for the stocks…")
                     .font(.sub).foregroundStyle(Theme.muted)
                 ForEach(0..<3, id: \.self) { _ in RowSkeleton() }
@@ -107,7 +106,6 @@ struct BasketOrderSheet: View {
 
     private func review(_ q: BasketQuote) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            cover
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     KCard {
@@ -174,7 +172,6 @@ struct BasketOrderSheet: View {
 
     private var result: some View {
         VStack(alignment: .leading, spacing: 0) {
-            cover
             ScrollView {
                 KCard {
                     ForEach(store.outcomes) { leg in
@@ -252,29 +249,33 @@ struct BasketPositionView: View {
     private var p: BasketPosition? { positions.position(basketId) }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 10) { BackButton(); Spacer() }
-                .padding(.horizontal, 12).padding(.top, 6).frame(height: 56)
+        ZStack(alignment: .top) {
             ScrollView {
                 if let p {
-                    VStack(alignment: .leading, spacing: 22) {
-                        hero(p)
-                        holdings(p)
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Rebalance").font(.system(size: 15, weight: .semibold))
-                                Text("Keeps every stock at its target weight").font(.sub).foregroundStyle(Theme.muted)
+                    VStack(alignment: .leading, spacing: 0) {
+                        cover(p)
+                        VStack(alignment: .leading, spacing: 22) {
+                            KCard {
+                                KV("Paid", Fmt.cash(p.paidUsd))
+                                if let t = p.openedAt { KV("Opened", Fmt.date(t)) }
                             }
-                            Spacer()
-                            Text("COMING SOON").font(.system(size: 9, weight: .bold)).tracking(0.4).foregroundStyle(Theme.amber)
-                                .padding(.horizontal, 6).frame(height: 17).background(Theme.amberT, in: .rect(cornerRadius: 5))
+                            holdings(p)
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Rebalance").font(.system(size: 15, weight: .semibold))
+                                    Text("Keeps every stock at its target weight").font(.sub).foregroundStyle(Theme.muted)
+                                }
+                                Spacer()
+                                Text("COMING SOON").font(.system(size: 9, weight: .bold)).tracking(0.4).foregroundStyle(Theme.amber)
+                                    .padding(.horizontal, 6).frame(height: 17).background(Theme.amberT, in: .rect(cornerRadius: 5))
+                            }
+                            .padding(14).background(Theme.surface, in: .rect(cornerRadius: 12))
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.line, lineWidth: 1))
                         }
-                        .padding(14).background(Theme.surface, in: .rect(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.line, lineWidth: 1))
+                        .padding(.horizontal, 20).padding(.top, 18).padding(.bottom, 24)
                     }
-                    .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
                 } else {
-                    EmptyState(title: "This basket is closed.", subtitle: "Its stocks were sold back to USDC.")
+                    EmptyState(title: "This basket is closed.", subtitle: "Its stocks were sold back to USDC.").padding(.top, 56)
                 }
             }
             .scrollIndicators(.hidden)
@@ -285,29 +286,25 @@ struct BasketPositionView: View {
                         .background(Theme.ground)
                 }
             }
+            HStack(spacing: 10) { BackButton(); Spacer() }
+                .padding(.horizontal, 12).frame(height: 56)
         }
         .background(Theme.ground)
         .task { await positions.load() }
     }
 
-    /// The cover with what the position is worth now, then what it cost.
-    private func hero(_ p: BasketPosition) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            BasketCover(id: p.basketId, name: p.name,
-                        tagline: p.openedAt.map { "\(p.stocks.count) stocks · since \(Fmt.date($0))" } ?? "\(p.stocks.count) stocks",
-                        logos: p.stocks.prefix(5).compactMap(\.logoURL)) {
-                VStack(alignment: .trailing, spacing: 6) {
-                    Text(Fmt.usd(p.valueUsd)).font(.system(size: 26, weight: .semibold)).tracking(-0.8).monospacedDigit().foregroundStyle(Theme.ink)
-                    if let g = p.pnlUsd {
-                        Text("\(Fmt.signedCash(g)) · \(Fmt.arrow(p.pnlPct ?? 0, 2))")
-                            .font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(Theme.change(g))
-                            .padding(.horizontal, 8).frame(height: 24).background(g >= 0 ? Theme.greenT : Theme.redT, in: .capsule)
-                    }
+    /// The cover with what the position is worth now and how that compares to what was paid.
+    private func cover(_ p: BasketPosition) -> some View {
+        BasketCover(name: p.name,
+                    tagline: p.openedAt.map { "\(p.stocks.count) stocks · since \(Fmt.date($0))" } ?? "\(p.stocks.count) stocks",
+                    logos: p.stocks.prefix(5).compactMap(\.logoURL)) {
+            VStack(alignment: .trailing, spacing: 6) {
+                Text(Fmt.usd(p.valueUsd)).font(.system(size: 26, weight: .semibold)).tracking(-0.8).monospacedDigit().foregroundStyle(Theme.ink)
+                if let g = p.pnlUsd {
+                    Text("\(Fmt.signedCash(g)) · \(Fmt.arrow(p.pnlPct ?? 0, 2))")
+                        .font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(Theme.change(g))
+                        .padding(.horizontal, 8).frame(height: 24).background(g >= 0 ? Theme.greenT : Theme.redT, in: .capsule)
                 }
-            }
-            KCard {
-                KV("Paid", Fmt.cash(p.paidUsd))
-                if let t = p.openedAt { KV("Opened", Fmt.date(t)) }
             }
         }
     }

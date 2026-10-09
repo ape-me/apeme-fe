@@ -37,6 +37,9 @@ struct Wallet: Codable, Hashable {
             guard let held = inBaskets[h.mint], held > 0 else { return h }
             var rest = h
             rest.amount = max(0, h.amount - held)
+            // A fill lands a hair above its quote and the basket records the quote, so a sliver
+            // of every stock reads as held "outside" the basket. It is the basket's.
+            if rest.amount <= held * 0.02 { return nil }
             rest.valueUsd = h.priceUsd.map { $0 * rest.amount } ?? h.valueUsd.map { $0 * rest.amount / max(h.amount, 1e-12) }
             rest.pnlUsd = nil; rest.pnlPct = nil
             return rest.isDust ? nil : rest
