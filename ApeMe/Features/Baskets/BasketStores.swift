@@ -123,9 +123,10 @@ final class BasketOrderStore {
             }
         } catch APIError.http(410, _) {
             await getQuote(amountUsd: amountUsd, taker: taker)
-            if phase == .ready { error = "Prices refreshed — check the numbers and confirm again." }
+            if phase == .ready { error = "Prices refreshed — check the numbers and confirm again."; Haptic.warning() }
         } catch {
             self.error = Self.message(error); phase = .failed
+            Haptic.error()
         }
     }
 
@@ -144,6 +145,7 @@ final class BasketOrderStore {
         } catch {
             self.error = Self.message(error)
             phase = result == nil ? .failed : .done
+            Haptic.error()
         }
     }
 
@@ -162,9 +164,18 @@ final class BasketOrderStore {
         return r
     }
 
+    /// The phone says how it went before the eye has read it: a success tap when every stock
+    /// landed, a warning when some did, an error when none did.
     private func finish(_ status: String) {
         phase = status == "failed" ? .failed : .done
-        if status == "failed" { error = "None of the swaps went through. Nothing was charged." }
+        if status == "failed" {
+            error = "None of the swaps went through. Nothing was charged."
+            Haptic.error()
+        } else if failedLegs.isEmpty {
+            Haptic.success()
+        } else {
+            Haptic.warning()
+        }
         Task { await BasketPositionsStore.shared.load() }
     }
 
