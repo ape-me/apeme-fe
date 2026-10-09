@@ -65,7 +65,7 @@ struct StockView: View {
                             Logo(url: s.logoURL, symbol: s.symbol, size: 18)
                             Text(s.symbol).font(.system(size: 15, weight: .semibold))
                         }
-                        Text("\(Fmt.usd(store.stock?.priceUsd)) · \(Text(Fmt.pct(s.change24h)).foregroundStyle(Theme.change(s.change24h)))")
+                        Text("\(Fmt.usd(store.stock?.priceUsd)) · \(Text(Fmt.trailingArrow(s.change24h)).foregroundStyle(Theme.change(s.change24h)))")
                             .font(.system(size: 12, weight: .medium)).monospacedDigit().foregroundStyle(Theme.muted)
                     }
                     Spacer()
@@ -253,10 +253,11 @@ struct StockView: View {
         .padding(.horizontal, 20).padding(.top, 8)
     }
 
+    /// "$0.86  9.21% ↓": the colour and the arrow carry the direction, so neither number needs a sign.
     private func changeText(_ pct: Double?, _ abs: Double?) -> String {
         guard let pct else { return "—" }
-        var t = Fmt.pct(pct)
-        if let abs { t = (abs >= 0 ? "+" : "−") + "$" + String(format: "%.2f", Swift.abs(abs)) + "  " + t }
+        var t = Fmt.trailingArrow(pct)
+        if let abs { t = "$" + String(format: "%.2f", Swift.abs(abs)) + "  " + t }
         return t
     }
 
