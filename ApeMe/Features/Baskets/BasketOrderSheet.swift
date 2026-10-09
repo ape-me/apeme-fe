@@ -104,10 +104,10 @@ struct BasketOrderSheet: View {
 
             Group {
                 switch store.phase {
-                case .signing(let n):
-                    progress("Signing \(n)/\(store.legCount)…")
-                case .submitting:
-                    progress(sell ? "Selling…" : "Buying…")
+                // One tap, one action. Seven transactions get signed underneath, silently, and
+                // counting them out loud made that read as seven steps.
+                case .signing, .submitting:
+                    progress(sell ? "Selling \(store.legCount) stocks…" : "Buying \(store.legCount) stocks…")
                 default:
                     BigButton(label: sell ? "Close basket" : "Buy \(Fmt.cash(q.amountUsd))", style: sell ? .sell : .buy) {
                         guard let w = app.auth.activeWallet, let t = app.walletAddress else { app.show("Sign in first.", error: true); return }
