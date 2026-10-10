@@ -25,16 +25,19 @@ struct RecentSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Skeleton(height: 22).frame(width: 150)
-            HStack(alignment: .top, spacing: 18) {
-                ForEach(0..<count, id: \.self) { _ in
-                    VStack(spacing: 8) {
-                        Skeleton(height: 56, radius: 17).frame(width: 56)
-                        Skeleton(height: 13).frame(width: 52)
-                        Skeleton(height: 12).frame(width: 44)
+            ScrollView(.horizontal) {
+                HStack(alignment: .top, spacing: 18) {
+                    ForEach(0..<count, id: \.self) { _ in
+                        VStack(spacing: 8) {
+                            Skeleton(height: 56, radius: 17).frame(width: 56)
+                            Skeleton(height: 13).frame(width: 52)
+                            Skeleton(height: 12).frame(width: 44)
+                        }
+                        .frame(width: 76)
                     }
-                    .frame(width: 76)
                 }
             }
+            .scrollDisabled(true).scrollIndicators(.hidden)
         }
     }
 }
@@ -97,8 +100,8 @@ struct MoversSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Skeleton(height: 22).frame(width: 210)
-                Spacer()
+                Skeleton(height: 22).frame(maxWidth: 210)
+                Spacer(minLength: 8)
                 HStack(spacing: 4) { Skeleton(height: 28, radius: 8).frame(width: 62); Skeleton(height: 28, radius: 8).frame(width: 56) }
             }
             LazyVGrid(columns: [.init(.flexible(), spacing: 10), .init(.flexible(), spacing: 10)], spacing: 10) {

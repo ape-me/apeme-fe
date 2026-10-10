@@ -160,16 +160,20 @@ struct RowSkeleton: View {
     /// List rows carry the day's line before the price. Rows that don't pass false.
     var spark = true
     var body: some View {
+        // The bars cap at a width rather than claim one: a real row's name truncates when the
+        // mark, the line and the price leave it short, and a placeholder that could not would
+        // push the whole page out past the edges.
         HStack(spacing: 12) {
             Skeleton(height: 40).frame(width: 40)
             VStack(alignment: .leading, spacing: 7) {
                 HStack(spacing: 7) {
-                    Skeleton(height: 13).frame(width: badge ? 64 : 90)
+                    Skeleton(height: 13).frame(maxWidth: badge ? 64 : 90)
                     if badge { Skeleton(height: 17, radius: 5).frame(width: 46) }
                 }
-                Skeleton(height: 11).frame(width: 140)
+                Skeleton(height: 11).frame(maxWidth: 140)
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Spacer(minLength: 8)
             if spark { Skeleton(height: 26, radius: 6).frame(width: 60).padding(.trailing, 6) }
             VStack(alignment: .trailing, spacing: 7) { Skeleton(height: 13).frame(width: 64); Skeleton(height: 11).frame(width: 44) }
                 .frame(minWidth: 92, alignment: .trailing)
