@@ -382,6 +382,10 @@ struct BasketView: View {
                             Text(leg.stock.symbol).font(.sub).foregroundStyle(Theme.faint)
                         }
                         if let why = leg.why { Text(why).font(.sub).foregroundStyle(Theme.muted).lineLimit(3).fixedSize(horizontal: false, vertical: true) }
+                        if leg.stock.tradable == false {
+                            Text("Closed" + (leg.stock.opensAt.map { " · opens \(Fmt.opens($0))" } ?? ""))
+                                .font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.amber)
+                        }
                     }
                     Spacer(minLength: 8)
                     VStack(alignment: .trailing, spacing: 4) {
