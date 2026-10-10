@@ -58,18 +58,16 @@ struct BasketsSection: View {
     private var seeMore: some View {
         Button { app.push(.baskets) } label: {
             VStack(alignment: .leading, spacing: 0) {
-                let rest = store.baskets.dropFirst(3).prefix(4)
-                LazyVGrid(columns: [.init(.fixed(34), spacing: 8), .init(.fixed(34), spacing: 8)], alignment: .leading, spacing: 8) {
-                    ForEach(rest) { b in
-                        RemoteImage(url: b.logoURLs.first, fallback: String(b.name.prefix(1)))
-                            .frame(width: 34, height: 34).clipShape(.rect(cornerRadius: 9))
-                    }
-                }
-                Spacer(minLength: 10)
+                let rest = store.baskets.dropFirst(3)
+                SpreadLogos(urls: rest.prefix(4).compactMap { $0.logoURLs.first }, size: 28)
+                Spacer(minLength: 12)
                 HStack(spacing: 4) {
-                    Text("See more").font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.muted)
+                    Text("See more").font(.system(size: 15, weight: .semibold)).tracking(-0.2)
                     Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)
                 }
+                Spacer(minLength: 10)
+                Text("\(rest.count) more").font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.muted)
+                Text("baskets").font(.sub).foregroundStyle(Theme.faint)
             }
             .padding(14).frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
             .background(Theme.surface, in: .rect(cornerRadius: 16))
@@ -87,7 +85,7 @@ struct BasketTile: View {
     var body: some View {
         Button(action: open) {
             VStack(alignment: .leading, spacing: 0) {
-                LogoStack(urls: basket.logoURLs, size: 28)
+                SpreadLogos(urls: basket.logoURLs, size: 28)
                 Spacer(minLength: 12)
                 Text(basket.name).font(.system(size: 15, weight: .semibold)).tracking(-0.2).lineLimit(1)
                 Spacer(minLength: 10)
@@ -151,6 +149,26 @@ struct BasketCard: View {
             .contentShape(.rect)
         }
         .buttonStyle(RowPress())
+    }
+}
+
+/// Up to five logos spread evenly across the width they are given, for a tile: a stack huddled
+/// in the corner left the rest of the tile empty.
+struct SpreadLogos: View {
+    let urls: [URL]
+    var size: CGFloat = 28
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(urls.prefix(5).enumerated()), id: \.offset) { i, u in
+                if i > 0 { Spacer(minLength: 2) }
+                RemoteImage(url: u, fallback: "")
+                    .frame(width: size, height: size)
+                    .clipShape(.circle)
+                    .overlay(Circle().stroke(Theme.line, lineWidth: 1))
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 

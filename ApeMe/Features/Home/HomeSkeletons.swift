@@ -46,12 +46,13 @@ struct RecentSkeleton: View {
 struct BasketTileSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: -28 * 0.32) {
-                ForEach(0..<5, id: \.self) { _ in
+            HStack(spacing: 0) {
+                ForEach(0..<5, id: \.self) { i in
+                    if i > 0 { Spacer(minLength: 2) }
                     Circle().fill(Theme.accent.opacity(0.10)).frame(width: 28, height: 28)
-                        .overlay(Circle().stroke(Theme.surface, lineWidth: 2))
                 }
             }
+            .frame(maxWidth: .infinity)
             Spacer(minLength: 12)
             Skeleton(height: 15).frame(width: 84)
             Spacer(minLength: 10)
