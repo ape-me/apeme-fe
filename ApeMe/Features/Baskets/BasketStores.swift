@@ -31,6 +31,9 @@ final class BasketsStore {
     func load(_ id: String) async {
         if let d = Self.fresh.removeValue(forKey: id) { detail = d; error = nil; return }
         do { detail = try await API.shared.basket(id); self.error = nil }
+        catch APIError.http(404, _) where id.hasPrefix("ai_") {
+            self.error = "This draft has expired. Build it again from your idea."
+        }
         catch { self.error = Failure.loading("this basket", error) }
     }
 }

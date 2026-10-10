@@ -16,8 +16,9 @@ final class MixStore {
     var changed: Bool { weights != base }
     var active: [String] { order.filter { (weights[$0] ?? 0) > 0 } }
     var removed: [String] { order.filter { (weights[$0] ?? 0) == 0 } }
-    /// What the quote gets: only the stocks still in.
-    var sendable: [String: Int] { weights.filter { $0.value > 0 } }
+    /// What the quote and preview get. A stock taken out goes as 0: that is how the backend
+    /// drops it before quoting, so a closed stock at 0 never trips market_closed.
+    var sendable: [String: Int] { weights }
 
     func load(_ d: BasketDetail) {
         guard base != d.ownWeights || order != d.stocks.map(\.key) else { return }

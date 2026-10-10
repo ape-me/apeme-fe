@@ -136,7 +136,12 @@ actor API {
     // MARK: Baskets (several swaps, one tap)
 
     func baskets() async throws -> BasketsResponse { try await fetch("/baskets", ttl: 60) }
-    func basket(_ id: String) async throws -> BasketDetail { try await fetch("/baskets/\(id)", ttl: 60) }
+    /// An AI basket is its author's: it needs the auth headers and is never cached. Ready-made
+    /// baskets stay public and cached.
+    func basket(_ id: String) async throws -> BasketDetail {
+        if id.hasPrefix("ai_") { return try decoder.decode(BasketDetail.self, from: try await send("GET", "/baskets/\(id)")) }
+        return try await fetch("/baskets/\(id)", ttl: 60)
+    }
 
     /// One Jupiter quote per stock on the backend, so this takes 5–10s for a seven-stock basket.
     /// `weights` only when the user changed the mix; the basket's own mix is the default.
@@ -175,6 +180,7 @@ actor API {
     }
     /// Only this basket's stocks, newest first, at most three per stock.
     func basketNews(_ id: String, limit: Int = 20) async throws -> NewsResponse {
+        if id.hasPrefix("ai_") { return try decoder.decode(NewsResponse.self, from: try await send("GET", "/baskets/\(id)/news?limit=\(limit)")).visible }
         let r: NewsResponse = try await fetch("/baskets/\(id)/news?limit=\(limit)", ttl: 60); return r.visible
     }
     func basketPositions() async throws -> BasketPositionsResponse {
