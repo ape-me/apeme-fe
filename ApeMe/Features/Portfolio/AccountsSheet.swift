@@ -15,16 +15,14 @@ struct AccountsSheet: View {
     @State private var renaming: Me.WalletRef?
     @State private var newLabel = ""
     @State private var error: String?
+    @State private var height: CGFloat = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack { Text("Accounts").h2Text(); Spacer(); IconButton(symbol: "xmark", label: "Close") { dismiss() } }
-            ScrollView {
-                VStack(spacing: 10) {
-                    ForEach(rows) { w in card(w) }
-                }
+            VStack(spacing: 10) {
+                ForEach(rows) { w in card(w) }
             }
-            .scrollIndicators(.hidden)
             if let error { ErrorBar(text: error).padding(.horizontal, -20) }
             BigButton(label: busy ? "Creating…" : "+ New account", style: .primary) {
                 guard !busy else { return }
@@ -37,8 +35,10 @@ struct AccountsSheet: View {
             }
         }
         .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 18)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .presentationDetents([.medium, .large])
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+        .frame(maxWidth: .infinity, alignment: .top)
+        // As tall as its accounts and no more; a long list scrolls inside the full sheet.
+        .presentationDetents(height > 0 ? [.height(min(height + 10, UIScreen.main.bounds.height * 0.9))] : [.large])
         .presentationBackground(Theme.ground)
         .presentationDragIndicator(.visible)
         .task { await load() }
@@ -55,68 +55,81 @@ struct AccountsSheet: View {
 
     private func name(_ w: Me.WalletRef) -> String { w.label ?? "Account \((w.hdIndex ?? 0) + 1)" }
 
+    /// Name and address get the width; the two actions are small and on the right; what the
+    /// account holds sits on its own line under a hairline, so nothing has to truncate.
     private func card(_ w: Me.WalletRef) -> some View {
         let active = w.address == app.walletAddress
-        return HStack(spacing: 12) {
-            Button {
-                guard !active else { dismiss(); return }
-                Haptic.selection()
-                app.auth.switchAccount(w.address)
-                Task { await app.loadWallet(fresh: true) }
-                dismiss()
-            } label: {
-                HStack(spacing: 12) {
-                    ZStack {
-                        Text(String(name(w).prefix(1)).uppercased())
-                            .font(.system(size: 17, weight: .semibold)).foregroundStyle(skin.accent)
-                            .frame(width: 44, height: 44)
-                            .background(skin.accentTint, in: .circle)
-                        if active {
-                            Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).foregroundStyle(.white)
-                                .frame(width: 18, height: 18).background(skin.accent, in: .circle)
-                                .overlay(Circle().stroke(Theme.surface, lineWidth: 2))
-                                .offset(x: 16, y: 16)
+        return VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Button {
+                    guard !active else { dismiss(); return }
+                    Haptic.selection()
+                    app.auth.switchAccount(w.address)
+                    Task { await app.loadWallet(fresh: true) }
+                    dismiss()
+                } label: {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Text(String(name(w).prefix(1)).uppercased())
+                                .font(.system(size: 17, weight: .semibold)).foregroundStyle(skin.accent)
+                                .frame(width: 44, height: 44)
+                                .background(skin.accentTint, in: .circle)
+                            if active {
+                                Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).foregroundStyle(.white)
+                                    .frame(width: 18, height: 18).background(skin.accent, in: .circle)
+                                    .overlay(Circle().stroke(Theme.surface, lineWidth: 2))
+                                    .offset(x: 16, y: 16)
+                            }
                         }
-                    }
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(spacing: 6) {
-                            Text(name(w)).font(.rowTitle).lineLimit(1)
-                            if w.isDefault == true { Badge(text: "Default", style: .grey) }
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(spacing: 6) {
+                                Text(name(w)).font(.rowTitle).lineLimit(1)
+                                if w.isDefault == true { Badge(text: "Default", style: .grey).fixedSize() }
+                            }
+                            Text(Fmt.short(w.address)).font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
                         }
-                        Text(Fmt.short(w.address)).font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
+                        Spacer(minLength: 8)
                     }
-                    Spacer(minLength: 8)
-                    VStack(alignment: .trailing, spacing: 3) {
-                        if let b = balances[w.address] {
-                            Text(Fmt.usd(b)).font(.rowPrice).monospacedDigit()
-                            Text(positionsLabel(w)).font(.sub).foregroundStyle(Theme.muted)
-                        } else if failed.contains(w.address) {
-                            Text("—").font(.rowPrice).foregroundStyle(Theme.faint)
-                            Text("Couldn't read").font(.sub).foregroundStyle(Theme.faint)
-                        } else {
-                            Skeleton(height: 15).frame(width: 64)
-                            Skeleton(height: 11).frame(width: 48)
-                        }
-                    }
+                    .contentShape(.rect)
                 }
-                .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
+                .buttonStyle(.plain)
 
-            IconButton(symbol: "square.on.square", label: "Copy address") { app.copy(w.address) }
-            Menu {
-                Button { renaming = w; newLabel = w.label ?? "" } label: { Label("Rename", systemImage: "pencil") }
-                if w.isDefault != true {
-                    Button { Task { await patch(w.address, isDefault: true) } } label: { Label("Make default", systemImage: "star") }
+                Button { app.copy(w.address) } label: {
+                    Image(systemName: "square.on.square").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ink)
+                        .frame(width: 34, height: 34).background(Theme.surface2, in: .circle)
                 }
-                Button { app.copy(w.address) } label: { Label("Copy address", systemImage: "square.on.square") }
-            } label: {
-                Image(systemName: "ellipsis").font(.system(size: 16, weight: .medium)).foregroundStyle(Theme.ink)
-                    .frame(width: 40, height: 40).background(Theme.surface2, in: .circle)
+                .buttonStyle(.plain).accessibilityLabel("Copy address")
+                Menu {
+                    Button { renaming = w; newLabel = w.label ?? "" } label: { Label("Rename", systemImage: "pencil") }
+                    if w.isDefault != true {
+                        Button { Task { await patch(w.address, isDefault: true) } } label: { Label("Make default", systemImage: "star") }
+                    }
+                    Button { app.copy(w.address) } label: { Label("Copy address", systemImage: "square.on.square") }
+                } label: {
+                    Image(systemName: "ellipsis").font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ink)
+                        .frame(width: 34, height: 34).background(Theme.surface2, in: .circle)
+                }
+                .accessibilityLabel("More")
             }
-            .accessibilityLabel("More")
+            .padding(14)
+            Rectangle().fill(Theme.line).frame(height: 1).padding(.horizontal, 14)
+            HStack {
+                if let b = balances[w.address] {
+                    Text(Fmt.usd(b)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                    Spacer()
+                    Text(positionsLabel(w)).font(.sub).foregroundStyle(Theme.muted)
+                } else if failed.contains(w.address) {
+                    Text("Couldn't read this account").font(.sub).foregroundStyle(Theme.faint)
+                    Spacer()
+                    Button("Retry") { Task { await load(force: w.address) } }.font(.sub.weight(.semibold)).foregroundStyle(Theme.accent)
+                } else {
+                    Skeleton(height: 15).frame(width: 72)
+                    Spacer()
+                    Skeleton(height: 11).frame(width: 64)
+                }
+            }
+            .padding(.horizontal, 14).frame(height: 42)
         }
-        .padding(14)
         .background(Theme.surface, in: .rect(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(active ? skin.accent : Theme.line, lineWidth: active ? 1.5 : 1))
     }
@@ -136,11 +149,13 @@ struct AccountsSheet: View {
     }
 
     /// Every balance at once; a slow or failed one does not hold up the others.
-    private func load() async {
-        if let r = try? await API.shared.myWallets() { wallets = r.wallets }
+    private func load(force: String? = nil) async {
+        if force == nil, let r = try? await API.shared.myWallets() { wallets = r.wallets }
+        if let force { failed.remove(force) }
         await withTaskGroup(of: (String, Wallet?).self) { group in
-            for w in rows where balances[w.address] == nil {
-                group.addTask { (w.address, try? await API.shared.wallet(w.address, activity: 0)) }
+            for w in rows where balances[w.address] == nil && (force == nil || w.address == force) {
+                // The backend wants at least one activity row; zero is refused.
+                group.addTask { (w.address, try? await API.shared.wallet(w.address, activity: 1)) }
             }
             for await (address, wallet) in group {
                 if let wallet {
