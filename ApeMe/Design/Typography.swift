@@ -26,7 +26,9 @@ extension Font {
     static let pill = instrument(13, 600)
     static let button = instrument(16, 600)
     static let stat = instrument(17, 600)
-    static let amount = instrument(56, 600)
+    /// The entry amount is the one place a digit stands alone at poster size, and Instrument
+    /// Sans's flat-sided zero reads as cut off there. The system face, like the stock price.
+    static let amount = Font.system(size: 56, weight: .semibold)
 }
 
 extension View {
