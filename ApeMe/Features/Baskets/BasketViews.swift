@@ -55,35 +55,22 @@ struct BasketsSection: View {
         }
     }
 
-    /// Describe an idea, get a basket. The four ideas are the backend's and change with the news.
+    /// One line: the way in to the builder. The ideas live on the builder itself.
     private var buildCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button { app.push(.buildBasket(nil)) } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "sparkles").font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.accent)
-                        .frame(width: 40, height: 40).background(Theme.accent.opacity(0.10), in: .circle)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Build a basket from an idea").font(.rowTitle).tracking(-0.2)
-                        Text("Say what you believe. The AI picks the stocks.").font(.sub).foregroundStyle(Theme.muted)
-                    }
-                    Spacer(minLength: 8)
-                    Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint)
-                }
-                .contentShape(.rect)
+        Button { app.push(.buildBasket(nil)) } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "sparkles").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.accent)
+                    .frame(width: 36, height: 36).background(Theme.accent.opacity(0.10), in: .circle)
+                Text("Build a basket from an idea").font(.rowTitle).tracking(-0.2).lineLimit(1)
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint)
             }
-            .buttonStyle(.plain)
-            if !store.ideas.isEmpty {
-                ScrollView(.horizontal) {
-                    HStack(spacing: 8) {
-                        ForEach(store.ideas, id: \.self) { i in Pill(label: i, size: .small) { app.push(.buildBasket(i)) } }
-                    }
-                }
-                .scrollIndicators(.hidden)
-            }
+            .padding(.horizontal, 14).frame(height: 60)
+            .background(Theme.surface, in: .rect(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1))
+            .contentShape(.rect)
         }
-        .padding(14)
-        .background(Theme.surface, in: .rect(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1))
+        .buttonStyle(RowPress())
     }
 
     /// The rest of the shelf, four logos as a hint of what is behind it.
