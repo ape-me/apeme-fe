@@ -4,7 +4,6 @@ struct YouView: View {
     @Environment(AppState.self) private var app
     @Environment(\.skin) private var skin
     @Environment(\.openURL) private var openURL
-    @State private var confirmOnboarding = false
     @State private var confirmSignOut = false
     @State private var confirmDelete = false
     @State private var exporting = false
@@ -37,11 +36,11 @@ struct YouView: View {
 
                     KCard {
                         SettingRow(symbol: "slider.horizontal.3", title: "Trading settings", sub: "Slippage, quick amounts, confirmations") { app.push(.settings) }
-                        if let address = app.walletAddress {
-                            SettingRow(symbol: "wallet.bifold", title: "Wallet address", sub: Fmt.short(address), accessory: .copy) { app.copy(address) }
+                        // The address lives on the Deposit sheet, where it is needed; a copy row here
+                        // was a second place to find it. The export stays: it is the way out.
+                        if app.walletAddress != nil {
                             SettingRow(symbol: "key", title: "Export private key", sub: "Move your funds to another wallet") { exporting = true }
                         }
-                        SettingRow(symbol: "play.rectangle", title: "Replay the intro", sub: "The welcome screen you saw first") { confirmOnboarding = true }
                     }
                     .padding(.top, 14)
 
@@ -94,10 +93,6 @@ struct YouView: View {
             .scrollIndicators(.hidden)
         }
         .background(Theme.ground)
-        .appDialog("Replay the intro?", isPresented: $confirmOnboarding,
-                   message: "Nothing about your account changes.", confirm: "Show it") {
-            app.replayingIntro = true; app.path.removeAll()
-        }
         .appDialog("Sign out?", isPresented: $confirmSignOut,
                    message: "Your wallet stays with your account. Sign back in any time.", confirm: "Sign out", destructive: true) {
             Task { await app.signOut() }
