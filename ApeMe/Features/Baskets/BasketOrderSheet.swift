@@ -89,20 +89,28 @@ struct BasketOrderSheet: View {
     @ViewBuilder private var content: some View {
         switch store.phase {
         case .idle, .quoting:
+            // The ticket's own shape: three rows, the total with the balance beside it, Details,
+            // and the button where it will be. Nothing moves when the prices land.
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(0..<5, id: \.self) { _ in
-                    HStack(spacing: 10) {
-                        Skeleton(height: 24).frame(width: 24)
-                        Skeleton(height: 14).frame(width: 64)
-                        Spacer()
-                        Skeleton(height: 14).frame(width: 48)
+                VStack(spacing: 0) {
+                    ForEach([(70, 60), (120, 48), (64, 130)], id: \.0) { w in
+                        HStack { Skeleton(height: 15).frame(width: CGFloat(w.0)); Spacer(); Skeleton(height: 15).frame(width: CGFloat(w.1)) }
+                            .frame(height: 52)
+                        if w.0 != 64 { Divider().overlay(Theme.line) }
                     }
-                    .frame(height: 40)
-                    Rectangle().fill(Theme.line).frame(height: 1)
                 }
-                Text(sell ? "Pricing every stock in the basket…" : "Getting prices for the stocks…")
-                    .font(.sub).foregroundStyle(Theme.muted).padding(.top, 14)
+                Color.clear.frame(height: 24)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Skeleton(height: 22).frame(width: 130)
+                        Skeleton(height: 13).frame(maxWidth: 220)
+                    }
+                    Spacer()
+                    Skeleton(height: 32, radius: 16).frame(width: 140)
+                }
+                Skeleton(height: 13).frame(width: 56).padding(.top, 14)
                 Spacer()
+                BigButton(label: sell ? "Pricing every stock…" : "Getting prices…", style: .off) {}
             }
         case .ready, .signing, .submitting, .retrying:
             if store.result != nil { result } else if let q = store.quote { review(q) }
