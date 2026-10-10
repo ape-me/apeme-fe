@@ -5,6 +5,8 @@ enum Route: Hashable {
     case basket(String)
     case baskets
     case basketPosition(String)
+    /// The AI builder, with an idea to start from or none.
+    case buildBasket(String?)
     case settings
     case referrals
 
@@ -12,7 +14,7 @@ enum Route: Hashable {
     var isAvailable: Bool {
         switch self {
         case .referrals: Feature.referrals
-        case .stock, .settings, .basket, .baskets, .basketPosition: true
+        case .stock, .settings, .basket, .baskets, .basketPosition, .buildBasket: true
         }
     }
 }

@@ -12,10 +12,12 @@ struct BasketOrderSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var store: BasketOrderStore
 
-    init(basketId: String, name: String, tagline: String? = nil, logos: [URL] = [], sell: Bool, amountUsd: Double) {
+    init(basketId: String, name: String, tagline: String? = nil, logos: [URL] = [], sell: Bool, amountUsd: Double, weights: [String: Int]? = nil) {
         self.basketId = basketId; self.name = name; self.tagline = tagline; self.logos = logos
         self.sell = sell; self.amountUsd = amountUsd
-        _store = State(initialValue: BasketOrderStore(basketId: basketId, name: name, sell: sell))
+        let s = BasketOrderStore(basketId: basketId, name: name, sell: sell)
+        s.weights = weights
+        _store = State(initialValue: s)
     }
 
     /// Back around an order that already ran: same store, so the result and the retry are there.

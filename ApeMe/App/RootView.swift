@@ -47,9 +47,9 @@ struct RootView: View {
             case .sell(let h): TradeSheetView(side: .sell, asset: .holding(h))
             case .deposit: DepositSheet()
             case .withdraw: WithdrawSheet()
-            case .basket(let b, let usd):
+            case .basket(let b, let usd, let weights):
                 BasketOrderSheet(basketId: b.id, name: b.name, tagline: b.tagline,
-                                 logos: (b.logos ?? []).prefix(5).compactMap(URL.init(string:)), sell: false, amountUsd: usd)
+                                 logos: (b.logos ?? []).prefix(5).compactMap(URL.init(string:)), sell: false, amountUsd: usd, weights: weights)
             case .closeBasket(let p):
                 BasketOrderSheet(basketId: p.basketId, name: p.name, tagline: "\(p.stocks.count) stocks",
                                  logos: p.stocks.prefix(5).compactMap(\.logoURL), sell: true, amountUsd: 0)
@@ -97,6 +97,7 @@ struct MainShell: View {
                         case .basket(let id): BasketView(id: id)
                         case .baskets: BasketsListView()
                         case .basketPosition(let id): BasketPositionView(basketId: id)
+                        case .buildBasket(let idea): BuildBasketView(idea: idea ?? "")
                         case .settings: SettingsView()
                         case .referrals: ReferralsView()
                         }

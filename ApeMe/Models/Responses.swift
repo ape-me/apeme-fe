@@ -46,4 +46,7 @@ struct ErrorBody: Codable {
     /// no_route / rate_limited / upstream_error on a basket leg: which stock, and what Jupiter said.
     let symbol: String?
     let upstreamStatus: Int?
+    /// 400 not_an_idea: three ideas that would work. 429 daily_limit: how many a day.
+    let examples: [String]?
+    let limit: Int?
 }

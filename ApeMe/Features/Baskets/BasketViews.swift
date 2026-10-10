@@ -13,6 +13,7 @@ struct BasketsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
             if !recent.isEmpty { recentlyViewed }
+            buildCard
             VStack(alignment: .leading, spacing: 14) {
                 Text("Baskets").h2Text()
                 if let err = store.error, store.baskets.isEmpty {
@@ -52,6 +53,37 @@ struct BasketsSection: View {
             }
             .scrollIndicators(.hidden)
         }
+    }
+
+    /// Describe an idea, get a basket. The four ideas are the backend's and change with the news.
+    private var buildCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button { app.push(.buildBasket(nil)) } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "sparkles").font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.accent)
+                        .frame(width: 40, height: 40).background(Theme.accent.opacity(0.10), in: .circle)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Build a basket from an idea").font(.rowTitle).tracking(-0.2)
+                        Text("Say what you believe. The AI picks the stocks.").font(.sub).foregroundStyle(Theme.muted)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.faint)
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            if !store.ideas.isEmpty {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        ForEach(store.ideas, id: \.self) { i in Pill(label: i, size: .small) { app.push(.buildBasket(i)) } }
+                    }
+                }
+                .scrollIndicators(.hidden)
+            }
+        }
+        .padding(14)
+        .background(Theme.surface, in: .rect(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1))
     }
 
     /// The rest of the shelf, four logos as a hint of what is behind it.
@@ -196,7 +228,7 @@ struct LogoStack: View {
 
 struct BasketView: View {
     enum Tab: String, CaseIterable, Identifiable {
-        case about, performance, risk, news
+        case about, mix, performance, risk, news
         var id: String { rawValue }
         var label: String { rawValue.capitalized }
     }
@@ -210,6 +242,7 @@ struct BasketView: View {
     @State private var news: [NewsItem] = []
     @State private var newsLoaded = false
     @State private var amount = ""
+    @State private var mix = MixStore()
 
     private var d: BasketDetail? { store.detail }
 
@@ -222,12 +255,14 @@ struct BasketView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         header(d)
                         VStack(alignment: .leading, spacing: 18) {
+                            if d.isAI { aiStrip(d) }
                             ScrollView(.horizontal) {
                                 UnderlineTabs(items: Tab.allCases, selected: tab, label: \.label) { tab = $0; Haptic.selection() }
                             }
                             .scrollIndicators(.hidden)
                             switch tab {
                             case .about: about(d)
+                            case .mix: MixView(d: d, store: mix)
                             case .performance: performance(d)
                             case .risk: risk(d)
                             case .news: newsTab
@@ -269,7 +304,7 @@ struct BasketView: View {
         }
         .background(Theme.ground)
         .safeAreaInset(edge: .bottom) { if let d { invest(d) } }
-        .task { await store.load(id) }
+        .task { await store.load(id); if let d { mix.load(d) } }
         .task { if app.wallet == nil { await app.loadWallet() } }
         .task(id: tab) {
             guard tab == .news, !newsLoaded else { return }
@@ -310,30 +345,87 @@ struct BasketView: View {
                     ForEach(paras, id: \.self) { Text($0).font(.body15).foregroundStyle(Theme.muted).lineSpacing(3).fixedSize(horizontal: false, vertical: true) }
                 }
             }
-            VStack(alignment: .leading, spacing: 8) {
-                SectionTitle("\(d.stocks.count) stocks, equal weight")
-                VStack(spacing: 0) {
-                    ForEach(d.stocks) { leg in
-                        Button { app.openStock(leg.stock.mint) } label: {
-                            HStack(alignment: .top, spacing: 12) {
-                                Logo(url: leg.stock.logoURL, symbol: leg.stock.symbol)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(leg.stock.name).font(.rowTitle).tracking(-0.2).lineLimit(1)
-                                    if let why = leg.why { Text(why).font(.sub).foregroundStyle(Theme.muted).lineLimit(2).fixedSize(horizontal: false, vertical: true) }
-                                    Text(String(format: "%.0f%% of the basket", leg.weight ?? 0)).font(.sub).monospacedDigit().foregroundStyle(Theme.faint)
-                                }
-                                Spacer(minLength: 8)
-                                // Two numbers nobody could tell apart until they were named.
-                                VStack(alignment: .trailing, spacing: 2) {
-                                    Text(Fmt.pct(leg.return1y, 0)).font(.rowChange).monospacedDigit().foregroundStyle(Theme.change(leg.return1y))
-                                    Text(d.returnLabel ?? "1Y").font(.system(size: 11)).foregroundStyle(Theme.faint)
-                                }
-                            }
-                            .padding(.vertical, 10).contentShape(.rect)
-                        }
-                        .buttonStyle(RowPress())
+            VStack(alignment: .leading, spacing: 10) {
+                SectionTitle("\(d.stocks.count) stocks") {
+                    Button { tab = .mix; Haptic.selection() } label: {
+                        HStack(spacing: 4) { Text("Change the mix"); Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)) }
+                            .font(.sub.weight(.semibold)).foregroundStyle(Theme.accent)
                     }
                 }
+                ForEach(d.stocks) { leg in pickCard(leg, d) }
+            }
+            if let bear = d.ai?.bearCase, !bear.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("The bear case").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.red)
+                    Text(bear).font(.sub).foregroundStyle(Theme.ink).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.redT, in: .rect(cornerRadius: 12))
+            }
+            if d.isAI {
+                Text("AI picks, not advice. Check the stocks before you buy.").font(.system(size: 11)).foregroundStyle(Theme.faint)
+            }
+        }
+    }
+
+    /// One pick as a card: the mark, the name, why it is in, the story behind it, and its share
+    /// as a chip that opens the mix. The row itself opens the stock.
+    private func pickCard(_ leg: BasketDetail.Leg, _ d: BasketDetail) -> some View {
+        let w = Int((leg.weight ?? 0).rounded())
+        return VStack(alignment: .leading, spacing: 10) {
+            Button { app.openStock(leg.stock.mint) } label: {
+                HStack(alignment: .top, spacing: 12) {
+                    Logo(url: leg.stock.logoURL, symbol: leg.stock.symbol)
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Text(leg.stock.name).font(.rowTitle).tracking(-0.2).lineLimit(1)
+                            Text(leg.stock.symbol).font(.sub).foregroundStyle(Theme.faint)
+                        }
+                        if let why = leg.why { Text(why).font(.sub).foregroundStyle(Theme.muted).lineLimit(3).fixedSize(horizontal: false, vertical: true) }
+                    }
+                    Spacer(minLength: 8)
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("\(w)%").font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(Theme.accent)
+                            .padding(.horizontal, 8).frame(height: 24).background(Theme.accent.opacity(0.10), in: .capsule)
+                        Text("\(Fmt.pct(leg.return1y, 0)) \(d.returnLabel ?? "1Y")").font(.system(size: 11, weight: .medium)).monospacedDigit().foregroundStyle(Theme.change(leg.return1y))
+                    }
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            if let n = leg.news, let title = n.title {
+                Rectangle().fill(Theme.line).frame(height: 1)
+                Button { if let u = n.link { openURL(u) } } label: {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "newspaper").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.faint).padding(.top, 2)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(title).font(.sub).foregroundStyle(Theme.ink).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                            Text([n.source, n.publishedAt.map { Fmt.monthDay($0) }].compactMap { $0 }.joined(separator: " · "))
+                                .font(.system(size: 11)).foregroundStyle(Theme.faint)
+                        }
+                        Spacer(minLength: 0)
+                        if n.link != nil { Image(systemName: "arrow.up.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.faint) }
+                    }
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(14)
+        .background(Theme.surface, in: .rect(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.line, lineWidth: 1))
+    }
+
+    /// Under the cover of a basket the AI built: what was asked, and what this is not.
+    private func aiStrip(_ d: BasketDetail) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles").font(.system(size: 11, weight: .semibold))
+                Text("AI pick, not advice").font(.system(size: 11, weight: .semibold)).tracking(0.2)
+            }
+            .foregroundStyle(Theme.accent)
+            if let idea = d.ai?.idea, !idea.isEmpty {
+                Text("You asked: ").font(.sub).foregroundStyle(Theme.muted) + Text("“\(idea)”").font(.sub.weight(.semibold)).foregroundStyle(Theme.ink)
             }
         }
     }
@@ -488,11 +580,11 @@ struct BasketView: View {
                     .keyboardType(.decimalPad).font(.system(size: 20, weight: .semibold)).monospacedDigit()
                     .padding(.horizontal, 14).frame(height: 52).background(Theme.surface, in: .capsule)
                     .overlay(Capsule().stroke(short ? Theme.red : Theme.line, lineWidth: 1))
-                BigButton(label: !d.canTrade ? "Market closed" : short ? "Not enough USDC" : usd < minUsd ? "Min \(Fmt.cash(minUsd))" : "Invest \(Fmt.cash(usd))",
+                BigButton(label: !d.canTrade ? "Market closed" : short ? "Not enough USDC" : usd < minUsd ? "Min \(Fmt.cash(minUsd))" : "Invest \(Fmt.cash(usd))\(mix.changed ? " · your mix" : "")",
                           style: d.canTrade && usd >= minUsd && !short ? .buy : .off) {
                     guard d.canTrade, usd >= minUsd, !short else { return }
                     guard app.walletAddress != nil else { app.sheet = .login; return }
-                    Haptic.medium(); app.sheet = .basket(d, amountUsd: usd)
+                    Haptic.medium(); app.sheet = .basket(d, amountUsd: usd, weights: mix.changed ? mix.sendable : nil)
                 }
             }
             Text(cash.map { "You have \(Fmt.cash($0)) · 1% fee on each swap · min \(Fmt.cash(minUsd))" } ?? "1% fee on each swap · min \(Fmt.cash(minUsd))")

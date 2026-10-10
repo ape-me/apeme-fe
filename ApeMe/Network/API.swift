@@ -139,9 +139,24 @@ actor API {
     func basket(_ id: String) async throws -> BasketDetail { try await fetch("/baskets/\(id)", ttl: 60) }
 
     /// One Jupiter quote per stock on the backend, so this takes 5–10s for a seven-stock basket.
-    func basketQuote(_ id: String, amountUsd: Double, taker: String) async throws -> BasketQuote {
-        try decoder.decode(BasketQuote.self, from: try await send("POST", "/baskets/\(id)/quote",
-                                                                  body: ["amountUsd": amountUsd, "taker": taker], timeout: 60))
+    /// `weights` only when the user changed the mix; the basket's own mix is the default.
+    func basketQuote(_ id: String, amountUsd: Double, taker: String, weights: [String: Int]? = nil) async throws -> BasketQuote {
+        var body: [String: Any] = ["amountUsd": amountUsd, "taker": taker]
+        if let weights { body["weights"] = weights }
+        return try decoder.decode(BasketQuote.self, from: try await send("POST", "/baskets/\(id)/quote", body: body, timeout: 60))
+    }
+    /// The basket with someone's own mix: return, chart, risk. No auth.
+    func basketPreview(_ id: String, weights: [String: Int]) async throws -> BasketPreview {
+        try decoder.decode(BasketPreview.self, from: try await send("POST", "/baskets/\(id)/preview", body: ["weights": weights], timeout: 30))
+    }
+    /// Four ideas to start from.
+    func basketIdeas() async throws -> IdeasResponse { try await fetch("/baskets/ai/ideas", ttl: 300) }
+    /// The AI builds a basket from an idea. Usually 6–10s; up to about 80s when it is busy.
+    func createAIBasket(idea: String) async throws -> BasketDetail {
+        try decoder.decode(BasketDetail.self, from: try await send("POST", "/baskets/ai", body: ["idea": idea], timeout: 90))
+    }
+    func myAIBaskets() async throws -> AIBasketsResponse {
+        try decoder.decode(AIBasketsResponse.self, from: try await send("GET", "/me/baskets/ai"))
     }
     /// Sells everything the basket holds back to USDC. Same shape as a quote, signed the same way.
     func basketSell(_ id: String, taker: String) async throws -> BasketQuote {
@@ -263,6 +278,9 @@ actor API {
                 throw APIError.slippageExceeded(suggestedBps: body?.suggestedSlippageBps)
             }
             if body?.error == "region_blocked" { throw APIError.regionBlocked(country: body?.country) }
+            if let e = body?.error, ["not_an_idea", "no_match", "daily_limit", "ai_busy"].contains(e) {
+                throw APIError.rejected(reason: e, examples: body?.examples, limit: body?.limit)
+            }
             if let e = body?.error, ["no_route", "rate_limited", "upstream_error"].contains(e) {
                 throw APIError.pricing(reason: e, symbol: body?.symbol, upstreamStatus: body?.upstreamStatus)
             }

@@ -32,15 +32,33 @@ struct BasketDetail: Codable, Hashable {
         /// Null for pre-IPO names — there is no listing to point at.
         let yahoo: String?
     }
+    struct News: Codable, Hashable {
+        let id: String?
+        let title: String?
+        let source: String?
+        let url: String?
+        let publishedAt: Int?
+        var link: URL? { url.flatMap(URL.init(string:)) }
+    }
     struct Leg: Codable, Hashable, Identifiable {
         let weight: Double?
         let return1y: Double?
         /// One line on why this stock is in the basket.
         let why: String?
         let links: Links?
+        /// The key the mix is sent under: "NVDA", "SOL-USD". The row shows the stock's symbol.
+        let ticker: String?
+        /// AI baskets only: the story behind the pick.
+        let news: News?
         /// The same Stock the catalog serves, so the stock row renders it unchanged.
         let stock: Stock
         var id: String { stock.mint }
+        var key: String { ticker ?? stock.symbol }
+    }
+    /// Set on a basket the AI built from someone's idea.
+    struct AI: Codable, Hashable {
+        let idea: String?
+        let bearCase: String?
     }
     struct Performance: Codable, Hashable {
         struct Benchmark: Codable, Hashable {
@@ -92,8 +110,14 @@ struct BasketDetail: Codable, Hashable {
     /// Null when there is not enough history to measure.
     let risk: Risk?
     let rebalance: Rebalance?
+    let ai: AI?
 
     var canTrade: Bool { tradable ?? true }
+    var isAI: Bool { ai != nil }
+    /// The basket's own mix, by ticker.
+    var ownWeights: [String: Int] {
+        Dictionary(uniqueKeysWithValues: stocks.map { ($0.key, Int(($0.weight ?? 0).rounded())) })
+    }
     var feeRate: Double { Double(feeBps ?? 100) / 10_000 }
 }
 
@@ -169,3 +193,27 @@ struct BasketPosition: Codable, Hashable, Identifiable {
 }
 
 struct BasketPositionsResponse: Codable { let positions: [BasketPosition] }
+
+/// `POST /v1/baskets/:id/preview`: the basket re-run with someone's own mix. Weights come back as
+/// a list to keep the basket's order; the quote wants them as a dictionary.
+struct BasketPreview: Codable, Hashable {
+    struct W: Codable, Hashable { let ticker: String; let weight: Double }
+    let weights: [W]
+    let return1y: Double?
+    let returnLabel: String?
+    let chart: BasketDetail.Chart?
+    let performance: BasketDetail.Performance?
+    let risk: BasketDetail.Risk?
+}
+
+/// One of the user's own AI baskets, as `/v1/me/baskets/ai` lists them.
+struct AIBasketRef: Codable, Hashable, Identifiable {
+    let id: String
+    let name: String
+    let tagline: String?
+    let idea: String?
+    let tickers: [String]?
+    let createdAt: Int?
+}
+struct AIBasketsResponse: Codable { let baskets: [AIBasketRef] }
+struct IdeasResponse: Codable { let ideas: [String] }

@@ -16,6 +16,9 @@ enum APIError: LocalizedError {
     /// The price source could not answer: no_route (Jupiter found nothing), rate_limited
     /// (Jupiter said 429) or upstream_error. `symbol` names the leg on a basket.
     case pricing(reason: String, symbol: String?, upstreamStatus: Int?)
+    /// The AI builder said no: not_an_idea (with examples), no_match, daily_limit (with the
+    /// limit) or ai_busy.
+    case rejected(reason: String, examples: [String]?, limit: Int?)
     case transport(Error)
     case decoding(Error)
 
@@ -29,6 +32,7 @@ enum APIError: LocalizedError {
         case .regionBlocked(let country): "region_blocked · \(country ?? "")"
         case .slippageExceeded(let bps): "slippage · suggests \(bps.map(String.init) ?? "?") bps"
         case .pricing(let reason, let symbol, let up): "\(reason)\(symbol.map { " · \($0)" } ?? "") · upstream \(up.map(String.init) ?? "?")"
+        case .rejected(let reason, _, _): reason
         case .transport(let e): e.localizedDescription
         case .decoding: "Unexpected response"
         }

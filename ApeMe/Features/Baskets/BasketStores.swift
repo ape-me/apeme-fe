@@ -9,6 +9,8 @@ final class BasketsStore {
     /// the tiles are there when the page is, not a second later.
     static let shared = BasketsStore()
     var baskets: [Basket] = []
+    /// Four ideas for the builder, shown as chips on Explore.
+    var ideas: [String] = []
     var detail: BasketDetail?
     var loading = false
     var error: String?
@@ -16,11 +18,18 @@ final class BasketsStore {
     func load() async {
         guard !loading else { return }
         loading = true; defer { loading = false }
+        async let i = API.shared.basketIdeas()
         do { baskets = try await API.shared.baskets().baskets; self.error = nil }
         catch { if baskets.isEmpty { self.error = Failure.loading("baskets", error) } }
+        if let r = try? await i { ideas = r.ideas }
     }
 
+    /// A basket the AI just built, kept so its page opens on it rather than fetching it again.
+    nonisolated(unsafe) private static var fresh: [String: BasketDetail] = [:]
+    func remember(_ d: BasketDetail) { Self.fresh[d.id] = d }
+
     func load(_ id: String) async {
+        if let d = Self.fresh.removeValue(forKey: id) { detail = d; error = nil; return }
         do { detail = try await API.shared.basket(id); self.error = nil }
         catch { self.error = Failure.loading("this basket", error) }
     }
@@ -50,6 +59,8 @@ final class BasketOrderStore {
     let basketId: String
     let name: String
     let sell: Bool
+    /// The user's own mix, if they changed it; nil buys the basket as built.
+    var weights: [String: Int]?
     var phase: Phase = .idle
     var quote: BasketQuote?
     var result: BasketSubmitResponse?
@@ -110,11 +121,11 @@ final class BasketOrderStore {
     private func fetchQuote(amountUsd: Double, taker: String) async throws -> BasketQuote {
         do {
             return sell ? try await API.shared.basketSell(basketId, taker: taker)
-                        : try await API.shared.basketQuote(basketId, amountUsd: amountUsd, taker: taker)
+                        : try await API.shared.basketQuote(basketId, amountUsd: amountUsd, taker: taker, weights: weights)
         } catch let e where Self.isUpstreamHiccup(e) {
             try? await Task.sleep(for: .seconds(1.2))
             return sell ? try await API.shared.basketSell(basketId, taker: taker)
-                        : try await API.shared.basketQuote(basketId, amountUsd: amountUsd, taker: taker)
+                        : try await API.shared.basketQuote(basketId, amountUsd: amountUsd, taker: taker, weights: weights)
         }
     }
 
@@ -202,6 +213,8 @@ final class BasketOrderStore {
     }
 
     static func message(_ error: Error) -> String {
+        // A mix whose smallest slice would be under a dollar: the backend names the floor.
+        if case APIError.orderRefused(_, let min, _) = error, let min { return "Min \(Fmt.cash(min)) for this mix." }
         if case APIError.http(let code, let raw) = error {
             let reason = raw.split(separator: "·").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? raw
             let r = reason.lowercased()
