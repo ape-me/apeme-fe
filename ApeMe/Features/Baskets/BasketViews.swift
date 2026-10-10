@@ -13,9 +13,9 @@ struct BasketsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
             if !recent.isEmpty { recentlyViewed }
-            buildCard
             VStack(alignment: .leading, spacing: 14) {
                 Text("Baskets").h2Text()
+                buildCard
                 if let err = store.error, store.baskets.isEmpty {
                     ErrorBar(text: err).padding(.horizontal, -20)
                 } else if store.baskets.isEmpty {

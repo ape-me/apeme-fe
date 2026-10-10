@@ -198,13 +198,15 @@ struct MixView: View {
     }
 }
 
-/// Chips that wrap onto new lines as they run out of room.
+/// A row of chips that scrolls sideways: a pill never wraps or gets cut, however long its text.
 struct FlowChips<T: Hashable, V: View>: View {
     let items: [T]
     @ViewBuilder let chip: (T) -> V
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 8, alignment: .leading)], alignment: .leading, spacing: 8) {
-            ForEach(items, id: \.self) { chip($0) }
+        ScrollView(.horizontal) {
+            HStack(spacing: 8) { ForEach(items, id: \.self) { chip($0) } }
         }
+        .scrollIndicators(.hidden)
+        .scrollClipDisabled()
     }
 }
