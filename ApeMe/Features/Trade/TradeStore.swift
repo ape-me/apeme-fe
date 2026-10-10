@@ -261,7 +261,7 @@ final class TradeStore {
             return Self.slippageMessage(used: nil, needed: suggested)
         }
         if case APIError.marketClosed(let opensAt) = error {
-            return opensAt.map { "Closed right now. Opens \($0)." } ?? "This market is closed right now."
+            return opensAt.map { "Closed right now. Opens \(Fmt.opens($0))." } ?? "This market is closed right now."
         }
         if case APIError.regionBlocked = error { return "Trading isn't available in your region yet." }
         if case APIError.insufficientFunds(let short, let needed, let held) = error {

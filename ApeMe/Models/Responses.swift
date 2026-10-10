@@ -37,7 +37,7 @@ struct ErrorBody: Codable {
     let minUsd: Double?
     let excludedIssuers: [String]?
     /// 409 market_closed — the issuer's own hours, e.g. "Sunday 8pm ET".
-    let opensAt: String?
+    let opensAt: Int?
     /// 451 region_blocked.
     let country: String?
     /// 422 slippage — the band Jupiter would pick for this same trade, sized at the moment it

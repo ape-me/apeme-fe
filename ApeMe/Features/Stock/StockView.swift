@@ -99,8 +99,13 @@ struct StockView: View {
                 .padding(.horizontal, 20).padding(.top, 18)
             } else {
                 HStack(spacing: 10) {
-                    BigButton(label: "Buy", style: .buy) { app.trade(.buyStock(s)) }
-                    BigButton(label: "Sell", style: .sell) { app.sell(store.mint) }
+                    // Closed for the weekend or a holiday: the button says when, not just no.
+                    if s.tradable == false {
+                        BigButton(label: s.opensAt.map { "Opens \(Fmt.opens($0))" } ?? "Closed", style: .off) {}
+                    } else {
+                        BigButton(label: "Buy", style: .buy) { app.trade(.buyStock(s)) }
+                    }
+                    BigButton(label: "Sell", style: s.tradable == false ? .off : .sell) { if s.tradable != false { app.sell(store.mint) } }
                 }
                 .padding(.horizontal, 20).padding(.top, 18)
             }
@@ -220,6 +225,7 @@ struct StockView: View {
                 Logo(url: s.logoURL, symbol: s.symbol, size: 40)
                     .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
                 Text(s.symbol).font(.system(size: 34, weight: .bold)).tracking(-1).lineLimit(1).minimumScaleFactor(0.7)
+                if s.isWeekdaysOnly { Badge(text: "24/5", style: .grey) }
                 Text(s.name).font(.system(size: 17)).foregroundStyle(Theme.muted).lineLimit(1)
                 Spacer(minLength: 0)
             }

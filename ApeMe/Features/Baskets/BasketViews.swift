@@ -591,9 +591,11 @@ struct BasketView: View {
             if !d.canTrade, mix.active.contains(where: { t in d.stocks.first { $0.key == t }?.stock.tradable == false }) {
                 // Say which stock shut the basket, not just that it is shut. Ondo names close
                 // Friday 8pm ET and open Sunday 8pm ET; the others trade around the clock.
-                let closed = d.stocks.filter { $0.stock.tradable == false }.map(\.stock.symbol)
+                let shut = d.stocks.filter { $0.stock.tradable == false }
+                let closed = shut.map(\.stock.symbol)
+                let when = shut.compactMap(\.stock.opensAt).max().map { " until \(Fmt.opens($0))" } ?? ""
                 Text(closed.isEmpty ? "Closed right now. Try again later."
-                     : "\(closed.joined(separator: ", ")) \(closed.count == 1 ? "is" : "are") closed until Sunday 8pm ET. Take \(closed.count == 1 ? "it" : "them") out in Mix to buy the rest.")
+                     : "\(closed.joined(separator: ", ")) \(closed.count == 1 ? "is" : "are") closed\(when). Take \(closed.count == 1 ? "it" : "them") out in Mix to buy the rest.")
                     .font(.system(size: 11)).foregroundStyle(Theme.amber).multilineTextAlignment(.center)
             } else {
                 Text(cash.map { "You have \(Fmt.cash($0)) · 1% fee on each swap · min \(Fmt.cash(minUsd))" } ?? "1% fee on each swap · min \(Fmt.cash(minUsd))")

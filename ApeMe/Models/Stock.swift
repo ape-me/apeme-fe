@@ -24,6 +24,11 @@ struct Stock: Codable, Identifiable, Hashable {
     /// Whether an order fills right now. Always true for pool-traded names (xStocks, PreStocks);
     /// Ondo's hours for Ondo.
     let tradable: Bool?
+    /// "24/7", or "24/5" for Ondo: Sunday 8pm to Friday 8pm ET, closed on US market holidays.
+    let hours: String?
+    /// When a closed stock trades again, unix seconds; null while tradable.
+    let opensAt: Int?
+    var isWeekdaysOnly: Bool { hours == "24/5" }
     let multiplier: Double?
     let quoteUsd: Double?
     var markUsd: Double?

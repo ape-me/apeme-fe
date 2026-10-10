@@ -134,6 +134,12 @@ enum Fmt {
     static func monthDay(_ ts: Int) -> String {
         Date(timeIntervalSince1970: TimeInterval(ts)).formatted(.dateTime.month(.abbreviated).day().locale(locale))
     }
+    /// "Mon 5:30 AM" in the phone's own zone, or "Oct 14, 5:30 AM" when it is further out.
+    static func opens(_ ts: Int) -> String {
+        let d = Date(timeIntervalSince1970: TimeInterval(ts))
+        if d.timeIntervalSinceNow < 6 * 86_400 { return d.formatted(.dateTime.weekday(.abbreviated).hour().minute().locale(locale)) }
+        return d.formatted(.dateTime.month(.abbreviated).day().hour().minute().locale(locale))
+    }
     static func dateTime(_ ts: Int) -> String {
         Date(timeIntervalSince1970: TimeInterval(ts)).formatted(.dateTime.month(.abbreviated).day().hour().minute().locale(locale))
     }

@@ -8,7 +8,7 @@ enum APIError: LocalizedError {
     /// The BE states the rule it enforced; the UI adopts it rather than guessing.
     case orderRefused(reason: String, minUsd: Double?, excludedIssuers: [String]?)
     /// The issuer is not quoting right now. Ondo runs Sunday 8pm to Friday 8pm ET.
-    case marketClosed(opensAt: String?)
+    case marketClosed(opensAt: Int?)
     /// Geo gate. Off during review, on at launch.
     case regionBlocked(country: String?)
     /// The price moved past the limit this quote was built with.
@@ -28,7 +28,7 @@ enum APIError: LocalizedError {
         case .insufficientFunds(let short, let needed, let held):
             "insufficient_usdc · short $\(short) · needs \(needed.map { "$\($0)" } ?? "?") · holds \(held.map { "$\($0)" } ?? "?")"
         case .orderRefused(let reason, _, _): reason
-        case .marketClosed(let opensAt): "market_closed · opens \(opensAt ?? "later")"
+        case .marketClosed(let opensAt): "market_closed · opens \(opensAt.map(Fmt.opens) ?? "later")"
         case .regionBlocked(let country): "region_blocked · \(country ?? "")"
         case .slippageExceeded(let bps): "slippage · suggests \(bps.map(String.init) ?? "?") bps"
         case .pricing(let reason, let symbol, let up): "\(reason)\(symbol.map { " · \($0)" } ?? "") · upstream \(up.map(String.init) ?? "?")"

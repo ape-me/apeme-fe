@@ -29,6 +29,7 @@ struct StockRow: View {
                                 .background(Theme.amberT, in: .rect(cornerRadius: 5))
                         } else {
                             PremiumBadge(pct: stock.premiumPct)
+                            if stock.isWeekdaysOnly { Badge(text: "24/5", style: .grey) }
                         }
                     }
                     Text(subtitle)
