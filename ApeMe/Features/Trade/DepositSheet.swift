@@ -6,6 +6,8 @@ struct DepositSheet: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
     @State private var baseline: Double?
+    /// The content's own height, so the sheet opens to exactly that and no further.
+    @State private var height: CGFloat = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -16,13 +18,16 @@ struct DepositSheet: View {
                     Text("Solana network").font(.system(size: 12, weight: .semibold))
                 }
                 .foregroundStyle(Theme.ink).padding(.horizontal, 11).frame(height: 30).background(Theme.surface2, in: .capsule)
+                .overlay(Capsule().stroke(Theme.line, lineWidth: 1))
                 .frame(maxWidth: .infinity)
 
                 ZStack {
                     qr(addr).interpolation(.none).resizable().scaledToFit().frame(width: 196, height: 196)
                     Image("usdc").resizable().frame(width: 40, height: 40).clipShape(.circle).padding(6).background(Color.white, in: .circle)
                 }
-                .padding(16).background(Color.white, in: .rect(cornerRadius: 20)).frame(maxWidth: .infinity)
+                .padding(16).background(Theme.surface, in: .rect(cornerRadius: 16))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1))
+                .frame(maxWidth: .infinity)
 
                 Text("Your USDC address").font(.sub).foregroundStyle(Theme.muted).frame(maxWidth: .infinity)
                 Button { app.copy(addr) } label: {
@@ -31,7 +36,8 @@ struct DepositSheet: View {
                         Spacer()
                         Image(systemName: "doc.on.doc").font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.muted)
                     }
-                    .padding(14).background(Theme.surface2, in: .rect(cornerRadius: 14))
+                    .padding(14).background(Theme.surface, in: .rect(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.line, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
                 Text("Send USDC on the Solana network to this address. Other networks or tokens may be lost.")
@@ -39,16 +45,20 @@ struct DepositSheet: View {
                 HStack(spacing: 10) {
                     BigButton(label: "Copy address", style: .ghost) { app.copy(addr) }
                     ShareLink(item: addr) {
-                        HStack(spacing: 8) { Image(systemName: "square.and.arrow.up").font(.system(size: 15, weight: .semibold)); Text("Share").font(.system(size: 17, weight: .semibold)) }
-                            .foregroundStyle(Theme.ink).frame(maxWidth: .infinity).frame(height: 52).background(Theme.surface2, in: .capsule)
+                        HStack(spacing: 8) { Image(systemName: "square.and.arrow.up").font(.system(size: 15, weight: .semibold)); Text("Share").font(.instrument(16, 600)) }
+                            .foregroundStyle(Theme.ink).frame(maxWidth: .infinity).frame(height: 52)
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.line, lineWidth: 1.5))
                     }
                 }
             }
         }
         .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 18)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .presentationDetents([.large])
-        .presentationBackground(Theme.surface)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+        .frame(maxWidth: .infinity, alignment: .top)
+        // No empty sheet below the buttons: the detent is the content's height, and only a
+        // phone too short for it gets the full sheet with a scroll.
+        .presentationDetents(height > 0 ? [.height(height + 10)] : [.large])
+        .presentationBackground(Theme.ground)
         .presentationDragIndicator(.visible)
         .task {
             await app.loadWallet(fresh: true)
