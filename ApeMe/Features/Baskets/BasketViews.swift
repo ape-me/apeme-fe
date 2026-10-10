@@ -580,15 +580,25 @@ struct BasketView: View {
                     .keyboardType(.decimalPad).font(.system(size: 20, weight: .semibold)).monospacedDigit()
                     .padding(.horizontal, 14).frame(height: 52).background(Theme.surface, in: .capsule)
                     .overlay(Capsule().stroke(short ? Theme.red : Theme.line, lineWidth: 1))
-                BigButton(label: !d.canTrade ? "Market closed" : short ? "Not enough USDC" : usd < minUsd ? "Min \(Fmt.cash(minUsd))" : "Invest \(Fmt.cash(usd))\(mix.changed ? " · your mix" : "")",
-                          style: d.canTrade && usd >= minUsd && !short ? .buy : .off) {
-                    guard d.canTrade, usd >= minUsd, !short else { return }
+                let open = d.canTrade || !mix.active.contains { t in d.stocks.first { $0.key == t }?.stock.tradable == false }
+                BigButton(label: !open ? "Market closed" : short ? "Not enough USDC" : usd < minUsd ? "Min \(Fmt.cash(minUsd))" : "Invest \(Fmt.cash(usd))\(mix.changed ? " · your mix" : "")",
+                          style: open && usd >= minUsd && !short ? .buy : .off) {
+                    guard open, usd >= minUsd, !short else { return }
                     guard app.walletAddress != nil else { app.sheet = .login; return }
                     Haptic.medium(); app.sheet = .basket(d, amountUsd: usd, weights: mix.changed ? mix.sendable : nil)
                 }
             }
-            Text(cash.map { "You have \(Fmt.cash($0)) · 1% fee on each swap · min \(Fmt.cash(minUsd))" } ?? "1% fee on each swap · min \(Fmt.cash(minUsd))")
-                .font(.system(size: 11)).foregroundStyle(short ? Theme.red : Theme.faint)
+            if !d.canTrade, mix.active.contains(where: { t in d.stocks.first { $0.key == t }?.stock.tradable == false }) {
+                // Say which stock shut the basket, not just that it is shut. Ondo names close
+                // Friday 8pm ET and open Sunday 8pm ET; the others trade around the clock.
+                let closed = d.stocks.filter { $0.stock.tradable == false }.map(\.stock.symbol)
+                Text(closed.isEmpty ? "Closed right now. Try again later."
+                     : "\(closed.joined(separator: ", ")) \(closed.count == 1 ? "is" : "are") closed until Sunday 8pm ET. Take \(closed.count == 1 ? "it" : "them") out in Mix to buy the rest.")
+                    .font(.system(size: 11)).foregroundStyle(Theme.amber).multilineTextAlignment(.center)
+            } else {
+                Text(cash.map { "You have \(Fmt.cash($0)) · 1% fee on each swap · min \(Fmt.cash(minUsd))" } ?? "1% fee on each swap · min \(Fmt.cash(minUsd))")
+                    .font(.system(size: 11)).foregroundStyle(short ? Theme.red : Theme.faint)
+            }
         }
         .padding(.horizontal, 20).padding(.vertical, 12).background(Theme.ground)
     }
