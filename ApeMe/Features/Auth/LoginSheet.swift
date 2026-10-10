@@ -1,20 +1,19 @@
 import SwiftUI
 import AuthenticationServices
 
-/// Sign-in as a sheet, in the brand's look: black, Barlow, lime for the one thing to press.
+/// Sign-in as a sheet, in the app's look: ground, Instrument Sans, one filled accent button.
 /// From the welcome it is email only; from elsewhere (`app.sheet = .login`) Apple is offered too.
 struct LoginSheet: View {
     var emailOnly = false
     @Environment(\.dismiss) private var dismiss
-    /// The brand kit is black and lime whatever the phone is set to.
-    var body: some View { content.environment(\.colorScheme, .dark) }
+    var body: some View { content }
 
     private var content: some View {
         LoginForm(emailOnly: emailOnly, onClose: { dismiss() }, onDone: { dismiss() })
             .padding(.horizontal, 24).padding(.top, 22).padding(.bottom, 18)
             .frame(maxHeight: .infinity, alignment: .top)
             .presentationDetents([.large])
-            .presentationBackground(Brand.black)
+            .presentationBackground(Brand.ground)
             .presentationDragIndicator(.visible)
             .presentationCornerRadius(32)
     }
@@ -44,38 +43,22 @@ struct LoginForm: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top) {
                 if codeSent {
-                    Button { withAnimation(.snappy) { codeSent = false; code = ""; error = nil }; focus = .email } label: {
-                        Image(systemName: "chevron.left").font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(Brand.white).frame(width: 40, height: 40)
-                            .background(Brand.charcoal, in: .circle)
+                    IconButton(symbol: "chevron.left", label: "Back") {
+                        withAnimation(.snappy) { codeSent = false; code = ""; error = nil }; focus = .email
                     }
-                    .accessibilityLabel("Back")
                 }
                 Spacer()
-                if let onClose {
-                    Button(action: onClose) {
-                        Image(systemName: "xmark").font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(Brand.white).frame(width: 40, height: 40)
-                            .background(Brand.charcoal, in: .circle)
-                    }
-                    .accessibilityLabel("Close")
-                }
+                if let onClose { IconButton(symbol: "xmark", label: "Close", action: onClose) }
             }
 
-            // One Text per line so the lines can sit as tight as the kit sets them; SwiftUI
-            // ignores negative line spacing.
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(codeSent ? ["CHECK YOUR", "EMAIL"] : ["WHAT’S YOUR", "EMAIL?"], id: \.self) { line in
-                    Text(line).font(Brand.display(48)).foregroundStyle(Brand.white)
-                        .frame(height: 48 * 0.9, alignment: .center)
-                }
-            }
-            .padding(.top, 18)
-            .id(codeSent)
-            .transition(.opacity)
+            Text(codeSent ? "Check your email" : "What’s your email?")
+                .font(.instrument(28, 600)).tracking(-0.6).foregroundStyle(Brand.ink)
+                .padding(.top, 18)
+                .id(codeSent)
+                .transition(.opacity)
             Group {
                 if codeSent {
-                    Text("We sent a 6-digit code to \(Text(email).foregroundStyle(Brand.white)).")
+                    Text("We sent a 6-digit code to \(Text(email).foregroundStyle(Brand.ink)).")
                 } else {
                     Text("We’ll send you a code. A wallet is set up for you, no seed phrase.")
                 }
@@ -113,18 +96,18 @@ struct LoginForm: View {
                     .textContentType(.emailAddress)
                     .submitLabel(.send)
                     .onSubmit { if emailValid { send() } }
-                    .font(Brand.body(20, semibold: true)).foregroundStyle(Brand.white)
-                    .tint(Brand.lime)
+                    .font(Brand.body(20, semibold: true)).foregroundStyle(Brand.ink)
+                    .tint(Brand.accent)
                     .padding(.horizontal, 18).frame(height: 62)
                     .background(alignment: .leading) {
                         if email.isEmpty {
                             Text("you@email.com").font(Brand.body(20, semibold: true))
-                                .foregroundStyle(Color(hex: 0x55555B)).padding(.horizontal, 18)
+                                .foregroundStyle(Theme.faint).padding(.horizontal, 18)
                         }
                     }
-                    .background(Brand.charcoal, in: .rect(cornerRadius: 16, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(focus == .email ? Brand.lime : Brand.line, lineWidth: focus == .email ? 1.5 : 1))
+                    .background(Brand.surface, in: .rect(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12)
+                        .stroke(focus == .email ? Brand.accent : Brand.line, lineWidth: focus == .email ? 1.5 : 1))
                     .focused($focus, equals: .email)
                     .padding(.top, 28)
             }
@@ -141,27 +124,27 @@ struct LoginForm: View {
             }
 
             if !codeSent {
-                limeButton(busy == .email ? "SENDING…" : "SEND CODE", enabled: emailValid && busy == nil) { send() }
+                accentButton(busy == .email ? "Sending…" : "Send code", enabled: emailValid && busy == nil) { send() }
                     .padding(.top, 18)
                 if !emailOnly {
                     Text("or").font(Brand.body(15)).foregroundStyle(Brand.muted)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
                     Button { run(.apple) { try await app.auth.loginWithApple() } } label: {
                         HStack(spacing: 10) {
-                            if busy == .apple { ProgressView().tint(Brand.black) }
+                            if busy == .apple { ProgressView().tint(Brand.ground) }
                             else { Image(systemName: "apple.logo").font(.system(size: 19, weight: .semibold)) }
                             Text("Continue with Apple").font(Brand.body(19, semibold: true))
                         }
-                        .foregroundStyle(Brand.black)
-                        .frame(maxWidth: .infinity).frame(height: 58)
-                        .background(Brand.white, in: .rect(cornerRadius: 16, style: .continuous))
+                        .foregroundStyle(Brand.ground)
+                        .frame(maxWidth: .infinity).frame(height: 56)
+                        .background(Brand.ink, in: .rect(cornerRadius: 8))
                     }
                     .buttonStyle(PressScale())
                     .disabled(busy != nil)
                 }
             } else if busy == .email {
                 HStack(spacing: 10) {
-                    ProgressView().tint(Brand.lime)
+                    ProgressView().tint(Brand.accent)
                     Text("Signing you in").font(Brand.body(16, semibold: true)).foregroundStyle(Brand.muted)
                 }
                 .padding(.top, 20)
@@ -172,15 +155,16 @@ struct LoginForm: View {
         .onAppear { focus = codeSent ? .code : .email }
     }
 
-    private func limeButton(_ label: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+    /// The one filled button on the screen: the thing to press.
+    private func accentButton(_ label: String, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)
-                .font(Brand.display(22)).tracking(0.6)
-                .foregroundStyle(enabled ? Brand.black : Color(hex: 0x5A5A60))
-                .frame(maxWidth: .infinity).frame(height: 58)
-                .background(enabled ? Brand.lime : Brand.charcoal, in: .rect(cornerRadius: 16, style: .continuous))
+                .font(.instrument(16, 600)).tracking(-0.2)
+                .foregroundStyle(enabled ? Color.white : Theme.faint)
+                .frame(maxWidth: .infinity).frame(height: 56)
+                .background(enabled ? Brand.accent : Brand.surface, in: .rect(cornerRadius: 8))
                 .overlay {
-                    if !enabled { RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Brand.line, lineWidth: 1) }
+                    if !enabled { RoundedRectangle(cornerRadius: 8).stroke(Brand.line, lineWidth: 1) }
                 }
         }
         .buttonStyle(PressScale())
@@ -269,11 +253,11 @@ private struct CodeBoxes: View {
                 let filled = i < chars.count
                 let current = focused && i == chars.count
                 Text(filled ? String(chars[i]) : "")
-                    .font(Brand.display(32)).foregroundStyle(Brand.white)
-                    .frame(maxWidth: .infinity).frame(height: 64)
-                    .background(Brand.charcoal, in: .rect(cornerRadius: 14, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(current ? Brand.lime : (filled ? Color(hex: 0x3A3A40) : Brand.line), lineWidth: current ? 1.5 : 1))
+                    .font(.instrument(26, 600)).monospacedDigit().foregroundStyle(Brand.ink)
+                    .frame(maxWidth: .infinity).frame(height: 60)
+                    .background(Brand.surface, in: .rect(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12)
+                        .stroke(current ? Brand.accent : Brand.line, lineWidth: current ? 1.5 : 1))
                     .scaleEffect(filled ? 1 : 0.97)
                     .animation(.spring(duration: 0.25, bounce: 0.3), value: filled)
             }

@@ -1,23 +1,22 @@
 import SwiftUI
 import UIKit
 
-/// Stonks247 brand kit v1: black, lime, white, charcoal; Barlow Condensed Black for display,
-/// Barlow for body. The rest of the app still runs on `Theme`; these are for the brand surfaces.
+/// The brand surfaces (launch, welcome, sign-in) run on the app's own light kit: ground, ink,
+/// accent. Barlow Condensed Black stays for the logo and the one headline, because that is the
+/// logo; everything else on these screens is Instrument Sans like the rest of the app.
 enum Brand {
-    static let black = Color(hex: 0x0B0B0C)
-    static let lime = Color(hex: 0xD7FF3A)
-    static let white = Color(hex: 0xF5F5F2)
-    static let charcoal = Color(hex: 0x18181B)
-    static let line = Color(hex: 0x2A2A2F)
-    static let muted = Color(hex: 0x9A9AA0)
+    static let ground = Theme.ground
+    static let ink = Theme.ink
+    static let accent = Theme.accent
+    static let surface = Theme.surface
+    static let line = Theme.line
+    static let muted = Theme.muted
 
     static let displayFace = "BarlowCondensed-Black"
 
     /// Display type ignores Dynamic Type on purpose: the logo and the headline are set to a width.
     static func display(_ size: CGFloat) -> Font { .custom(displayFace, fixedSize: size) }
-    static func body(_ size: CGFloat, semibold: Bool = false) -> Font {
-        .custom(semibold ? "Barlow-SemiBold" : "Barlow-Regular", size: size)
-    }
+    static func body(_ size: CGFloat, semibold: Bool = false) -> Font { .instrument(size, semibold ? 600 : 400) }
 }
 
 /// 24↗7 over STONKS, both rows set to the same width as the kit requires. Built from the font
@@ -35,7 +34,7 @@ struct LogoMark: View {
             HStack(spacing: m.arrowMargin) {
                 Text("24")
                 Arrow()
-                    .fill(Brand.lime)
+                    .fill(Brand.accent)
                     .frame(width: m.arrowW, height: m.arrowH)
                     .scaleEffect(arrowScale)
                     .offset(x: arrowOffset.width * m.arrowW, y: arrowOffset.height * m.arrowH)
@@ -43,7 +42,7 @@ struct LogoMark: View {
                 Text("7")
             }
             .font(Brand.display(m.topSize)).tracking(-0.01 * m.topSize)
-            .foregroundStyle(Brand.lime)
+            .foregroundStyle(Brand.accent)
             .frame(height: m.topSize * 0.8)
             .scaleEffect(0.35 + 0.65 * top, anchor: UnitPoint(x: 0.5, y: 0.6))
             .opacity(top)
@@ -51,7 +50,7 @@ struct LogoMark: View {
             // Masked, so STONKS rises out of its own line rather than fading in.
             Text("STONKS")
                 .font(Brand.display(m.botSize)).tracking(-0.01 * m.botSize)
-                .foregroundStyle(Brand.white)
+                .foregroundStyle(Brand.ink)
                 .frame(height: m.botSize * 0.8)
                 .offset(y: (1 - bottom) * m.botSize * 0.8 * 1.1)
                 .frame(height: m.botSize * 0.86, alignment: .top)

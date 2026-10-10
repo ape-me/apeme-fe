@@ -295,11 +295,9 @@ enum CoinArt {
             let img = UIImage(named: "coin-" + sym) ?? UIImage()
             let bg = CoinArt.backdrop(img)
             ZStack {
-                // Rim: lit from above, darker underneath, like the pucks on the landing page.
-                Circle().fill(LinearGradient(colors: [Color(hex: 0x3A3A40), Color(hex: 0x141416)],
-                                             startPoint: .top, endPoint: .bottom))
-                Circle().strokeBorder(LinearGradient(colors: [.white.opacity(0.35), .white.opacity(0.02)],
-                                                     startPoint: .top, endPoint: .bottom), lineWidth: 1)
+                // A white disc with a hairline, the way every logo sits in the app.
+                Circle().fill(Theme.surface)
+                Circle().strokeBorder(Theme.line, lineWidth: 1)
                 // Full-bleed logos fill the face; logos on a clear background sit inset on white.
                 Image(uiImage: img)
                     .resizable().scaledToFit()
@@ -307,10 +305,10 @@ enum CoinArt {
                     .frame(width: d * 0.8, height: d * 0.8)
                     .background(bg.color)
                     .clipShape(.circle)
-                    .overlay(Circle().stroke(.black.opacity(0.35), lineWidth: 1))
+                    .overlay(Circle().stroke(Theme.line, lineWidth: 1))
                     .overlay {
                         // A soft gloss across the top of the face.
-                        Circle().fill(LinearGradient(colors: [.white.opacity(0.28), .clear],
+                        Circle().fill(LinearGradient(colors: [.white.opacity(0.16), .clear],
                                                      startPoint: .top, endPoint: .center))
                             .frame(width: d * 0.8, height: d * 0.8)
                     }

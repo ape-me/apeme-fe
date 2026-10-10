@@ -37,8 +37,7 @@ struct WelcomeView: View {
     private static let dockW: CGFloat = 124
 
 
-    /// The brand kit is black and lime whatever the phone is set to.
-    var body: some View { content.environment(\.colorScheme, .dark) }
+    var body: some View { content }
 
     private var content: some View {
         GeometryReader { g in
@@ -47,10 +46,10 @@ struct WelcomeView: View {
             let center = CGPoint(x: (g.size.width - Self.centerW) / 2, y: (g.size.height - m.height) / 2 - 10)
             let dock = CGPoint(x: 24, y: 16)
             ZStack(alignment: .topLeading) {
-                Brand.black.ignoresSafeArea()
+                Brand.ground.ignoresSafeArea()
 
                 Circle()
-                    .fill(RadialGradient(colors: [Brand.lime.opacity(0.28), Brand.lime.opacity(0)],
+                    .fill(RadialGradient(colors: [Brand.accent.opacity(0.18), Brand.accent.opacity(0)],
                                          center: .center, startRadius: 0, endRadius: 221))
                     .frame(width: 520, height: 520)
                     .scaleEffect(glowGone ? 1.6 : 0.6 + 0.4 * glow)
@@ -65,11 +64,11 @@ struct WelcomeView: View {
                           avoid: CGRect(x: dock.x - 14, y: dock.y + g.safeAreaInsets.top - 12,
                                         width: Self.dockW + 28, height: m.height * s + 24))
                     .ignoresSafeArea()
-                LinearGradient(stops: [.init(color: Brand.black.opacity(0.35), location: 0),
-                                       .init(color: Brand.black.opacity(0), location: 0.22),
-                                       .init(color: Brand.black.opacity(0), location: 0.45),
-                                       .init(color: Brand.black.opacity(0.7), location: 0.66),
-                                       .init(color: Brand.black.opacity(0.85), location: 1)],
+                LinearGradient(stops: [.init(color: Brand.ground.opacity(0.35), location: 0),
+                                       .init(color: Brand.ground.opacity(0), location: 0.22),
+                                       .init(color: Brand.ground.opacity(0), location: 0.45),
+                                       .init(color: Brand.ground.opacity(0.7), location: 0.66),
+                                       .init(color: Brand.ground.opacity(0.85), location: 1)],
                                startPoint: .top, endPoint: .bottom)
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
@@ -111,8 +110,8 @@ struct WelcomeView: View {
             Color.clear.frame(height: logoHeight)
             Spacer(minLength: 20)
             VStack(alignment: .leading, spacing: 0) {
-                headline("WALL STREET,", 0, Brand.white)
-                headline("OPEN 24/7.", 1, Brand.lime)
+                headline("WALL STREET,", 0, Brand.ink)
+                headline("OPEN 24/7.", 1, Brand.accent)
             }
             .allowsHitTesting(false)
             .accessibilityElement(children: .ignore)
@@ -161,13 +160,13 @@ struct WelcomeView: View {
     private var legal: AttributedString {
         var s = AttributedString("By continuing you agree to the Terms and Privacy Policy.")
         s.font = Brand.body(14)
-        s.foregroundColor = Color(hex: 0x6E6E75)
+        s.foregroundColor = Theme.muted
         for (word, url) in [("Terms", "https://stonks247.fun/terms"),
                             ("Privacy Policy", "https://stonks247.fun/privacy")] {
             guard let r = s.range(of: word), let link = URL(string: url) else { continue }
             s[r].link = link
             s[r].font = Brand.body(14, semibold: true)
-            s[r].foregroundColor = Brand.white.opacity(0.75)
+            s[r].foregroundColor = Theme.accent
         }
         return s
     }
@@ -177,7 +176,7 @@ struct WelcomeView: View {
             Text(error).font(Brand.body(14)).foregroundStyle(Theme.red).multilineTextAlignment(.center)
         } else if kind != .replay {
             Text(legal)
-                .tint(Brand.white.opacity(0.75))
+                .tint(Theme.accent)
                 .multilineTextAlignment(.center)
         }
     }
@@ -185,15 +184,16 @@ struct WelcomeView: View {
     private func brandButton(label: String, icon: String?, light: Bool, shown: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 10) {
-                if busy, light, icon != nil { ProgressView().tint(Brand.black) }
+                if busy, light, icon != nil { ProgressView().tint(Brand.ground) }
                 else if let icon { Image(systemName: icon).font(.system(size: 19, weight: .semibold)) }
                 Text(label).font(Brand.body(19, semibold: true))
             }
-            .foregroundStyle(light ? Brand.black : Brand.white)
-            .frame(maxWidth: .infinity).frame(height: 58)
-            .background(light ? Brand.white : Brand.charcoal, in: .rect(cornerRadius: 16, style: .continuous))
+            // Apple's button stays Apple's: black. The other is the app's outlined accent button.
+            .foregroundStyle(light ? Brand.ground : Brand.accent)
+            .frame(maxWidth: .infinity).frame(height: 56)
+            .background(light ? Brand.ink : Color.clear, in: .rect(cornerRadius: 8))
             .overlay {
-                if !light { RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Brand.line, lineWidth: 1) }
+                if !light { RoundedRectangle(cornerRadius: 8).stroke(Brand.accent, lineWidth: 1.5) }
             }
         }
         .buttonStyle(PressScale())

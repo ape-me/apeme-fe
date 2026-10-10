@@ -29,8 +29,8 @@ struct BigButton: View {
 
     private var fg: Color {
         switch style {
-        case .primary, .cta, .white: Theme.accent
-        case .buy, .sell: .white
+        case .primary, .white: Theme.accent
+        case .buy, .sell, .cta: .white
         case .ghost: Theme.ink
         case .danger: Theme.red
         case .off: Theme.faint
@@ -40,14 +40,16 @@ struct BigButton: View {
         switch style {
         case .buy: AnyShapeStyle(Theme.buyGradient)
         case .sell: AnyShapeStyle(Theme.sellGradient)
+        // The one filled accent button a screen is allowed: the single thing to press on it.
+        case .cta: AnyShapeStyle(Theme.accent)
         default: AnyShapeStyle(Color.clear)
         }
     }
     private var border: Color {
         switch style {
-        case .primary, .cta, .white: Theme.accent
+        case .primary, .white: Theme.accent
         case .danger: Theme.red
-        case .buy, .sell: .clear
+        case .buy, .sell, .cta: .clear
         case .ghost, .off: Theme.line
         }
     }

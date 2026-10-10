@@ -12,8 +12,7 @@ struct InviteView: View {
     @State private var error: String?
     @FocusState private var focused: Bool
 
-    /// The brand kit is black and lime whatever the phone is set to.
-    var body: some View { content.environment(\.colorScheme, .dark) }
+    var body: some View { content }
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -34,7 +33,7 @@ struct InviteView: View {
                 .onSubmit(submit)
                 .padding(.top, 36)
 
-            BigButton(label: busy ? "Checking…" : "Unlock Stonks247", style: .white, action: submit)
+            BigButton(label: busy ? "Checking…" : "Unlock Stonks247", style: .cta, action: submit)
                 .disabled(code.count < 4 || busy).opacity(code.count < 4 ? 0.5 : 1)
                 .padding(.top, 12)
 
