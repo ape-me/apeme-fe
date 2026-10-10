@@ -151,7 +151,9 @@ final class StockStore {
         guard var s = stock, let price = p.priceUsd else { return }
         s.priceUsd = price
         if let c = p.change24h { s.change24h = c }
-        if let m = p.markUsd { s.markUsd = m; s.premiumPct = (price - m) / m * 100 }
+        // Ondo fills at the real share price, so the backend sends no premium for it; a live frame
+        // must not invent one from the mark.
+        if let m = p.markUsd, !s.isOndo { s.markUsd = m; s.premiumPct = (price - m) / m * 100 }
         stock = s
         app.stocksByMint[mint] = s
         guard scrub == nil else { return }
