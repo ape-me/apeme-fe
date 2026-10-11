@@ -321,9 +321,26 @@ struct StockView: View {
         if store.chartLoading {
             Skeleton(height: Self.chartHeight).padding(.horizontal, 20)
         } else {
-            LineChart(points: store.points, tint: store.direction, drawKey: store.range.rawValue,
-                      live: live, height: Self.chartHeight) { store.scrub = $0 }
-                .animation(.easeOut(duration: 0.3), value: store.points.last?.price)
+            VStack(alignment: .leading, spacing: 8) {
+                // LIVE carries no dots; a chip says there are stories today and jumps to them.
+                if live, store.storiesToday > 0 {
+                    Button { store.setRange(.d1); Haptic.selection() } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "newspaper").font(.system(size: 11, weight: .semibold))
+                            Text("\(store.storiesToday) \(store.storiesToday == 1 ? "story" : "stories") today").font(.system(size: 12, weight: .semibold))
+                            Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold))
+                        }
+                        .foregroundStyle(Theme.accent).padding(.horizontal, 10).frame(height: 28)
+                        .background(Theme.accent.opacity(0.10), in: .capsule)
+                    }
+                    .buttonStyle(.plain).padding(.horizontal, 20)
+                }
+                LineChart(points: store.points, tint: store.direction, drawKey: store.range.rawValue,
+                          live: live, height: Self.chartHeight, onScrub: { store.scrub = $0 },
+                          markers: live ? [] : LineChart.group(store.events),
+                          onMarker: { app.sheet = .chartEvents($0) })
+                    .animation(.easeOut(duration: 0.3), value: store.points.last?.price)
+            }
         }
     }
 

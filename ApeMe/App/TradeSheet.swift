@@ -15,6 +15,8 @@ enum TradeSheet: Identifiable {
     /// A basket order that ran behind a toast and needs the sheet back: a partial fill, a
     /// failure, or fresh prices to confirm.
     case resumeBasket(BasketResume)
+    /// The stories behind a dot on the chart.
+    case chartEvents([ChartEvent])
     case position(Holding)
 
     var id: String {
@@ -28,6 +30,7 @@ enum TradeSheet: Identifiable {
         case .tx(let a): "tx-\(a.id)"
         case .resume(let r): "resume-\(r.id)"
         case .resumeBasket(let r): "resume-basket-\(r.id)"
+        case .chartEvents(let e): "events-\(e.map(\.id).joined(separator: ","))"
         case .position(let h): "pos-\(h.mint)"
         case .login: "login"
         }

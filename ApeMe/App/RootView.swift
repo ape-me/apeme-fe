@@ -56,6 +56,7 @@ struct RootView: View {
             case .tx(let a): TxSheet(activity: a)
             case .resume(let r): TradeSheetView(resume: r)
             case .resumeBasket(let r): BasketOrderSheet(resume: r)
+            case .chartEvents(let e): ChartEventSheet(events: e)
             case .position(let h): PositionSheet(holding: h)
             case .login: LoginSheet()
             }

@@ -8,6 +8,10 @@ final class StockStore {
     var range: HistoryRange = .live
     var longRange: HistoryRange = .w1
     var points: [LineChart.Point] = []
+    /// Stories inside the loaded range, for the dots on the line.
+    var events: [ChartEvent] = []
+    /// Stories today, for the chip above the LIVE chart.
+    var storiesToday = 0
     var chartLoading = true
     var error: String?
     var scrub: LineChart.Point?
@@ -101,6 +105,9 @@ final class StockStore {
             guard gen == rangeGen else { return }
             // The chart shows what people pay; fair value lives in the bar below, not on the line.
             points = h.points.compactMap { p in p.price.map { LineChart.Point(t: p.t, price: $0, mark: nil) } }
+            events = h.events ?? []
+            if range == .d1 { storiesToday = events.count }
+            else if range == .live, let day: HistoryResponse = try? await API.shared.history(mint, range: .d1) { storiesToday = day.events?.count ?? 0 }
         } catch {
             guard gen == rangeGen, !fresh else { return }
             points = []
@@ -124,6 +131,8 @@ final class StockStore {
                         // A headline published while the page is open just flags the tab.
                         case .news(let n) where n.mint == mint:
                             if tab == .news { news = []; await loadNews() } else { unreadNews = true }
+                            // The new story's dot belongs on the chart that is open.
+                            await loadRange(fresh: true, silent: true)
                         default: break
                         }
                     }

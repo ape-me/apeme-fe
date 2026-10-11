@@ -1,3 +1,4 @@
+import SwiftUI
 import Foundation
 
 struct StocksResponse: Codable { let stocks: [Stock]; let asOf: Int? }
@@ -20,6 +21,29 @@ struct HistoryResponse: Codable {
     let points: [HistoryPoint]
     let changeAbs: Double?
     let changePct: Double?
+    /// Stories that landed inside this range, each pinned to a chart point. Empty on LIVE.
+    let events: [ChartEvent]?
+}
+
+/// A news story at the moment it came out, drawn as a dot on the price line.
+struct ChartEvent: Codable, Hashable, Identifiable {
+    let id: String
+    /// The chart bucket the dot sits on.
+    let t: Int
+    let publishedAt: Int
+    let title: String
+    let source: String?
+    let url: String
+    /// material, major, critical.
+    let impact: String
+    /// bullish, bearish, neutral or null.
+    let direction: String?
+    /// Price change in the hour after the story; null while it is under an hour old.
+    let moveAfterPct: Double?
+    var link: URL? { URL(string: url) }
+    var tint: Color {
+        switch direction { case "bullish": Theme.green; case "bearish": Theme.red; default: Theme.faint }
+    }
 }
 struct CollectionsResponse: Codable { let collections: [StockCollection]; let asOf: Int? }
 struct MoversResponse: Codable {

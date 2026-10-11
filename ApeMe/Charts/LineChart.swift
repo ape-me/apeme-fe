@@ -17,6 +17,24 @@ struct LineChart: View {
     var emptyTitle = "No history for this range"
     var emptySubtitle = "Try another timeframe."
     var onScrub: (Point?) -> Void = { _ in }
+    /// Stories pinned to the line. Several at one time draw as one dot with a count.
+    var markers: [Marker] = []
+    var onMarker: ([ChartEvent]) -> Void = { _ in }
+
+    struct Marker: Identifiable {
+        let t: Int
+        let events: [ChartEvent]
+        var id: Int { t }
+        var color: Color {
+            let d = Set(events.compactMap(\.direction))
+            if d == ["bullish"] { return Theme.green }
+            if d == ["bearish"] { return Theme.red }
+            return Theme.faint
+        }
+    }
+    static func group(_ events: [ChartEvent]) -> [Marker] {
+        Dictionary(grouping: events, by: \.t).map { Marker(t: $0.key, events: $0.value.sorted { $0.publishedAt < $1.publishedAt }) }.sorted { $0.t < $1.t }
+    }
 
     @Environment(\.skin) private var skin
     @State private var scrubIndex: Int? = nil
@@ -67,6 +85,25 @@ struct LineChart: View {
                     if let i = scrubIndex {
                         scrub(geo, i)
                     }
+                    ForEach(markers) { m in
+                        let p = markerPoint(geo, m.t, series: series)
+                        Button { Haptic.light(); onMarker(m.events) } label: {
+                            ZStack(alignment: .topTrailing) {
+                                Circle().fill(m.color).frame(width: 11, height: 11)
+                                    .overlay(Circle().stroke(Theme.ground, lineWidth: 2))
+                                if m.events.count > 1 {
+                                    Text("\(m.events.count)").font(.system(size: 8, weight: .bold)).foregroundStyle(.white)
+                                        .frame(width: 13, height: 13).background(Theme.ink, in: .circle)
+                                        .offset(x: 7, y: -7)
+                                }
+                            }
+                            .frame(width: 28, height: 28).contentShape(.circle)
+                        }
+                        .buttonStyle(.plain)
+                        .position(p)
+                        .opacity(drawn)
+                        .accessibilityLabel("\(m.events.count) \(m.events.count == 1 ? "story" : "stories")")
+                    }
                 }
                 .contentShape(.rect)
                 .gesture(
@@ -88,6 +125,15 @@ struct LineChart: View {
             }
             .accessibilityLabel("Price chart")
         }
+    }
+
+    /// The dot sits on the line at the story's time: the point with that t, else the one just
+    /// before it. Kept clear of the edges, and of the live price tag on the right.
+    private func markerPoint(_ geo: Geometry, _ t: Int, series: [Point]) -> CGPoint {
+        let i = series.lastIndex { $0.t <= t } ?? 0
+        var p = geo.xy(i)
+        p.x = min(geo.size.width - (live ? 60 : 8), max(8, p.x))
+        return p
     }
 
     private func scrub(_ geo: Geometry, _ i: Int) -> some View {
