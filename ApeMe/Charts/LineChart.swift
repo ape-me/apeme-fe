@@ -97,8 +97,14 @@ struct LineChart: View {
                                 // A proper token on the line, like the avatars on a memecoin chart:
                                 // a white disc, a ring in the story's colour, the glyph inside.
                                 Circle().fill(Theme.surface).frame(width: 28, height: 28)
+                                    .overlay {
+                                        if let u = m.events.first?.logoURL {
+                                            RemoteImage(url: u, fallback: "").frame(width: 22, height: 22).clipShape(.circle)
+                                        } else {
+                                            Image(systemName: "newspaper.fill").font(.system(size: 12, weight: .semibold)).foregroundStyle(m.color)
+                                        }
+                                    }
                                     .overlay(Circle().stroke(m.color, lineWidth: 2.5))
-                                    .overlay(Image(systemName: "newspaper.fill").font(.system(size: 12, weight: .semibold)).foregroundStyle(m.color))
                                     .shadow(color: .black.opacity(0.22), radius: 4, y: 2)
                                 if m.events.count > 1 {
                                     Text("\(m.events.count)").font(.system(size: 9, weight: .bold)).foregroundStyle(.white)

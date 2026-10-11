@@ -40,7 +40,10 @@ struct ChartEvent: Codable, Hashable, Identifiable {
     let direction: String?
     /// Price change in the hour after the story; null while it is under an hour old.
     let moveAfterPct: Double?
+    /// The outlet's square icon, for the token on the chart. Null falls back to a glyph.
+    let sourceLogo: String?
     var link: URL? { URL(string: url) }
+    var logoURL: URL? { sourceLogo.flatMap { $0.isEmpty ? nil : URL(string: $0) } }
     var tint: Color {
         switch direction { case "bullish": Theme.green; case "bearish": Theme.red; default: Theme.faint }
     }

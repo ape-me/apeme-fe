@@ -51,6 +51,13 @@ struct ChartEventSheet: View {
     }
 
     private func row(_ e: ChartEvent) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            if let u = e.logoURL { RemoteImage(url: u, fallback: "").frame(width: 32, height: 32).clipShape(.rect(cornerRadius: 8)) }
+            rowText(e)
+        }
+    }
+
+    private func rowText(_ e: ChartEvent) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(e.title).font(.system(size: 15, weight: .semibold)).lineLimit(2).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
