@@ -89,15 +89,17 @@ struct LineChart: View {
                         let p = markerPoint(geo, m.t, series: series)
                         // A thin guide from the dot to the floor, so the moment reads even on a
                         // busy line; the dot itself is big enough to be a target.
-                        Path { path in path.move(to: CGPoint(x: p.x, y: p.y + 10)); path.addLine(to: CGPoint(x: p.x, y: g.size.height)) }
+                        Path { path in path.move(to: CGPoint(x: p.x, y: p.y + 15)); path.addLine(to: CGPoint(x: p.x, y: g.size.height)) }
                             .stroke(m.color.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
                             .opacity(drawn)
                         Button { Haptic.light(); onMarker(m.events) } label: {
                             ZStack(alignment: .topTrailing) {
-                                Circle().fill(m.color).frame(width: 18, height: 18)
-                                    .overlay(Circle().stroke(Theme.surface, lineWidth: 2.5))
-                                    .overlay(Image(systemName: "newspaper.fill").font(.system(size: 8, weight: .bold)).foregroundStyle(.white))
-                                    .shadow(color: .black.opacity(0.18), radius: 3, y: 1)
+                                // A proper token on the line, like the avatars on a memecoin chart:
+                                // a white disc, a ring in the story's colour, the glyph inside.
+                                Circle().fill(Theme.surface).frame(width: 28, height: 28)
+                                    .overlay(Circle().stroke(m.color, lineWidth: 2.5))
+                                    .overlay(Image(systemName: "newspaper.fill").font(.system(size: 12, weight: .semibold)).foregroundStyle(m.color))
+                                    .shadow(color: .black.opacity(0.22), radius: 4, y: 2)
                                 if m.events.count > 1 {
                                     Text("\(m.events.count)").font(.system(size: 9, weight: .bold)).foregroundStyle(.white)
                                         .frame(width: 15, height: 15).background(Theme.ink, in: .circle)
@@ -105,7 +107,7 @@ struct LineChart: View {
                                         .offset(x: 8, y: -8)
                                 }
                             }
-                            .frame(width: 36, height: 36).contentShape(.circle)
+                            .frame(width: 44, height: 44).contentShape(.circle)
                         }
                         .buttonStyle(.plain)
                         .position(p)
