@@ -104,7 +104,7 @@ final class StockStore {
             let h = try await API.shared.history(mint, range: range, fresh: fresh)
             guard gen == rangeGen else { return }
             // The chart shows what people pay; fair value lives in the bar below, not on the line.
-            points = h.points.compactMap { p in p.price.map { LineChart.Point(t: p.t, price: $0, mark: nil) } }
+            points = Self.thin(h.points.compactMap { p in p.price.map { LineChart.Point(t: p.t, price: $0, mark: nil) } })
             events = h.events ?? []
             if range == .d1 { storiesToday = events.count }
             else if range == .live, let day: HistoryResponse = try? await API.shared.history(mint, range: .d1) { storiesToday = day.events?.count ?? 0 }
@@ -112,6 +112,25 @@ final class StockStore {
             guard gen == rangeGen, !fresh else { return }
             points = []
         }
+    }
+
+    /// A day comes as 720 two-minute points, and at 350pt wide that draws as a thicket of
+    /// spikes. Bucketed to about 180, averaged, it draws as the day's shape; the last point is
+    /// kept as is, since it is the price.
+    static func thin(_ pts: [LineChart.Point], to target: Int = 180) -> [LineChart.Point] {
+        guard pts.count > target * 4 / 3 else { return pts }
+        let size = Int((Double(pts.count) / Double(target)).rounded(.up))
+        var out: [LineChart.Point] = []
+        out.reserveCapacity(target + 1)
+        var i = 0
+        while i < pts.count {
+            let slice = pts[i..<min(i + size, pts.count)]
+            let avg = slice.reduce(0) { $0 + $1.price } / Double(slice.count)
+            out.append(LineChart.Point(t: slice.first!.t, price: avg, mark: nil))
+            i += size
+        }
+        if let last = pts.last, out.last?.t != last.t { out.append(last) }
+        return out
     }
 
     /// `stock:<mint>` pushes `{t:"price"}` when the price moves; the chart gets a point appended.

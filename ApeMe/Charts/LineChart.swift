@@ -87,17 +87,25 @@ struct LineChart: View {
                     }
                     ForEach(markers) { m in
                         let p = markerPoint(geo, m.t, series: series)
+                        // A thin guide from the dot to the floor, so the moment reads even on a
+                        // busy line; the dot itself is big enough to be a target.
+                        Path { path in path.move(to: CGPoint(x: p.x, y: p.y + 10)); path.addLine(to: CGPoint(x: p.x, y: g.size.height)) }
+                            .stroke(m.color.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
+                            .opacity(drawn)
                         Button { Haptic.light(); onMarker(m.events) } label: {
                             ZStack(alignment: .topTrailing) {
-                                Circle().fill(m.color).frame(width: 11, height: 11)
-                                    .overlay(Circle().stroke(Theme.ground, lineWidth: 2))
+                                Circle().fill(m.color).frame(width: 18, height: 18)
+                                    .overlay(Circle().stroke(Theme.surface, lineWidth: 2.5))
+                                    .overlay(Image(systemName: "newspaper.fill").font(.system(size: 8, weight: .bold)).foregroundStyle(.white))
+                                    .shadow(color: .black.opacity(0.18), radius: 3, y: 1)
                                 if m.events.count > 1 {
-                                    Text("\(m.events.count)").font(.system(size: 8, weight: .bold)).foregroundStyle(.white)
-                                        .frame(width: 13, height: 13).background(Theme.ink, in: .circle)
-                                        .offset(x: 7, y: -7)
+                                    Text("\(m.events.count)").font(.system(size: 9, weight: .bold)).foregroundStyle(.white)
+                                        .frame(width: 15, height: 15).background(Theme.ink, in: .circle)
+                                        .overlay(Circle().stroke(Theme.surface, lineWidth: 1.5))
+                                        .offset(x: 8, y: -8)
                                 }
                             }
-                            .frame(width: 28, height: 28).contentShape(.circle)
+                            .frame(width: 36, height: 36).contentShape(.circle)
                         }
                         .buttonStyle(.plain)
                         .position(p)
