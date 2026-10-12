@@ -49,7 +49,8 @@ struct RootView: View {
             case .withdraw: WithdrawSheet()
             case .basket(let b, let usd, let weights):
                 BasketOrderSheet(basketId: b.id, name: b.name, tagline: b.tagline,
-                                 logos: (b.logos ?? []).prefix(5).compactMap(URL.init(string:)), sell: false, amountUsd: usd, weights: weights)
+                                 logos: (b.logos ?? []).prefix(5).compactMap(URL.init(string:)), sell: false, amountUsd: usd, weights: weights,
+                                 baseWeights: b.ownWeights, tickers: Dictionary(uniqueKeysWithValues: b.stocks.map { ($0.stock.symbol, $0.key) }))
             case .closeBasket(let p):
                 BasketOrderSheet(basketId: p.basketId, name: p.name, tagline: "\(p.stocks.count) stocks",
                                  logos: p.stocks.prefix(5).compactMap(\.logoURL), sell: true, amountUsd: 0)

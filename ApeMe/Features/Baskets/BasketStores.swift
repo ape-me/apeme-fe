@@ -64,6 +64,22 @@ final class BasketOrderStore {
     let sell: Bool
     /// The user's own mix, if they changed it; nil buys the basket as built.
     var weights: [String: Int]?
+    /// The basket's own mix and its symbol → ticker map, so a stock that will not quote can be
+    /// dropped from here without going back to the page.
+    var baseWeights: [String: Int] = [:]
+    var tickers: [String: String] = [:]
+    /// The stock the last quote failed on, when the backend named one.
+    var failedSymbol: String?
+
+    /// Drop one stock from the mix and ask again.
+    func dropAndRequote(_ symbol: String, amountUsd: Double, taker: String) async {
+        guard let key = tickers[symbol] else { return }
+        var w = weights ?? baseWeights
+        w[key] = 0
+        guard w.values.contains(where: { $0 > 0 }) else { return }
+        weights = w
+        await getQuote(amountUsd: amountUsd, taker: taker)
+    }
     var phase: Phase = .idle
     var quote: BasketQuote?
     var result: BasketSubmitResponse?
@@ -108,13 +124,14 @@ final class BasketOrderStore {
     }
 
     func getQuote(amountUsd: Double, taker: String) async {
-        error = nil; result = nil; signed = 0; outcomes = []; retriedOnce = false
+        error = nil; result = nil; signed = 0; outcomes = []; retriedOnce = false; failedSymbol = nil
         phase = .quoting
         do {
             quote = try await fetchQuote(amountUsd: amountUsd, taker: taker)
             quote.map(remember)
             phase = .ready
         } catch {
+            if case APIError.pricing(_, let sym, _) = error { failedSymbol = sym }
             self.error = Self.message(error); phase = .failed
         }
     }

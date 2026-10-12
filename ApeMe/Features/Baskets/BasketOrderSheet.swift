@@ -12,11 +12,12 @@ struct BasketOrderSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var store: BasketOrderStore
 
-    init(basketId: String, name: String, tagline: String? = nil, logos: [URL] = [], sell: Bool, amountUsd: Double, weights: [String: Int]? = nil) {
+    init(basketId: String, name: String, tagline: String? = nil, logos: [URL] = [], sell: Bool, amountUsd: Double, weights: [String: Int]? = nil,
+         baseWeights: [String: Int] = [:], tickers: [String: String] = [:]) {
         self.basketId = basketId; self.name = name; self.tagline = tagline; self.logos = logos
         self.sell = sell; self.amountUsd = amountUsd
         let s = BasketOrderStore(basketId: basketId, name: name, sell: sell)
-        s.weights = weights
+        s.weights = weights; s.baseWeights = baseWeights; s.tickers = tickers
         _store = State(initialValue: s)
     }
 
@@ -124,6 +125,13 @@ struct BasketOrderSheet: View {
                 else {
                     ErrorBar(text: store.error ?? "That didn't go through.").padding(.horizontal, -20)
                     Spacer()
+                    // The one stock that will not quote is not the basket: buy the rest.
+                    if !sell, let sym = store.failedSymbol, store.tickers[sym] != nil {
+                        BigButton(label: "Buy without \(sym)", style: .cta) {
+                            Haptic.medium()
+                            Task { if let t = app.walletAddress { await store.dropAndRequote(sym, amountUsd: amountUsd, taker: t) } }
+                        }
+                    }
                     BigButton(label: "Try again", style: .white) {
                         Task { if let t = app.walletAddress { await store.getQuote(amountUsd: amountUsd, taker: t) } }
                     }
