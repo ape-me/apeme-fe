@@ -122,14 +122,19 @@ final class BasketOrderStore {
     /// Seven legs means seven Jupiter quotes at once, and one of them failing on Jupiter's side
     /// is a bad second, not a bad basket. A quiet second attempt covers it before anyone is told.
     private func fetchQuote(amountUsd: Double, taker: String) async throws -> BasketQuote {
-        do {
-            return sell ? try await API.shared.basketSell(basketId, taker: taker)
-                        : try await API.shared.basketQuote(basketId, amountUsd: amountUsd, taker: taker, weights: weights)
-        } catch let e where Self.isUpstreamHiccup(e) {
-            try? await Task.sleep(for: .seconds(1.2))
-            return sell ? try await API.shared.basketSell(basketId, taker: taker)
-                        : try await API.shared.basketQuote(basketId, amountUsd: amountUsd, taker: taker, weights: weights)
+        // Three quiet goes with a growing pause: a rate limit or a flaky route on one of seven
+        // legs clears in seconds, and nobody should see it.
+        var last: Error?
+        for (i, pause) in [0.0, 1.2, 2.5, 4.0].enumerated() {
+            if pause > 0 { try? await Task.sleep(for: .seconds(pause)) }
+            do {
+                return sell ? try await API.shared.basketSell(basketId, taker: taker)
+                            : try await API.shared.basketQuote(basketId, amountUsd: amountUsd, taker: taker, weights: weights)
+            } catch let e where Self.isUpstreamHiccup(e) && i < 3 {
+                last = e
+            }
         }
+        throw last ?? APIError.http(502, "upstream_error")
     }
 
     /// Jupiter failing to answer, or the backend saying it could not route: worth one more go.
