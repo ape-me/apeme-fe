@@ -548,7 +548,19 @@ struct BasketView: View {
     // MARK: Invest bar
 
     private var usd: Double { Double(amount) ?? 0 }
-    private var minUsd: Double { d?.minUsd ?? 10 }
+    /// The basket's own floor, raised by the smallest slice: Ondo's market maker will not quote
+    /// under $3 a leg, and nothing quotes under $1. Computed on the mix in play.
+    private var minUsd: Double {
+        guard let d else { return 10 }
+        var floor = d.minUsd ?? 10
+        for leg in d.stocks {
+            let w = Double(mix.changed ? (mix.weights[leg.key] ?? 0) : Int((leg.weight ?? 0).rounded()))
+            guard w > 0 else { continue }
+            let perLeg = leg.stock.isWeekdaysOnly ? 3.0 : 1.0
+            floor = max(floor, ceil(perLeg * 100 / w))
+        }
+        return floor
+    }
     /// Spendable USDC, floored to the cent. nil until the wallet has been read; signed out is 0.
     private var cash: Double? { app.walletAddress == nil ? 0 : app.wallet.map { floor(($0.cashUsd ?? 0) * 100) / 100 } }
     private var short: Bool { cash.map { usd > $0 + 0.0001 } ?? false }

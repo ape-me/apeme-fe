@@ -287,7 +287,7 @@ actor API {
             if let e = body?.error, ["not_an_idea", "no_match", "daily_limit", "ai_busy"].contains(e) {
                 throw APIError.rejected(reason: e, examples: body?.examples, limit: body?.limit)
             }
-            if let e = body?.error, ["no_route", "rate_limited", "upstream_error"].contains(e) {
+            if let e = body?.error, ["no_route", "rate_limited", "upstream_error", "ondo_unavailable"].contains(e) {
                 throw APIError.pricing(reason: e, symbol: body?.symbol, upstreamStatus: body?.upstreamStatus)
             }
             if let b = body, b.minUsd != nil || b.excludedIssuers != nil {

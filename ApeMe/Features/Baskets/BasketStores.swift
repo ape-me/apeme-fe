@@ -141,6 +141,8 @@ final class BasketOrderStore {
     private static func isUpstreamHiccup(_ error: Error) -> Bool {
         if case APIError.pricing = error { return true }
         guard case APIError.http(let code, _) = error else { return false }
+        // ondo_unavailable is already retried on the backend; a second go here only delays the message.
+        if case APIError.pricing(let reason, _, _) = error, reason == "ondo_unavailable" { return false }
         return code >= 500
     }
 
@@ -222,7 +224,7 @@ final class BasketOrderStore {
 
     static func message(_ error: Error) -> String {
         // A mix whose smallest slice would be under a dollar: the backend names the floor.
-        if case APIError.orderRefused(_, let min, _) = error, let min { return "Min \(Fmt.cash(min)) for this mix." }
+        if case APIError.orderRefused(_, let min, _) = error, let min { return "Minimum \(Fmt.cash(min)) for this basket." }
         if case APIError.http(let code, let raw) = error {
             let reason = raw.split(separator: "·").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? raw
             let r = reason.lowercased()

@@ -42,6 +42,7 @@ enum Failure {
             switch reason {
             case "rate_limited": return "Prices are busy right now. Try again in a few seconds."
             case "upstream_error": return "Our price source hiccupped on \(what). Try again."
+            case "ondo_unavailable": return "\(what) can't be quoted right now. Try again, or take it out in Mix."
             default: return "Couldn't price \(what) just now. Try again."
             }
         }
