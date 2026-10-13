@@ -323,11 +323,14 @@ struct BasketPositionRow: View {
     var body: some View {
         Button { app.push(.basketPosition(position.basketId)) } label: {
             HStack(spacing: 12) {
-                LogoStack(urls: position.stocks.compactMap(\.logoURL), size: 28)
+                LogoStack(urls: position.stocks.compactMap(\.logoURL), size: 24)
+                // The name column gets the room first: a line that wraps to one letter a row is
+                // not a name.
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(position.name).font(.rowTitle)
-                    Text("\(position.stocks.count) stocks · basket").font(.sub).foregroundStyle(Theme.muted)
+                    Text(position.name).font(.rowTitle).lineLimit(1)
+                    Text("\(position.stocks.count) stocks").font(.sub).foregroundStyle(Theme.muted).lineLimit(1)
                 }
+                .layoutPriority(1)
                 Spacer(minLength: 8)
                 if let sp = position.spark, sp.count > 1 {
                     RowSpark(points: sp, baseline: position.prevClose,
@@ -340,7 +343,7 @@ struct BasketPositionRow: View {
                         Text("\(Fmt.signedCash(p)) · \(Fmt.pct(position.pnlPct, 1))").font(.rowChange).monospacedDigit().foregroundStyle(Theme.change(p))
                     }
                 }
-                .frame(minWidth: 92, alignment: .trailing)
+                .frame(minWidth: 72, alignment: .trailing)
             }
             .padding(.vertical, 8).frame(minHeight: 64).contentShape(.rect)
         }
