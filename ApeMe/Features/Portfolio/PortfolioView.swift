@@ -179,9 +179,10 @@ struct PositionRow: View {
             HStack(spacing: 12) {
                 Logo(url: holding.imageURL, symbol: holding.symbol)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(holding.symbol).font(.rowTitle)
-                    Text(Fmt.qty(holding.amount, symbol: holding.symbol)).font(.sub).monospacedDigit().foregroundStyle(Theme.muted)
+                    Text(holding.symbol).font(.rowTitle).lineLimit(1).minimumScaleFactor(0.8)
+                    Text(Fmt.qty(holding.amount, symbol: holding.symbol)).font(.sub).monospacedDigit().foregroundStyle(Theme.muted).lineLimit(1)
                 }
+                .layoutPriority(1)
                 Spacer(minLength: 8)
                 if let sp = holding.spark, sp.count > 1 {
                     RowSpark(points: sp, baseline: holding.prevClose,
@@ -193,7 +194,7 @@ struct PositionRow: View {
                     // No cost basis (deposited from outside) → no P&L, not a fake $0.
                     if holding.costUsd != nil, let p = holding.pnlUsd { Text(Fmt.signedCash(p)).font(.rowChange).monospacedDigit().foregroundStyle(Theme.change(p)) }
                 }
-                .frame(minWidth: 92, alignment: .trailing)
+                .frame(minWidth: 72, alignment: .trailing)
             }
             .padding(.vertical, 8).frame(minHeight: 60).contentShape(.rect)
         }
